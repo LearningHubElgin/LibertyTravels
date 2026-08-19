@@ -49,12 +49,12 @@ exports.getBookings = async (req, res, next) => {
       // Also find matching customer IDs and passenger booking IDs
       const matchingCustomers = await Customer.find({
         $or: [{ name: regex }, { phone: regex }, { customerCode: regex }]
-      }).select('_id');
+      }).select('_id').lean();
       const matchingCustIds = matchingCustomers.map(c => c._id);
 
       const matchingPassengers = await Passenger.find({
         $or: [{ firstName: regex }, { lastName: regex }, { passportNumber: regex }]
-      }).select('bookingId');
+      }).select('bookingId').lean();
       const matchingBookingIds = matchingPassengers.map(p => p.bookingId);
 
       query.$or = [
@@ -78,7 +78,8 @@ exports.getBookings = async (req, res, next) => {
       .populate('passengers', 'title firstName lastName passportNumber')
       .sort(sortObj)
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     return res.status(200).json({
       success: true,

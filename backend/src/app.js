@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -7,6 +8,9 @@ const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+
+// Performance: Gzip/Deflate compression
+app.use(compression());
 
 // Security Middlewares
 app.use(helmet());

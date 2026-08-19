@@ -12,5 +12,18 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-utils': ['axios', 'date-fns', 'clsx', 'tailwind-merge']
+        }
+      }
+    }
   }
 });

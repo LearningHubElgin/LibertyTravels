@@ -74,10 +74,12 @@ exports.getDashboardStats = async (req, res, next) => {
     const firstDayMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
     const allBookings = await Booking.find()
-      .select('bookingDate totalAmount amountReceived balanceDue status');
+      .select('bookingDate totalAmount amountReceived balanceDue status')
+      .lean();
 
     const allExpenses = await Expense.find()
-      .select('expenseDate amount');
+      .select('expenseDate amount')
+      .lean();
 
     // Total Lifetime Aggregates
     const totalBookingsCount = allBookings.length;
@@ -165,11 +167,12 @@ exports.getDashboardCharts = async (req, res, next) => {
       bookingDate: { $gte: startDate, $lte: endDate }
     })
       .select('bookingDate totalAmount amountReceived status airlineId')
-      .populate('airline', 'name code');
+      .populate('airline', 'name code')
+      .lean();
 
     const expenses = await Expense.find({
       expenseDate: { $gte: startDate, $lte: endDate }
-    }).select('expenseDate amount');
+    }).select('expenseDate amount').lean();
 
     // Timeline mapping
     const dateMap = {};
@@ -261,7 +264,8 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .limit(6)
       .populate('customer', 'name phone')
       .populate('airline', 'name code')
-      .populate('passengers', 'firstName lastName');
+      .populate('passengers', 'firstName lastName')
+      .lean();
 
     const upcomingJourneys = await Booking.find({
       journeyDate: { $gte: todayStr },
@@ -271,12 +275,15 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .limit(6)
       .populate('customer', 'name phone')
       .populate('airline', 'name code')
-      .populate('passengers', 'firstName lastName title');
+      .populate('passengers', 'firstName lastName title')
+      .lean();
 
     const outstandingBookings = await Booking.find({
       balanceDue: { $gt: 0 },
       status: { $ne: 'cancelled' }
-    }).populate('customer', 'customerCode name phone email');
+    })
+      .populate('customer', 'customerCode name phone email')
+      .lean();
 
     const customerBalanceMap = {};
     outstandingBookings.forEach(b => {

@@ -4,7 +4,11 @@ require('dotenv').config();
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/liberty_travel', {
-      autoIndex: true
+      autoIndex: true,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000
     });
     console.log(`✅ MongoDB connected successfully: ${conn.connection.host}/${conn.connection.name}`);
     return conn;

@@ -28,7 +28,8 @@ exports.getSalesReport = async (req, res, next) => {
     const bookings = await Booking.find(query)
       .populate('customer', 'name customerCode')
       .populate('airline', 'name code')
-      .sort({ bookingDate: -1 });
+      .sort({ bookingDate: -1 })
+      .lean();
 
     const totalBookings = bookings.length;
     const totalRevenue = bookings.filter(b => b.status !== 'cancelled').reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
@@ -59,7 +60,7 @@ exports.getBookingReport = async (req, res, next) => {
     const query = {};
     applyDateFilter(query, startDate, endDate, 'bookingDate');
 
-    const bookings = await Booking.find(query).select('status bookingType totalAmount');
+    const bookings = await Booking.find(query).select('status bookingType totalAmount').lean();
 
     const statusCounts = { confirmed: 0, pending: 0, cancelled: 0, completed: 0, refunded: 0 };
     const typeCounts = { one_way: 0, round_trip: 0, multi_city: 0 };
@@ -90,7 +91,8 @@ exports.getRevenueReport = async (req, res, next) => {
     applyDateFilter(query, startDate, endDate, 'bookingDate');
 
     const bookings = await Booking.find(query)
-      .select('baseFare tax serviceCharge otherCharges discount totalAmount commission');
+      .select('baseFare tax serviceCharge otherCharges discount totalAmount commission')
+      .lean();
 
     const totals = bookings.reduce((acc, b) => {
       acc.baseFare += parseFloat(b.baseFare || 0);
@@ -132,8 +134,8 @@ exports.getProfitReport = async (req, res, next) => {
     applyDateFilter(bookingQuery, startDate, endDate, 'bookingDate');
     applyDateFilter(expenseQuery, startDate, endDate, 'expenseDate');
 
-    const bookings = await Booking.find(bookingQuery).select('totalAmount serviceCharge commission');
-    const expenses = await Expense.find(expenseQuery).select('amount category');
+    const bookings = await Booking.find(bookingQuery).select('totalAmount serviceCharge commission').lean();
+    const expenses = await Expense.find(expenseQuery).select('amount category').lean();
 
     const totalRevenue = bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
     const serviceRevenue = bookings.reduce((sum, b) => sum + parseFloat(b.serviceCharge || 0) + parseFloat(b.commission || 0), 0);
@@ -160,9 +162,10 @@ exports.getProfitReport = async (req, res, next) => {
  */
 exports.getCustomerOutstandingReport = async (req, res, next) => {
   try {
-    const customers = await Customer.find();
+    const customers = await Customer.find().lean();
     const bookings = await Booking.find({ status: { $ne: 'cancelled' } })
-      .select('customerId totalAmount amountReceived balanceDue status');
+      .select('customerId totalAmount amountReceived balanceDue status')
+      .lean();
 
     const customerBookingsMap = {};
     bookings.forEach(b => {

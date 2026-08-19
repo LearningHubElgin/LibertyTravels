@@ -20,11 +20,12 @@ exports.getAirlines = async (req, res, next) => {
       ];
     }
 
-    const airlinesRaw = await Airline.find(query).sort({ name: 1 });
+    const airlinesRaw = await Airline.find(query).sort({ name: 1 }).lean();
     const airlineIds = airlinesRaw.map(a => a._id);
 
     const bookings = await Booking.find({ airlineId: { $in: airlineIds } })
-      .select('airlineId totalAmount');
+      .select('airlineId totalAmount')
+      .lean();
 
     const airlineBookingsMap = {};
     bookings.forEach(b => {
@@ -34,7 +35,7 @@ exports.getAirlines = async (req, res, next) => {
     });
 
     const airlines = airlinesRaw.map(a => {
-      const data = a.toJSON();
+      const data = { ...a, id: a._id };
       const aBookings = airlineBookingsMap[String(a._id)] || [];
       const totalBookings = aBookings.length;
       const totalRevenue = aBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);

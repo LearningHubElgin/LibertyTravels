@@ -28,12 +28,14 @@ exports.getCustomers = async (req, res, next) => {
     const customersRaw = await Customer.find(query)
       .sort(sortObj)
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     // Get aggregated metrics for each customer
     const customerIds = customersRaw.map(c => c._id);
     const bookings = await Booking.find({ customerId: { $in: customerIds } })
-      .select('customerId totalAmount amountReceived balanceDue status');
+      .select('customerId totalAmount amountReceived balanceDue status')
+      .lean();
 
     const customerBookingsMap = {};
     bookings.forEach(b => {
@@ -43,7 +45,7 @@ exports.getCustomers = async (req, res, next) => {
     });
 
     const customers = customersRaw.map(c => {
-      const data = c.toJSON();
+      const data = { ...c, id: c._id };
       const cBookings = customerBookingsMap[String(c._id)] || [];
       const totalBookings = cBookings.length;
       const totalAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);

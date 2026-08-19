@@ -3,13 +3,21 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('liberty_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState(() => localStorage.getItem('liberty_token'));
-  const [loading, setLoading] = useState(true);
+  // If cached credentials exist, allow instant UI rendering without blocking on cold start
+  const [loading, setLoading] = useState(() => {
+    const savedUser = localStorage.getItem('liberty_user');
+    const savedToken = localStorage.getItem('liberty_token');
+    return !!savedToken && !savedUser;
+  });
 
   useEffect(() => {
     const verifyUser = async () => {
