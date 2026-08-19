@@ -7,6 +7,7 @@ const toDecimal = (val) => {
   return isNaN(num) ? 0.00 : Math.round(num * 100) / 100;
 };
 
+
 const calculateBookingFinancials = ({
   baseFare = 0,
   tax = 0,
