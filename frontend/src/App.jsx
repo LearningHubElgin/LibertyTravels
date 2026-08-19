@@ -8,7 +8,7 @@ import { ServerWarmupBanner } from './components/common/ServerWarmupBanner';
 // Liberty Tours & Travels ERP Root Component v1.0.1
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ToastProvider>
         <AuthProvider>
           <ServerWarmupBanner />

@@ -55,18 +55,18 @@ export const Navbar = ({ onOpenMobile }) => {
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
-      if (res.data.success) {
+      if (res.data?.success) {
         setNotifications(res.data.notifications || []);
         setUnreadCount(res.data.unreadCount || 0);
       }
-    } catch (e) {
-      console.error('Failed to fetch notifications:', e);
+    } catch {
+      // Silent background polling handling during cold starts or disconnects
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // 30s poll
+    const interval = setInterval(fetchNotifications, 4 * 60 * 1000); // 4 minutes poll (240,000ms)
     return () => clearInterval(interval);
   }, []);
 
@@ -297,7 +297,11 @@ export const Navbar = ({ onOpenMobile }) => {
           {/* Notifications Dropdown */}
           <div className="relative" ref={notifRef}>
             <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              onClick={() => {
+                const nextState = !isNotifOpen;
+                setIsNotifOpen(nextState);
+                if (nextState) fetchNotifications();
+              }}
               className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
             >
               <Bell className="w-5 h-5" />

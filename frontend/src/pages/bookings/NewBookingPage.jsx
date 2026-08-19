@@ -15,6 +15,7 @@ import {
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/common/PageHeader';
+import { DateInput } from '../../components/common/DateInput';
 
 export const NewBookingPage = () => {
   const navigate = useNavigate();
@@ -219,12 +220,10 @@ export const NewBookingPage = () => {
           <div className="p-3.5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-[11px] sm:text-xs">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Booking Date *</label>
-              <input
-                type="date"
+              <DateInput
                 required
                 value={formData.bookingDate}
                 onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })}
-                className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 border border-slate-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
               />
             </div>
 
@@ -255,23 +254,19 @@ export const NewBookingPage = () => {
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Date of Journey *</label>
-              <input
-                type="date"
+              <DateInput
                 required
                 value={formData.journeyDate}
                 onChange={(e) => setFormData({ ...formData, journeyDate: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
               />
             </div>
 
             {formData.bookingType !== 'one_way' && (
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Return Date</label>
-                <input
-                  type="date"
+                <DateInput
                   value={formData.returnDate}
                   onChange={(e) => setFormData({ ...formData, returnDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
                 />
               </div>
             )}
@@ -415,11 +410,9 @@ export const NewBookingPage = () => {
 
                   <div>
                     <label className="block font-medium text-slate-600 mb-1">Date of Birth</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={p.dateOfBirth}
                       onChange={(e) => updatePassenger(idx, 'dateOfBirth', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
                     />
                   </div>
 
@@ -436,11 +429,9 @@ export const NewBookingPage = () => {
 
                   <div>
                     <label className="block font-medium text-slate-600 mb-1">Passport Expiry</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={p.passportExpiry}
                       onChange={(e) => updatePassenger(idx, 'passportExpiry', e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
                     />
                   </div>
 
