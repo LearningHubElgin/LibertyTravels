@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 export const Navbar = ({ onOpenMobile }) => {
   const { user, logout, updateUserProfile } = useAuth();
@@ -27,6 +28,7 @@ export const Navbar = ({ onOpenMobile }) => {
 
   // Profile Dropdown state
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const profileRef = useRef(null);
 
   // Notifications State
@@ -226,7 +228,7 @@ export const Navbar = ({ onOpenMobile }) => {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 bg-white border-b border-slate-200 shadow-xs w-full">
+      <header className="sticky top-0 z-30 flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs w-full">
         {/* Left Side: Mobile Menu Button & Page Title */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
@@ -423,8 +425,7 @@ export const Navbar = ({ onOpenMobile }) => {
                   <button
                     onClick={() => {
                       setIsProfileOpen(false);
-                      logout();
-                      navigate('/login');
+                      setIsLogoutConfirmOpen(true);
                     }}
                     className="w-full px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 text-left"
                   >
@@ -557,6 +558,22 @@ export const Navbar = ({ onOpenMobile }) => {
           </div>
         </form>
       </Modal>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isLogoutConfirmOpen}
+        onClose={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={() => {
+          setIsLogoutConfirmOpen(false);
+          logout();
+          navigate('/login');
+        }}
+        title="Confirm Logout"
+        message="Are you sure you want to sign out of Liberty Tours & Travels ERP?"
+        confirmText="Yes, Logout"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

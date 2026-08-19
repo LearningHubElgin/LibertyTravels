@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   PlaneTakeoff,
@@ -17,13 +17,16 @@ import {
   History,
   Settings,
   X,
-  Compass
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   const location = useLocation();
-  const { user, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { user, isSuperAdmin, logout } = useAuth();
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   // Exactly the 15 required modules - NO Suppliers
   const navigation = [
@@ -45,6 +48,12 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   ];
 
   const filteredNav = navigation.filter((item) => !item.superAdminOnly || isSuperAdmin);
+
+  const handleConfirmLogout = () => {
+    setIsLogoutConfirmOpen(false);
+    logout();
+    navigate('/login');
+  };
 
   return (
     <>
@@ -133,21 +142,45 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
           })}
         </div>
 
-        {/* User Card in Sidebar Footer */}
+        {/* User Card & Logout in Sidebar Footer */}
         <div className="p-2.5 sm:p-3 border-t border-slate-800 bg-[#071628]">
-          <div className="flex items-center gap-2.5 sm:gap-3 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-800/60 border border-slate-700/50">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px] sm:text-xs border border-brand-500/30 shrink-0">
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-800/60 border border-slate-700/50">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px] sm:text-xs border border-brand-500/30 shrink-0">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
+                <p className="text-[9px] sm:text-[10px] font-medium text-slate-400 truncate capitalize">
+                  {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] sm:text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
-              <p className="text-[9px] sm:text-[10px] font-medium text-slate-400 truncate capitalize">
-                {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-              </p>
-            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsLogoutConfirmOpen(true)}
+              title="Logout from ERP"
+              aria-label="Logout from ERP"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 active:scale-90 transition shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isLogoutConfirmOpen}
+        onClose={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to sign out of Liberty Tours & Travels ERP?"
+        confirmText="Yes, Logout"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };
