@@ -3,6 +3,7 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('liberty_user');
     try {
