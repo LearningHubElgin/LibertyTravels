@@ -79,7 +79,7 @@ exports.getCustomers = async (req, res, next) => {
 exports.getCustomerById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const customer = await Customer.findById(id);
+    const customer = await Customer.findById(id).lean();
 
     if (!customer) {
       return res.status(404).json({
@@ -88,16 +88,17 @@ exports.getCustomerById = async (req, res, next) => {
       });
     }
 
-    const bookings = await Booking.find({ customerId: id })
-      .populate('airlineId', 'name code')
-      .sort({ createdAt: -1 });
+    const [bookings, payments, passengers] = await Promise.all([
+      Booking.find({ customerId: id })
+        .populate('airlineId', 'name code')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Payment.find({ customerId: id })
+        .sort({ paymentDate: -1 })
+        .lean(),
+      Passenger.find({ customerId: id }).lean()
+    ]);
 
-    const payments = await Payment.find({ customerId: id })
-      .sort({ paymentDate: -1 });
-
-    const passengers = await Passenger.find({ customerId: id });
-
-    const data = customer.toJSON();
     const totalAmount = bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
     const paidAmount = bookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
     const outstandingAmount = bookings.reduce((sum, b) => sum + parseFloat(b.balanceDue || 0), 0);
@@ -105,7 +106,8 @@ exports.getCustomerById = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       customer: {
-        ...data,
+        ...customer,
+        id: customer._id,
         bookings,
         payments,
         passengers,
@@ -247,7 +249,7 @@ exports.deleteCustomer = async (req, res, next) => {
 exports.getCustomerLedger = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const customer = await Customer.findById(id);
+    const customer = await Customer.findById(id).lean();
 
     if (!customer) {
       return res.status(404).json({
@@ -257,7 +259,8 @@ exports.getCustomerLedger = async (req, res, next) => {
     }
 
     const transactions = await Transaction.find({ customerId: id })
-      .sort({ transactionDate: 1, createdAt: 1 });
+      .sort({ transactionDate: 1, createdAt: 1 })
+      .lean();
 
     let runningBalance = 0.00;
     const ledgerEntries = transactions.map(t => {

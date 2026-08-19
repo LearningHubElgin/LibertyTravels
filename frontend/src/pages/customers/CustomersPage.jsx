@@ -21,7 +21,8 @@ import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { formatDate } from '../../utils/formatters';
+import { LoadingSpinner, TableSkeleton } from '../../components/common/LoadingSpinner';
+import { formatDate, formatCurrency } from '../../utils/formatters';
 
 export const CustomersPage = () => {
   const { success, error: toastError } = useToast();
@@ -39,6 +40,7 @@ export const CustomersPage = () => {
   const [customerTab, setCustomerTab] = useState('overview'); // 'overview' or 'ledger'
   const [deleteCustomerId, setDeleteCustomerId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Form State
   const [customerForm, setCustomerForm] = useState({
@@ -136,15 +138,25 @@ export const CustomersPage = () => {
 
   const handleOpenProfile = async (c) => {
     setCustomerTab('overview');
+    setViewingCustomer(c); // Instant 0ms modal popup!
+    setCustomerLedger(null);
+    setProfileLoading(true);
+
     try {
       const [detailsRes, ledgerRes] = await Promise.all([
         api.get(`/customers/${c.id}`),
         api.get(`/customers/${c.id}/ledger`)
       ]);
-      if (detailsRes.data.success) setViewingCustomer(detailsRes.data.customer);
-      if (ledgerRes.data.success) setCustomerLedger(ledgerRes.data);
+      if (detailsRes.data.success) {
+        setViewingCustomer((prev) => (prev ? { ...prev, ...detailsRes.data.customer } : detailsRes.data.customer));
+      }
+      if (ledgerRes.data.success) {
+        setCustomerLedger(ledgerRes.data);
+      }
     } catch (e) {
       toastError('Failed to load full customer statement');
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -384,7 +396,11 @@ export const CustomersPage = () => {
             {/* Tab 1: Booking History */}
             {customerTab === 'overview' && (
               <div className="space-y-3">
-                {viewingCustomer.bookings && viewingCustomer.bookings.length > 0 ? (
+                {profileLoading ? (
+                  <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
+                    <TableSkeleton rows={3} cols={3} />
+                  </div>
+                ) : viewingCustomer.bookings && viewingCustomer.bookings.length > 0 ? (
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs">
                     {viewingCustomer.bookings.map((b) => (
                       <div key={b.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
@@ -414,54 +430,60 @@ export const CustomersPage = () => {
             {/* Tab 2: Chronological Ledger Statement */}
             {customerTab === 'ledger' && (
               <div className="space-y-3">
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-left text-xs border-collapse font-mono">
-                    <thead>
-                      <tr className="bg-slate-100/80 text-slate-600 font-sans font-bold border-b border-slate-200">
-                        <th className="py-2.5 px-3">Date</th>
-                        <th className="py-2.5 px-3">Reference</th>
-                        <th className="py-2.5 px-3 font-sans">Description</th>
-                        <th className="py-2.5 px-3 text-right">Debit (Dr)</th>
-                        <th className="py-2.5 px-3 text-right">Credit (Cr)</th>
-                        <th className="py-2.5 px-3 text-right">Running Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {customerLedger?.ledger?.length > 0 ? (
-                        customerLedger.ledger.map((entry) => (
-                          <tr key={entry.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 text-slate-500">{formatDate(entry.date)}</td>
-                            <td className="py-2.5 px-3 font-bold text-brand-700">{entry.referenceNo}</td>
-                            <td className="py-2.5 px-3 font-sans max-w-xs truncate">{entry.description}</td>
-                            <td className="py-2.5 px-3 text-right font-bold text-rose-600">
-                              {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
-                              {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-black text-slate-900">
-                              {formatCurrency(entry.runningBalance)}
+                {profileLoading ? (
+                  <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
+                    <TableSkeleton rows={4} cols={5} />
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-left text-xs border-collapse font-mono">
+                      <thead>
+                        <tr className="bg-slate-100/80 text-slate-600 font-sans font-bold border-b border-slate-200">
+                          <th className="py-2.5 px-3">Date</th>
+                          <th className="py-2.5 px-3">Reference</th>
+                          <th className="py-2.5 px-3 font-sans">Description</th>
+                          <th className="py-2.5 px-3 text-right">Debit (Dr)</th>
+                          <th className="py-2.5 px-3 text-right">Credit (Cr)</th>
+                          <th className="py-2.5 px-3 text-right">Running Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {customerLedger?.ledger?.length > 0 ? (
+                          customerLedger.ledger.map((entry) => (
+                            <tr key={entry.id} className="hover:bg-slate-50">
+                              <td className="py-2.5 px-3 text-slate-500">{formatDate(entry.date)}</td>
+                              <td className="py-2.5 px-3 font-bold text-brand-700">{entry.referenceNo}</td>
+                              <td className="py-2.5 px-3 font-sans max-w-xs truncate">{entry.description}</td>
+                              <td className="py-2.5 px-3 text-right font-bold text-rose-600">
+                                {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                                {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-black text-slate-900">
+                                {formatCurrency(entry.runningBalance)}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="py-6 text-center font-sans text-slate-400">
+                              No ledger entries found.
                             </td>
                           </tr>
-                        ))
-                      ) : (
+                        )}
+                      </tbody>
+                      <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
                         <tr>
-                          <td colSpan="6" className="py-6 text-center font-sans text-slate-400">
-                            No ledger entries found.
-                          </td>
+                          <td colSpan="3" className="py-2.5 px-3 font-sans text-right">Ledger Totals:</td>
+                          <td className="py-2.5 px-3 text-right text-rose-700">{formatCurrency(customerLedger?.summary?.totalDebit)}</td>
+                          <td className="py-2.5 px-3 text-right text-emerald-700">{formatCurrency(customerLedger?.summary?.totalCredit)}</td>
+                          <td className="py-2.5 px-3 text-right text-slate-900 text-sm">{formatCurrency(customerLedger?.summary?.closingBalance)}</td>
                         </tr>
-                      )}
-                    </tbody>
-                    <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
-                      <tr>
-                        <td colSpan="3" className="py-2.5 px-3 font-sans text-right">Ledger Totals:</td>
-                        <td className="py-2.5 px-3 text-right text-rose-700">{formatCurrency(customerLedger?.summary?.totalDebit)}</td>
-                        <td className="py-2.5 px-3 text-right text-emerald-700">{formatCurrency(customerLedger?.summary?.totalCredit)}</td>
-                        <td className="py-2.5 px-3 text-right text-slate-900 text-sm">{formatCurrency(customerLedger?.summary?.closingBalance)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
