@@ -182,7 +182,7 @@ export const AllBookingsPage = () => {
       render: (row) => (
         <div>
           <span
-            onClick={() => navigate(`/bookings/${row.id}`)}
+            onClick={() => navigate(`/bookings/${row.id || row._id}`)}
             className="font-mono font-bold text-brand-700 hover:underline cursor-pointer block"
           >
             {row.referenceNo}
@@ -265,7 +265,7 @@ export const AllBookingsPage = () => {
       render: (row) => (
         <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={() => navigate(`/bookings/${row.id}`)}
+            onClick={() => navigate(`/bookings/${row.id || row._id}`)}
             title="View Details"
             className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
           >

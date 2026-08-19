@@ -266,7 +266,7 @@ export const CalendarPage = () => {
                 Close
               </button>
               <button
-                onClick={() => navigate(`/bookings/${selectedEvent.id}`)}
+                onClick={() => navigate(`/bookings/${selectedEvent.id || selectedEvent._id}`)}
                 className="px-4 py-2 text-xs font-semibold text-white bg-brand-600 rounded-lg hover:bg-brand-700 flex items-center gap-1"
               >
                 Open Full File <ArrowUpRight className="w-3.5 h-3.5" />

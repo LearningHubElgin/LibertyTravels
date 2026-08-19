@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Booking, Customer, Airline, Passenger, Payment, Transaction, Notification } = require('../models');
 const { generateBookingReference, generateCustomerCode, generateTransactionReference, generatePaymentReference } = require('../utils/referenceGenerator');
 const { calculateBookingFinancials, toDecimal } = require('../utils/financialCalculations');
@@ -81,9 +82,14 @@ exports.getBookings = async (req, res, next) => {
       .limit(parseInt(limit))
       .lean();
 
+    const normalizedBookings = bookings.map(b => ({
+      ...b,
+      id: b._id
+    }));
+
     return res.status(200).json({
       success: true,
-      bookings,
+      bookings: normalizedBookings,
       pagination: {
         total,
         page: parseInt(page),
@@ -102,6 +108,13 @@ exports.getBookings = async (req, res, next) => {
 exports.getBookingById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!id || id === 'undefined' || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID'
+      });
+    }
 
     const booking = await Booking.findById(id)
       .populate('customer')

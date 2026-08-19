@@ -427,10 +427,10 @@ export const DashboardPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {upcomingAndRecent?.recentBookings?.map((b) => (
+                {upcomingAndRecent?.recentBookings?.map((b, idx) => (
                   <tr
-                    key={b.id}
-                    onClick={() => navigate(`/bookings/${b.id}`)}
+                    key={b.id || b._id || b.referenceNo || `recent-booking-${idx}`}
+                    onClick={() => navigate(`/bookings/${b.id || b._id}`)}
                     className="hover:bg-slate-50 cursor-pointer transition"
                   >
                     <td className="py-2 px-3 sm:py-3 sm:px-4 font-mono font-bold text-brand-700">{b.referenceNo}</td>
@@ -470,9 +470,9 @@ export const DashboardPage = () => {
 
           <div className="divide-y divide-slate-100">
             {upcomingAndRecent?.outstandingCustomers?.length > 0 ? (
-              upcomingAndRecent.outstandingCustomers.map((c) => (
+              upcomingAndRecent.outstandingCustomers.map((c, idx) => (
                 <div
-                  key={c.id}
+                  key={c.id || c._id || c.customerCode || `outstanding-cust-${idx}`}
                   onClick={() => navigate('/customers')}
                   className="p-3 sm:p-4 hover:bg-slate-50 cursor-pointer transition flex items-center justify-between"
                 >

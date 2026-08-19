@@ -188,7 +188,12 @@ export const NewBookingPage = () => {
       const res = await api.post('/bookings', payload);
       if (res.data.success) {
         success(`Booking ${res.data.booking.referenceNo} created successfully!`);
-        navigate(`/bookings/${res.data.booking.id}`);
+        const targetId = res.data.booking?.id || res.data.booking?._id;
+        if (targetId) {
+          navigate(`/bookings/${targetId}`);
+        } else {
+          navigate('/bookings');
+        }
       }
     } catch (err) {
       toastError(err.response?.data?.message || 'Failed to create booking.');

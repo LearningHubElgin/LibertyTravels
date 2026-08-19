@@ -51,6 +51,10 @@ export const BookingDetailsPage = () => {
   });
 
   const fetchBooking = async () => {
+    if (!id || id === 'undefined' || id === 'null') {
+      navigate('/bookings');
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.get(`/bookings/${id}`);

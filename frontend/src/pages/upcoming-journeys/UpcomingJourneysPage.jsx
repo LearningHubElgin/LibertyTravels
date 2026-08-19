@@ -125,7 +125,7 @@ export const UpcomingJourneysPage = () => {
       cellClassName: 'text-right',
       render: (row) => (
         <button
-          onClick={() => navigate(`/bookings/${row.id}`)}
+          onClick={() => navigate(`/bookings/${row.id || row._id}`)}
           className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-700 text-slate-700 text-xs font-semibold rounded-lg transition"
         >
           View Ticket <ArrowUpRight className="w-3.5 h-3.5" />

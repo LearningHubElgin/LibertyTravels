@@ -311,8 +311,8 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      recentBookings,
-      upcomingJourneys,
+      recentBookings: recentBookings.map(b => ({ ...b, id: b._id })),
+      upcomingJourneys: upcomingJourneys.map(b => ({ ...b, id: b._id })),
       outstandingCustomers
     });
   } catch (error) {
