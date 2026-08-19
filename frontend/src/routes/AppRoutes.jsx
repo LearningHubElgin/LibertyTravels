@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { ProtectedRoute } from './ProtectedRoute';
+
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 // Lazy-loaded route components for high-speed initial bundle delivery
