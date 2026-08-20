@@ -208,12 +208,12 @@ export const Navbar = ({ onOpenMobile }) => {
   const getPageTitle = () => {
     const p = location.pathname;
     if (p === '/dashboard') return 'Dashboard';
-    if (p === '/bookings/new') return 'New Flight Booking';
+    if (p === '/bookings/new') return 'Create New Booking';
     if (p === '/bookings') return 'All Bookings';
     if (p.startsWith('/bookings/')) return 'Booking Details';
     if (p === '/transactions') return 'Financial Transactions';
     if (p === '/customers') return 'Customer Management';
-    if (p === '/airlines') return 'Airlines';
+    if (p === '/companies' || p === '/airlines') return 'Companies & Suppliers';
     if (p === '/payments') return 'Payments Received';
     if (p === '/ledger') return 'Ledger & Accounts';
     if (p === '/expenses') return 'Expenses Management';
@@ -225,6 +225,7 @@ export const Navbar = ({ onOpenMobile }) => {
     if (p === '/settings') return 'Agency & Invoice Settings';
     return 'Liberty Tours & Travels';
   };
+
 
   return (
     <>

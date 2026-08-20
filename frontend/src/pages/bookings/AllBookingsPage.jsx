@@ -11,6 +11,12 @@ import {
   XCircle,
   Trash2,
   Plane,
+  Train,
+  Bus,
+  Hotel,
+  Car,
+  Building2,
+  TrendingUp,
   Download
 } from 'lucide-react';
 import api from '../../services/api';
@@ -36,6 +42,7 @@ export const AllBookingsPage = () => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+  const [serviceType, setServiceType] = useState('');
   const [airlineId, setAirlineId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -63,6 +70,7 @@ export const AllBookingsPage = () => {
       if (search) query += `&search=${encodeURIComponent(search)}`;
       if (status) query += `&status=${status}`;
       if (paymentStatus) query += `&paymentStatus=${paymentStatus}`;
+      if (serviceType && serviceType !== 'all') query += `&serviceType=${serviceType}`;
       if (airlineId) query += `&airlineId=${airlineId}`;
       if (startDate) query += `&startDate=${startDate}`;
       if (endDate) query += `&endDate=${endDate}`;
@@ -81,13 +89,13 @@ export const AllBookingsPage = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [pagination.page, pagination.limit, status, paymentStatus, airlineId, startDate, endDate]);
+  }, [pagination.page, pagination.limit, status, paymentStatus, serviceType, airlineId, startDate, endDate]);
 
   useEffect(() => {
     const fetchAirlines = async () => {
       try {
-        const res = await api.get('/airlines');
-        if (res.data.success) setAirlines(res.data.airlines || []);
+        const res = await api.get('/companies').catch(() => api.get('/airlines'));
+        if (res.data.success) setAirlines(res.data.companies || res.data.airlines || []);
       } catch (e) {
         console.error(e);
       }
@@ -119,18 +127,15 @@ export const AllBookingsPage = () => {
     const amt = parseFloat(paymentForm.amount || 0);
     const balance = parseFloat(selectedBookingForPayment.balanceDue || 0);
 
-    if (amt <= 0) {
-      return toastError('Payment amount must be greater than zero.');
-    }
-    if (amt > balance) {
-      return toastError(`Payment amount (₹${amt}) cannot exceed remaining balance (₹${balance}).`);
-    }
+    if (amt <= 0) return toastError('Payment amount must be greater than zero.');
+    if (amt > balance) return toastError(`Payment cannot exceed balance of ₹${balance}.`);
 
     setActionLoading(true);
     try {
-      const res = await api.post(`/bookings/${selectedBookingForPayment.id}/payments`, paymentForm);
+      const bId = selectedBookingForPayment.id || selectedBookingForPayment._id;
+      const res = await api.post(`/bookings/${bId}/payments`, paymentForm);
       if (res.data.success) {
-        success(`Payment of ₹${amt} received successfully for ${selectedBookingForPayment.referenceNo}!`);
+        success(`Payment of ₹${amt} recorded successfully!`);
         setSelectedBookingForPayment(null);
         fetchBookings();
       }
@@ -145,7 +150,7 @@ export const AllBookingsPage = () => {
     if (!cancelBookingId) return;
     setActionLoading(true);
     try {
-      const res = await api.put(`/bookings/${cancelBookingId}/status`, { status: 'cancelled' });
+      const res = await api.patch(`/bookings/${cancelBookingId}/status`, { status: 'cancelled' });
       if (res.data.success) {
         success('Booking cancelled successfully.');
         setCancelBookingId(null);
@@ -175,31 +180,53 @@ export const AllBookingsPage = () => {
     }
   };
 
+  const getServiceIcon = (type) => {
+    switch (type) {
+      case 'flight':
+        return <Plane className="w-3.5 h-3.5 text-sky-600" />;
+      case 'train':
+        return <Train className="w-3.5 h-3.5 text-emerald-600" />;
+      case 'bus':
+        return <Bus className="w-3.5 h-3.5 text-amber-600" />;
+      case 'hotel':
+        return <Hotel className="w-3.5 h-3.5 text-purple-600" />;
+      case 'car':
+        return <Car className="w-3.5 h-3.5 text-indigo-600" />;
+      default:
+        return <Plane className="w-3.5 h-3.5 text-sky-600" />;
+    }
+  };
+
   const columns = [
     {
-      header: 'Reference',
+      header: 'Reference & Service',
       accessor: 'referenceNo',
       render: (row) => (
         <div>
-          <span
-            onClick={() => navigate(`/bookings/${row.id || row._id}`)}
-            className="font-mono font-bold text-brand-700 hover:underline cursor-pointer block"
-          >
-            {row.referenceNo}
-          </span>
-          <span className="text-[10px] text-slate-400 font-mono">{formatDate(row.bookingDate)}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="p-1 rounded-md bg-slate-100 border border-slate-200">
+              {getServiceIcon(row.serviceType || 'flight')}
+            </span>
+            <span
+              onClick={() => navigate(`/bookings/${row.id || row._id}`)}
+              className="font-mono font-bold text-brand-700 hover:underline cursor-pointer"
+            >
+              {row.referenceNo}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">{formatDate(row.bookingDate)}</span>
         </div>
       )
     },
     {
       header: 'Passenger / Customer',
       render: (row) => {
-        const lead = row.passengers?.[0];
-        const count = row.passengers?.length || 0;
+        const lead = row.passengerName || (row.passengers?.[0] ? `${row.passengers[0].firstName} ${row.passengers[0].lastName}` : 'No passenger');
+        const count = row.passengers?.length || 1;
         return (
           <div>
             <p className="font-semibold text-slate-900 leading-tight">
-              {lead ? `${lead.title ? lead.title + ' ' : ''}${lead.firstName} ${lead.lastName}` : 'No passenger'}
+              {lead}
             </p>
             <p className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
               <span>Cust: {row.customer?.name || 'Unknown'}</span>
@@ -214,37 +241,55 @@ export const AllBookingsPage = () => {
       }
     },
     {
-      header: 'Flight & Sector',
-      render: (row) => (
-        <div>
-          <span className="font-bold text-slate-800 block">{row.sector}</span>
-          <span className="text-[11px] text-slate-500 font-mono">
-            {row.airline?.code || ''} {row.flightNumber} &bull; PNR: <strong className="text-slate-700">{row.pnr}</strong>
-          </span>
-        </div>
-      )
+      header: 'Company & Description',
+      render: (row) => {
+        const comp = row.company || row.airline;
+        return (
+          <div>
+            <span className="font-bold text-slate-800 block truncate max-w-xs">{row.description || row.sector}</span>
+            <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
+              {comp?.name ? (
+                <span className="font-semibold text-slate-700">{comp.name}</span>
+              ) : null}
+              {row.pnr && (
+                <span>&bull; PNR: <strong className="text-slate-700">{row.pnr}</strong></span>
+              )}
+            </span>
+          </div>
+        );
+      }
     },
     {
-      header: 'Journey Date',
-      render: (row) => (
-        <div>
-          <span className="font-semibold text-slate-800 block">{formatDate(row.journeyDate)}</span>
-          {row.returnDate && (
-            <span className="text-[10px] text-slate-400 block">Ret: {formatDate(row.returnDate)}</span>
-          )}
-        </div>
-      )
-    },
-    {
-      header: 'Financials',
-      render: (row) => (
-        <div className="font-mono">
-          <div className="font-bold text-slate-900">₹{parseFloat(row.totalAmount || 0).toLocaleString('en-IN')}</div>
-          <div className="text-[10px] flex items-center gap-1">
-            <span className="text-emerald-600 font-semibold">Paid: ₹{parseFloat(row.amountReceived || 0).toLocaleString('en-IN')}</span>
-            {parseFloat(row.balanceDue || 0) > 0 && (
-              <span className="text-rose-600 font-semibold">Due: ₹{parseFloat(row.balanceDue || 0).toLocaleString('en-IN')}</span>
+      header: 'Cost / Sell Price (₹)',
+      render: (row) => {
+        const c = parseFloat(row.costPrice || 0);
+        const s = parseFloat(row.sellPrice || row.totalAmount || 0);
+        const profit = Math.round((s - c) * 100) / 100;
+        return (
+          <div className="font-mono text-xs">
+            <div className="font-bold text-brand-900">Sell: ₹{s.toLocaleString('en-IN')}</div>
+            <div className="text-[11px] text-slate-500">Cost: ₹{c.toLocaleString('en-IN')}</div>
+            {profit > 0 && (
+              <span className="text-[10px] font-bold text-emerald-600">
+                Profit: +₹{profit.toLocaleString('en-IN')}
+              </span>
             )}
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Balance & Status',
+      render: (row) => (
+        <div className="space-y-1">
+          <div className="font-mono text-xs">
+            <span className="text-emerald-700 font-semibold">Paid: ₹{parseFloat(row.amountReceived || 0).toLocaleString('en-IN')}</span>
+            {parseFloat(row.balanceDue || 0) > 0 && (
+              <span className="text-rose-600 font-semibold block text-[10px]">Due: ₹{parseFloat(row.balanceDue || 0).toLocaleString('en-IN')}</span>
+            )}
+          </div>
+          <div className="flex gap-1">
+            <StatusBadge status={row.paymentStatus} />
           </div>
         </div>
       )
@@ -252,9 +297,8 @@ export const AllBookingsPage = () => {
     {
       header: 'Status',
       render: (row) => (
-        <div className="space-y-1">
-          <div><StatusBadge status={row.status} /></div>
-          <div><StatusBadge status={row.paymentStatus} /></div>
+        <div>
+          <StatusBadge status={row.status} />
         </div>
       )
     },
@@ -344,6 +388,19 @@ export const AllBookingsPage = () => {
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <select
+              value={serviceType}
+              onChange={(e) => setServiceType(e.target.value)}
+              className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-semibold border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none"
+            >
+              <option value="">All Services</option>
+              <option value="flight">✈️ Flight</option>
+              <option value="train">🚆 Train</option>
+              <option value="bus">🚌 Bus</option>
+              <option value="hotel">🏨 Hotel</option>
+              <option value="car">🚗 Car</option>
+            </select>
+
+            <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none"
@@ -372,13 +429,14 @@ export const AllBookingsPage = () => {
               onChange={(e) => setAirlineId(e.target.value)}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none max-w-[120px] sm:max-w-none"
             >
-              <option value="">All Airlines</option>
+              <option value="">All Companies</option>
               {airlines.map((a) => (
-                <option key={a.id} value={a.id}>
+                <option key={a.id || a._id} value={a.id || a._id}>
                   {a.code} - {a.name}
                 </option>
               ))}
             </select>
+
 
             <input
               type="date"

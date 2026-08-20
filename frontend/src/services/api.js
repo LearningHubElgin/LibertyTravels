@@ -1,10 +1,9 @@
 import axios from 'axios';
 
-const defaultBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD
-    ? 'https://libertytourandtravels.onrender.com/api'
-    : 'http://localhost:5000/api');
+// Toggle API URL: Comment / Uncomment the option you want to use
+const defaultBaseUrl = 'https://libertytourandtravels.onrender.com/api'; // Production (Render)
+// const defaultBaseUrl = 'http://localhost:5000/api'; // Local Development (Localhost)
+// 
 
 const api = axios.create({
   baseURL: defaultBaseUrl,

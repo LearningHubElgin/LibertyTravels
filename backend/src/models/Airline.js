@@ -4,7 +4,7 @@ const airlineSchema = new mongoose.Schema(
   {
     code: {
       type: String,
-      required: [true, 'Airline code is required'],
+      required: [true, 'Company code is required'],
       unique: true,
       trim: true,
       uppercase: true,
@@ -12,18 +12,39 @@ const airlineSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: [true, 'Airline name is required'],
+      required: [true, 'Company name is required'],
       trim: true
+    },
+    type: {
+      type: String,
+      enum: ['flight', 'train', 'bus', 'hotel', 'car', 'general'],
+      default: 'flight',
+      index: true
+    },
+    category: {
+      type: String,
+      default: 'flight'
     },
     country: {
       type: String,
       default: 'India',
       trim: true
     },
+    contact: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    email: {
+      type: String,
+      default: '',
+      trim: true
+    },
     status: {
       type: String,
       enum: ['active', 'inactive'],
-      default: 'active'
+      default: 'active',
+      index: true
     },
     commissionRate: {
       type: Number,
@@ -38,3 +59,4 @@ const airlineSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.models.Airline || mongoose.model('Airline', airlineSchema);
+

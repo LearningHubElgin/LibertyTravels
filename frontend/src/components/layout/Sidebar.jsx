@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   ReceiptText,
   Users2,
+  Building2,
   Plane,
   CreditCard,
   Scale,
@@ -28,14 +29,13 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   const { user, isSuperAdmin, logout } = useAuth();
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
-  // Exactly the 15 required modules - NO Suppliers
   const navigation = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'New Booking', path: '/bookings/new', icon: PlaneTakeoff },
     { name: 'All Bookings', path: '/bookings', icon: BookOpenCheck },
-    { name: 'Transactions', path: '/transactions', icon: ReceiptText },
+    { name: 'Companies', path: '/companies', icon: Building2 },
     { name: 'Customers', path: '/customers', icon: Users2 },
-    { name: 'Airlines', path: '/airlines', icon: Plane },
+    { name: 'Transactions', path: '/transactions', icon: ReceiptText },
     { name: 'Payments', path: '/payments', icon: CreditCard },
     { name: 'Ledger', path: '/ledger', icon: Scale },
     { name: 'Expenses', path: '/expenses', icon: WalletCards },
@@ -46,6 +46,7 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
     { name: 'Activity Logs', path: '/activity-logs', icon: History },
     { name: 'Settings', path: '/settings', icon: Settings }
   ];
+
 
   const filteredNav = navigation.filter((item) => !item.superAdminOnly || isSuperAdmin);
 

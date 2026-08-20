@@ -19,7 +19,7 @@ export const ServerWarmupBanner = () => {
       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
       <CloudLightning className="w-4 h-4 shrink-0" />
       <span>
-        Connecting to cloud server... If the server was inactive, Render free tier takes ~20–40s to wake up.
+        Connecting to cloud server... If the server was inactive, it takes ~20–40s to wake up.
       </span>
     </div>
   );

@@ -9,6 +9,12 @@ const bookingSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
+    serviceType: {
+      type: String,
+      enum: ['flight', 'train', 'bus', 'hotel', 'car', 'other'],
+      default: 'flight',
+      index: true
+    },
     bookingDate: {
       type: String,
       required: true,
@@ -21,7 +27,7 @@ const bookingSchema = new mongoose.Schema(
     },
     journeyDate: {
       type: String,
-      required: true,
+      default: '',
       index: true
     },
     returnDate: {
@@ -30,26 +36,37 @@ const bookingSchema = new mongoose.Schema(
     },
     sector: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
       uppercase: true,
       index: true
     },
+    description: {
+      type: String,
+      default: '',
+      trim: true
+    },
     airlineId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Airline',
-      required: true,
+      default: null,
+      index: true
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Airline',
+      default: null,
       index: true
     },
     flightNumber: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
       uppercase: true
     },
     pnr: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
       uppercase: true,
       index: true
@@ -64,6 +81,23 @@ const bookingSchema = new mongoose.Schema(
       ref: 'Customer',
       required: true,
       index: true
+    },
+    passengerName: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    costPrice: {
+      type: Number,
+      default: 0
+    },
+    sellPrice: {
+      type: Number,
+      default: 0
+    },
+    profit: {
+      type: Number,
+      default: 0
     },
     baseFare: {
       type: Number,
@@ -139,6 +173,13 @@ bookingSchema.virtual('airline', {
   justOne: true
 });
 
+bookingSchema.virtual('company', {
+  ref: 'Airline',
+  localField: 'companyId',
+  foreignField: '_id',
+  justOne: true
+});
+
 bookingSchema.virtual('customer', {
   ref: 'Customer',
   localField: 'customerId',
@@ -166,3 +207,4 @@ bookingSchema.virtual('creator', {
 });
 
 module.exports = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
+

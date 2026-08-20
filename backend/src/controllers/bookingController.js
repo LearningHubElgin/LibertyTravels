@@ -17,7 +17,9 @@ exports.getBookings = async (req, res, next) => {
       status,
       paymentStatus,
       bookingType,
+      serviceType,
       airlineId,
+      companyId,
       customerId,
       startDate,
       endDate,
@@ -32,7 +34,12 @@ exports.getBookings = async (req, res, next) => {
     if (status) query.status = status;
     if (paymentStatus) query.paymentStatus = paymentStatus;
     if (bookingType) query.bookingType = bookingType;
-    if (airlineId) query.airlineId = airlineId;
+    if (serviceType && serviceType !== 'all') query.serviceType = serviceType;
+    
+    const targetCompId = companyId || airlineId;
+    if (targetCompId) {
+      query.$or = [{ companyId: targetCompId }, { airlineId: targetCompId }];
+    }
     if (customerId) query.customerId = customerId;
 
     if (startDate && endDate) {
@@ -62,6 +69,8 @@ exports.getBookings = async (req, res, next) => {
         { referenceNo: regex },
         { pnr: regex },
         { sector: regex },
+        { description: regex },
+        { passengerName: regex },
         { flightNumber: regex },
         { ticketNumber: regex },
         { customerId: { $in: matchingCustIds } },
@@ -75,8 +84,9 @@ exports.getBookings = async (req, res, next) => {
     const total = await Booking.countDocuments(query);
     const bookings = await Booking.find(query)
       .populate('customer', 'customerCode name phone email')
-      .populate('airline', 'name code')
-      .populate('passengers', 'title firstName lastName passportNumber')
+      .populate('airline', 'name code type')
+      .populate('company', 'name code type')
+      .populate('passengers', 'title firstName lastName passportNumber phone')
       .sort(sortObj)
       .skip(skip)
       .limit(parseInt(limit))
@@ -84,7 +94,8 @@ exports.getBookings = async (req, res, next) => {
 
     const normalizedBookings = bookings.map(b => ({
       ...b,
-      id: b._id
+      id: b._id,
+      company: b.company || b.airline
     }));
 
     return res.status(200).json({
@@ -119,6 +130,7 @@ exports.getBookingById = async (req, res, next) => {
     const booking = await Booking.findById(id)
       .populate('customer')
       .populate('airline')
+      .populate('company')
       .populate('passengers')
       .populate({
         path: 'payments',
@@ -139,6 +151,7 @@ exports.getBookingById = async (req, res, next) => {
       .sort({ transactionDate: -1, createdAt: -1 });
 
     const bookingData = booking.toJSON();
+    bookingData.company = bookingData.company || bookingData.airline;
     bookingData.transactions = transactions;
 
     return res.status(200).json({
@@ -156,23 +169,30 @@ exports.getBookingById = async (req, res, next) => {
 exports.createBooking = async (req, res, next) => {
   try {
     const {
+      serviceType = 'flight',
       bookingDate = new Date().toISOString().split('T')[0],
       bookingType = 'one_way',
-      sector,
-      journeyDate,
-      returnDate,
+      sector = '',
+      description = '',
+      journeyDate = '',
+      returnDate = null,
       airlineId,
-      flightNumber,
-      pnr,
-      ticketNumber,
+      companyId,
+      flightNumber = '',
+      pnr = '',
+      referenceNo: customRefNo,
+      ticketNumber = '',
       status = BOOKING_STATUS.CONFIRMED,
       
+      passengerName = '',
       customerId: existingCustomerId,
       customerName,
       customerPhone,
       customerEmail,
       customerAddress,
 
+      costPrice = 0,
+      sellPrice = 0,
       baseFare = 0,
       tax = 0,
       serviceCharge = 0,
@@ -184,28 +204,17 @@ exports.createBooking = async (req, res, next) => {
       paymentMethod = 'cash',
       paymentReference,
       paymentNotes,
+      notes = '',
 
       passengers = []
     } = req.body;
 
-    if (!sector || !journeyDate || !airlineId || !flightNumber || !pnr) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide Sector, Journey Date, Airline, Flight Number, and PNR.'
-      });
-    }
+    const chosenCompanyId = companyId || airlineId || null;
 
     if (!existingCustomerId && (!customerName || !customerPhone)) {
       return res.status(400).json({
         success: false,
         message: 'Please select an existing customer or provide customer name and phone number.'
-      });
-    }
-
-    if (!passengers || passengers.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one passenger is required for a booking.'
       });
     }
 
@@ -229,77 +238,116 @@ exports.createBooking = async (req, res, next) => {
       customerId = customerObj._id;
     }
 
-    const initPay = toDecimal(initialPayment);
-    const financials = calculateBookingFinancials({
-      baseFare,
-      tax,
-      serviceCharge,
-      otherCharges,
-      discount,
-      amountReceived: initPay
-    });
+    const cPrice = toDecimal(costPrice);
+    const sPrice = toDecimal(sellPrice);
+    const calculatedProfit = toDecimal(sPrice - cPrice);
 
-    if (initPay > financials.totalAmount) {
+    const initPay = toDecimal(initialPayment);
+    
+    // Determine effective total amount
+    let effectiveTotal = sPrice > 0 ? sPrice : 0;
+    if (effectiveTotal === 0 && (baseFare > 0 || tax > 0 || serviceCharge > 0)) {
+      effectiveTotal = toDecimal((baseFare || 0) + (tax || 0) + (serviceCharge || 0) + (otherCharges || 0) - (discount || 0));
+    }
+
+    const balanceDue = toDecimal(Math.max(0, effectiveTotal - initPay));
+    const paymentStatus = balanceDue <= 0 ? PAYMENT_STATUS.PAID : (initPay > 0 ? PAYMENT_STATUS.PARTIALLY_PAID : PAYMENT_STATUS.UNPAID);
+
+    if (initPay > effectiveTotal && effectiveTotal > 0) {
       return res.status(400).json({
         success: false,
-        message: `Initial payment (₹${initPay}) cannot exceed total booking amount (₹${financials.totalAmount}).`
+        message: `Initial payment (₹${initPay}) cannot exceed total booking amount (₹${effectiveTotal}).`
       });
     }
 
-    const referenceNo = await generateBookingReference();
+    const referenceNo = customRefNo && customRefNo.trim() ? customRefNo.trim().toUpperCase() : await generateBookingReference();
+
+    // Determine primary passenger name
+    let primaryPassengerName = passengerName ? passengerName.trim() : '';
+    if (!primaryPassengerName && passengers && passengers.length > 0) {
+      const p1 = passengers[0];
+      primaryPassengerName = `${p1.firstName || ''} ${p1.lastName || ''}`.trim();
+    }
+    if (!primaryPassengerName && customerObj) {
+      primaryPassengerName = customerObj.name;
+    }
 
     const booking = await Booking.create({
       referenceNo,
+      serviceType: serviceType || 'flight',
       bookingDate,
       bookingType,
-      sector: sector.trim().toUpperCase(),
-      journeyDate,
+      sector: (sector || description || `${serviceType.toUpperCase()} BOOKING`).trim().toUpperCase(),
+      description: description ? description.trim() : (sector || ''),
+      journeyDate: journeyDate || bookingDate,
       returnDate: returnDate || null,
-      airlineId,
-      flightNumber: flightNumber.trim().toUpperCase(),
-      pnr: pnr.trim().toUpperCase(),
+      airlineId: chosenCompanyId,
+      companyId: chosenCompanyId,
+      flightNumber: flightNumber ? flightNumber.trim().toUpperCase() : '',
+      pnr: (pnr || referenceNo).trim().toUpperCase(),
       ticketNumber: ticketNumber ? ticketNumber.trim() : '',
+      passengerName: primaryPassengerName,
       status,
-      paymentStatus: financials.paymentStatus,
+      paymentStatus,
       customerId,
-      baseFare: financials.baseFare,
-      tax: financials.tax,
-      serviceCharge: financials.serviceCharge,
-      otherCharges: financials.otherCharges,
-      discount: financials.discount,
-      totalAmount: financials.totalAmount,
-      amountReceived: financials.amountReceived,
-      balanceDue: financials.balanceDue,
+      costPrice: cPrice,
+      sellPrice: sPrice > 0 ? sPrice : effectiveTotal,
+      profit: calculatedProfit,
+      baseFare: baseFare || sPrice,
+      tax: toDecimal(tax),
+      serviceCharge: toDecimal(serviceCharge),
+      otherCharges: toDecimal(otherCharges),
+      discount: toDecimal(discount),
+      totalAmount: effectiveTotal,
+      amountReceived: initPay,
+      balanceDue,
       commission: toDecimal(commission),
+      notes: notes || description || '',
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 
-    const passengerRecords = passengers.map(p => ({
-      bookingId: booking._id,
-      customerId,
-      title: p.title || 'Mr',
-      firstName: (p.firstName || '').trim(),
-      lastName: (p.lastName || '').trim(),
-      dateOfBirth: p.dateOfBirth || '',
-      passportNumber: p.passportNumber ? p.passportNumber.trim().toUpperCase() : '',
-      passportExpiry: p.passportExpiry || '',
-      nationality: p.nationality ? p.nationality.trim() : 'Indian',
-      phone: p.phone ? p.phone.trim() : ''
-    }));
+    // Handle passenger records
+    let passengerRecords = [];
+    if (passengers && passengers.length > 0) {
+      passengerRecords = passengers.map(p => ({
+        bookingId: booking._id,
+        customerId,
+        title: p.title || 'Mr',
+        firstName: (p.firstName || primaryPassengerName.split(' ')[0] || '').trim(),
+        lastName: (p.lastName || primaryPassengerName.split(' ').slice(1).join(' ') || '').trim(),
+        dateOfBirth: p.dateOfBirth || '',
+        passportNumber: p.passportNumber ? p.passportNumber.trim().toUpperCase() : '',
+        passportExpiry: p.passportExpiry || '',
+        nationality: p.nationality ? p.nationality.trim() : 'Indian',
+        phone: p.phone ? p.phone.trim() : (customerObj?.phone || '')
+      }));
+    } else {
+      const parts = primaryPassengerName.split(' ');
+      passengerRecords = [{
+        bookingId: booking._id,
+        customerId,
+        title: 'Mr',
+        firstName: parts[0] || 'Passenger',
+        lastName: parts.slice(1).join(' ') || '',
+        phone: customerObj?.phone || '',
+        nationality: 'Indian'
+      }];
+    }
 
     await Passenger.insertMany(passengerRecords);
 
+    const typeLabel = (serviceType || 'Travel').toUpperCase();
     const txnRef1 = await generateTransactionReference('TXN-BKG');
     await Transaction.create({
       transactionDate: bookingDate,
       referenceNo: txnRef1,
       bookingId: booking._id,
       customerId,
-      description: `Flight Booking ${booking.referenceNo} (${booking.sector}) - ${booking.flightNumber}`,
+      description: `${typeLabel} Booking ${booking.referenceNo} - ${booking.description || booking.sector} (${primaryPassengerName})`,
       type: TRANSACTION_TYPES.BOOKING,
-      debit: financials.totalAmount,
+      debit: effectiveTotal,
       credit: 0.00,
-      balance: financials.totalAmount,
+      balance: effectiveTotal,
       paymentMethod: null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
@@ -314,7 +362,7 @@ exports.createBooking = async (req, res, next) => {
         paymentDate: bookingDate,
         paymentMethod,
         reference: payRef,
-        notes: paymentNotes || 'Initial payment received at booking',
+        notes: paymentNotes || `Initial payment received for ${booking.referenceNo}`,
         receivedBy: req.user ? (req.user.id || req.user._id) : null
       });
 
@@ -328,7 +376,7 @@ exports.createBooking = async (req, res, next) => {
         type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
         debit: 0.00,
         credit: initPay,
-        balance: toDecimal(financials.totalAmount - initPay),
+        balance: toDecimal(effectiveTotal - initPay),
         paymentMethod,
         createdBy: req.user ? (req.user.id || req.user._id) : null
       });
@@ -336,8 +384,8 @@ exports.createBooking = async (req, res, next) => {
 
     await Notification.create({
       userId: null,
-      title: 'New Booking Created',
-      message: `Booking ${booking.referenceNo} created for ${customerObj.name} (${booking.sector}). Amount: ₹${financials.totalAmount}`,
+      title: `New ${typeLabel} Booking Created`,
+      message: `Booking ${booking.referenceNo} created for ${customerObj.name}. Total: ₹${effectiveTotal}`,
       type: 'success'
     });
 
@@ -346,7 +394,7 @@ exports.createBooking = async (req, res, next) => {
       'Create Booking',
       'Booking',
       booking._id,
-      `Booking ${booking.referenceNo} created for ${customerObj.name}. Total: ₹${financials.totalAmount}, Received: ₹${financials.amountReceived}.`,
+      `Booking ${booking.referenceNo} (${typeLabel}) created for ${customerObj.name}. Cost: ₹${cPrice}, Sell: ₹${effectiveTotal}, Profit: ₹${calculatedProfit}.`,
       req.ip
     );
 
@@ -367,22 +415,29 @@ exports.updateBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
+      serviceType,
       bookingType,
       sector,
+      description,
       journeyDate,
       returnDate,
       airlineId,
+      companyId,
       flightNumber,
       pnr,
       ticketNumber,
+      passengerName,
       status,
+      costPrice,
+      sellPrice,
       baseFare,
       tax,
       serviceCharge,
       otherCharges,
       discount,
       commission,
-      passengers
+      passengers,
+      notes
     } = req.body;
 
     const booking = await Booking.findById(id);
@@ -390,20 +445,38 @@ exports.updateBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    if (serviceType) booking.serviceType = serviceType;
     if (bookingType) booking.bookingType = bookingType;
     if (sector) booking.sector = sector.trim().toUpperCase();
+    if (description !== undefined) booking.description = description ? description.trim() : '';
     if (journeyDate) booking.journeyDate = journeyDate;
     if (returnDate !== undefined) booking.returnDate = returnDate || null;
-    if (airlineId) booking.airlineId = airlineId;
-    if (flightNumber) booking.flightNumber = flightNumber.trim().toUpperCase();
+    
+    const chosenCompanyId = companyId || airlineId;
+    if (chosenCompanyId) {
+      booking.airlineId = chosenCompanyId;
+      booking.companyId = chosenCompanyId;
+    }
+    if (flightNumber !== undefined) booking.flightNumber = flightNumber ? flightNumber.trim().toUpperCase() : '';
     if (pnr) booking.pnr = pnr.trim().toUpperCase();
     if (ticketNumber !== undefined) booking.ticketNumber = ticketNumber ? ticketNumber.trim() : '';
+    if (passengerName !== undefined) booking.passengerName = passengerName ? passengerName.trim() : '';
     if (status) booking.status = status;
+    if (notes !== undefined) booking.notes = notes ? notes.trim() : '';
     if (commission !== undefined) booking.commission = toDecimal(commission);
+
+    if (costPrice !== undefined) booking.costPrice = toDecimal(costPrice);
+    if (sellPrice !== undefined) {
+      booking.sellPrice = toDecimal(sellPrice);
+      booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0));
+      booking.totalAmount = booking.sellPrice;
+      booking.balanceDue = toDecimal(Math.max(0, booking.totalAmount - (booking.amountReceived || 0)));
+      booking.paymentStatus = booking.balanceDue <= 0 ? PAYMENT_STATUS.PAID : (booking.amountReceived > 0 ? PAYMENT_STATUS.PARTIALLY_PAID : PAYMENT_STATUS.UNPAID);
+    }
 
     if (baseFare !== undefined || tax !== undefined || serviceCharge !== undefined || otherCharges !== undefined || discount !== undefined) {
       const financials = calculateBookingFinancials({
-        baseFare: baseFare !== undefined ? baseFare : booking.baseFare,
+        baseFare: baseFare !== undefined ? baseFare : (booking.sellPrice || booking.baseFare),
         tax: tax !== undefined ? tax : booking.tax,
         serviceCharge: serviceCharge !== undefined ? serviceCharge : booking.serviceCharge,
         otherCharges: otherCharges !== undefined ? otherCharges : booking.otherCharges,
@@ -416,14 +489,18 @@ exports.updateBooking = async (req, res, next) => {
       booking.serviceCharge = financials.serviceCharge;
       booking.otherCharges = financials.otherCharges;
       booking.discount = financials.discount;
-      booking.totalAmount = financials.totalAmount;
+      if (sellPrice === undefined) {
+        booking.totalAmount = financials.totalAmount;
+        booking.sellPrice = financials.totalAmount;
+        booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0));
+      }
       booking.balanceDue = financials.balanceDue;
       booking.paymentStatus = financials.paymentStatus;
     }
 
     await booking.save();
 
-    if (passengers && Array.isArray(passengers)) {
+    if (passengers && Array.isArray(passengers) && passengers.length > 0) {
       await Passenger.deleteMany({ bookingId: id });
       const newPassengers = passengers.map(p => ({
         bookingId: id,
@@ -631,3 +708,4 @@ exports.deleteBooking = async (req, res, next) => {
     next(error);
   }
 };
+

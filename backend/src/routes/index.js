@@ -6,6 +6,7 @@ const dashboardRoutes = require('./dashboardRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const customerRoutes = require('./customerRoutes');
 const airlineRoutes = require('./airlineRoutes');
+const companyRoutes = require('./companyRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const transactionRoutes = require('./transactionRoutes');
 const ledgerRoutes = require('./ledgerRoutes');
@@ -24,6 +25,7 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/customers', customerRoutes);
 router.use('/airlines', airlineRoutes);
+router.use('/companies', companyRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/ledger', ledgerRoutes);
@@ -37,3 +39,4 @@ router.use('/activity-logs', activityLogRoutes);
 router.use('/settings', settingRoutes);
 
 module.exports = router;
+

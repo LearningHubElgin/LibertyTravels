@@ -14,6 +14,7 @@ module.exports = {
   User,
   Customer,
   Airline,
+  Company: Airline,
   Booking,
   Passenger,
   Payment,
@@ -23,3 +24,4 @@ module.exports = {
   ActivityLog,
   Notification
 };
+

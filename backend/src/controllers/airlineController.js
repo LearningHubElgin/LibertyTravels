@@ -3,11 +3,15 @@ const { logActivity } = require('../middleware/activityLogger');
 
 exports.getAirlines = async (req, res, next) => {
   try {
-    const { search, status } = req.query;
+    const { search, status, type } = req.query;
     const query = {};
 
     if (status) {
       query.status = status;
+    }
+
+    if (type && type !== 'all') {
+      query.type = type;
     }
 
     if (search && search.trim()) {
@@ -16,20 +20,26 @@ exports.getAirlines = async (req, res, next) => {
       query.$or = [
         { name: regex },
         { code: regex },
-        { country: regex }
+        { country: regex },
+        { type: regex }
       ];
     }
 
     const airlinesRaw = await Airline.find(query).sort({ name: 1 }).lean();
     const airlineIds = airlinesRaw.map(a => a._id);
 
-    const bookings = await Booking.find({ airlineId: { $in: airlineIds } })
-      .select('airlineId totalAmount')
+    const bookings = await Booking.find({
+      $or: [
+        { airlineId: { $in: airlineIds } },
+        { companyId: { $in: airlineIds } }
+      ]
+    })
+      .select('airlineId companyId totalAmount')
       .lean();
 
     const airlineBookingsMap = {};
     bookings.forEach(b => {
-      const aId = String(b.airlineId);
+      const aId = String(b.companyId || b.airlineId);
       if (!airlineBookingsMap[aId]) airlineBookingsMap[aId] = [];
       airlineBookingsMap[aId].push(b);
     });
@@ -48,7 +58,8 @@ exports.getAirlines = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      airlines
+      airlines,
+      companies: airlines
     });
   } catch (error) {
     next(error);
@@ -57,35 +68,41 @@ exports.getAirlines = async (req, res, next) => {
 
 exports.createAirline = async (req, res, next) => {
   try {
-    const { name, code, country, status } = req.body;
+    const { name, code, type = 'flight', category, country, contact, email, status } = req.body;
 
     if (!name || !code) {
       return res.status(400).json({
         success: false,
-        message: 'Airline name and airline code are required'
+        message: 'Company name and company code are required'
       });
     }
 
     const airline = await Airline.create({
       name: name.trim(),
       code: code.trim().toUpperCase(),
+      type: type || 'flight',
+      category: category || type || 'flight',
       country: country ? country.trim() : 'India',
+      contact: contact ? contact.trim() : '',
+      email: email ? email.trim() : '',
       status: status || 'active'
     });
 
     await logActivity(
       req.user.id || req.user._id,
-      'Create Airline',
-      'Airline',
+      'Create Company',
+      'Company',
       airline._id,
-      `Airline ${airline.name} (${airline.code}) created.`,
+      `Company ${airline.name} (${airline.code}) created.`,
       req.ip
     );
 
+    const airlineData = airline.toJSON();
     return res.status(201).json({
       success: true,
-      message: 'Airline created successfully',
-      airline: airline.toJSON()
+      message: 'Company created successfully',
+      airline: airlineData,
+      company: airlineData
     });
   } catch (error) {
     next(error);
@@ -95,36 +112,42 @@ exports.createAirline = async (req, res, next) => {
 exports.updateAirline = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, code, country, status } = req.body;
+    const { name, code, type, category, country, contact, email, status } = req.body;
 
     const airline = await Airline.findById(id);
     if (!airline) {
       return res.status(404).json({
         success: false,
-        message: 'Airline not found'
+        message: 'Company not found'
       });
     }
 
     if (name) airline.name = name.trim();
     if (code) airline.code = code.trim().toUpperCase();
+    if (type) airline.type = type;
+    if (category) airline.category = category;
     if (country !== undefined) airline.country = country ? country.trim() : airline.country;
+    if (contact !== undefined) airline.contact = contact ? contact.trim() : airline.contact;
+    if (email !== undefined) airline.email = email ? email.trim() : airline.email;
     if (status) airline.status = status;
 
     await airline.save();
 
     await logActivity(
       req.user.id || req.user._id,
-      'Update Airline',
-      'Airline',
+      'Update Company',
+      'Company',
       airline._id,
-      `Airline ${airline.name} (${airline.code}) updated.`,
+      `Company ${airline.name} (${airline.code}) updated.`,
       req.ip
     );
 
+    const airlineData = airline.toJSON();
     return res.status(200).json({
       success: true,
-      message: 'Airline updated successfully',
-      airline: airline.toJSON()
+      message: 'Company updated successfully',
+      airline: airlineData,
+      company: airlineData
     });
   } catch (error) {
     next(error);
@@ -139,15 +162,17 @@ exports.deleteAirline = async (req, res, next) => {
     if (!airline) {
       return res.status(404).json({
         success: false,
-        message: 'Airline not found'
+        message: 'Company not found'
       });
     }
 
-    const bookingCount = await Booking.countDocuments({ airlineId: id });
+    const bookingCount = await Booking.countDocuments({
+      $or: [{ airlineId: id }, { companyId: id }]
+    });
     if (bookingCount > 0) {
       return res.status(400).json({
         success: false,
-        message: `Cannot delete airline with ${bookingCount} linked bookings. Set status to inactive instead.`
+        message: `Cannot delete company with ${bookingCount} linked bookings. Set status to inactive instead.`
       });
     }
 
@@ -156,18 +181,19 @@ exports.deleteAirline = async (req, res, next) => {
 
     await logActivity(
       req.user.id || req.user._id,
-      'Delete Airline',
-      'Airline',
+      'Delete Company',
+      'Company',
       id,
-      `Airline ${airlineName} (${airline.code}) deleted.`,
+      `Company ${airlineName} (${airline.code}) deleted.`,
       req.ip
     );
 
     return res.status(200).json({
       success: true,
-      message: 'Airline deleted successfully'
+      message: 'Company deleted successfully'
     });
   } catch (error) {
     next(error);
   }
 };
+

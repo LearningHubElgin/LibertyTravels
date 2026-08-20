@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Plane,
+  Train,
+  Bus,
+  Hotel,
+  Car,
+  Building2,
+  TrendingUp,
   User,
   Users,
   Calendar,
@@ -100,22 +106,63 @@ export const BookingDetailsPage = () => {
   };
 
   const handleStatusChange = async (newStatus) => {
+    setActionLoading(true);
     try {
-      const res = await api.put(`/bookings/${id}/status`, { status: newStatus });
+      const res = await api.patch(`/bookings/${id}/status`, { status: newStatus });
       if (res.data.success) {
-        success(`Booking status updated to ${newStatus}.`);
-        setIsCancelConfirmOpen(false);
+        success(`Booking marked as ${newStatus}`);
         fetchBooking();
       }
     } catch (err) {
-      toastError(err.response?.data?.message || 'Failed to update status.');
+      toastError(err.response?.data?.message || 'Failed to update status');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  if (loading) return <LoadingSpinner size="lg" text="Loading booking file..." />;
-  if (!booking) return <div className="p-8 text-center text-slate-500">Booking not found.</div>;
-
   const formatCurrency = (val) => `₹${parseFloat(val || 0).toLocaleString('en-IN')}`;
+
+  const getServiceIcon = (type) => {
+    switch (type) {
+      case 'flight':
+        return <Plane className="w-4 h-4 text-sky-400" />;
+      case 'train':
+        return <Train className="w-4 h-4 text-emerald-400" />;
+      case 'bus':
+        return <Bus className="w-4 h-4 text-amber-400" />;
+      case 'hotel':
+        return <Hotel className="w-4 h-4 text-purple-400" />;
+      case 'car':
+        return <Car className="w-4 h-4 text-indigo-400" />;
+      default:
+        return <Plane className="w-4 h-4 text-sky-400" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size="lg" text="Loading booking record..." />
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-500 text-sm">Booking record not found.</p>
+        <button
+          onClick={() => navigate('/bookings')}
+          className="mt-4 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold"
+        >
+          Return to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  const comp = booking.company || booking.airline;
+  const sell = parseFloat(booking.sellPrice || booking.totalAmount || 0);
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-8 sm:pb-12 min-w-0">
@@ -123,7 +170,7 @@ export const BookingDetailsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 w-full min-w-0">
         <button
           onClick={() => navigate('/bookings')}
-          className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-600 hover:text-slate-900 transition w-fit"
+          className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-600 hover:text-slate-900 transition w-fit cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to All Bookings
         </button>
@@ -132,7 +179,7 @@ export const BookingDetailsPage = () => {
           {parseFloat(booking.balanceDue || 0) > 0 && booking.status !== 'cancelled' && (
             <button
               onClick={() => setIsPaymentModalOpen(true)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
             >
               <CreditCard className="w-3.5 h-3.5" /> Receive Payment
             </button>
@@ -140,7 +187,7 @@ export const BookingDetailsPage = () => {
 
           <button
             onClick={() => setIsInvoiceOpen(true)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition"
+            className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" /> Print Invoice
           </button>
@@ -148,7 +195,7 @@ export const BookingDetailsPage = () => {
           {booking.status === 'confirmed' && (
             <button
               onClick={() => handleStatusChange('completed')}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl shadow-xs transition"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
             >
               <CheckCircle className="w-3.5 h-3.5" /> Complete
             </button>
@@ -157,7 +204,7 @@ export const BookingDetailsPage = () => {
           {booking.status !== 'cancelled' && (
             <button
               onClick={() => setIsCancelConfirmOpen(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl transition"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl transition cursor-pointer"
             >
               <XCircle className="w-3.5 h-3.5" /> Cancel
             </button>
@@ -172,8 +219,14 @@ export const BookingDetailsPage = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10">
           <div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+              <span className="p-1.5 rounded-lg bg-slate-800 border border-slate-700">
+                {getServiceIcon(booking.serviceType || 'flight')}
+              </span>
               <span className="font-mono text-base sm:text-2xl font-black text-brand-300 tracking-wider">
                 {booking.referenceNo}
+              </span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                {(booking.serviceType || 'flight').toUpperCase()}
               </span>
               <StatusBadge status={booking.status} />
               <StatusBadge status={booking.paymentStatus} />
@@ -181,24 +234,28 @@ export const BookingDetailsPage = () => {
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-2 font-medium">
               <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-brand-400" /> Date: {formatDate(booking.bookingDate)}
+                <Calendar className="w-3.5 h-3.5 text-brand-400" /> Booking Date: {formatDate(booking.bookingDate)}
               </span>
               <span>&bull;</span>
               <span className="flex items-center gap-1">
-                <Plane className="w-3.5 h-3.5 text-sky-400" /> Sector: <strong className="text-white">{booking.sector}</strong>
+                <Building2 className="w-3.5 h-3.5 text-sky-400" /> Company: <strong className="text-white">{comp?.name || 'N/A'}</strong>
               </span>
-              <span>&bull;</span>
-              <span className="font-mono uppercase">
-                {booking.airline?.code} {booking.flightNumber}
-              </span>
+              {booking.pnr && (
+                <>
+                  <span>&bull;</span>
+                  <span className="font-mono">
+                    Ref/PNR: <strong className="text-brand-300">{booking.pnr}</strong>
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
           {/* Quick Financial Summary Pill */}
           <div className="bg-slate-800/80 backdrop-blur-md p-3 sm:p-4 rounded-xl border border-slate-700 flex items-center gap-4 sm:gap-6">
             <div>
-              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Total Charged</p>
-              <p className="text-base sm:text-lg font-black font-mono text-white">{formatCurrency(booking.totalAmount)}</p>
+              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Sell Price</p>
+              <p className="text-base sm:text-lg font-black font-mono text-white">{formatCurrency(sell)}</p>
             </div>
             <div className="h-7 sm:h-8 w-px bg-slate-700" />
             <div>
@@ -213,51 +270,51 @@ export const BookingDetailsPage = () => {
 
       {/* Grid: 2 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Flight Info, Passengers List, Payment History */}
+        {/* Left 2 Cols: Service Particulars, Passengers List, Payment History */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Flight Journey Details */}
+          {/* Service & Booking Details */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Plane className="w-4 h-4 text-brand-600" /> Flight & Journey Particulars
+              <Building2 className="w-4 h-4 text-brand-600" /> Booking Particulars
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-slate-400 font-medium block mb-0.5">Route / Sector</span>
-                <span className="font-bold text-slate-900 text-sm">{booking.sector}</span>
+                <span className="text-slate-400 font-medium block mb-0.5">Service Category</span>
+                <span className="font-bold text-slate-900 capitalize text-sm">{booking.serviceType || 'Flight'}</span>
               </div>
               <div>
-                <span className="text-slate-400 font-medium block mb-0.5">Journey Date</span>
-                <span className="font-semibold text-slate-900">{formatDate(booking.journeyDate)}</span>
+                <span className="text-slate-400 font-medium block mb-0.5">Company / Vendor</span>
+                <span className="font-semibold text-slate-900">{comp?.name || 'N/A'} ({comp?.code || ''})</span>
               </div>
+              <div>
+                <span className="text-slate-400 font-medium block mb-0.5">Booking Date</span>
+                <span className="font-semibold text-slate-900">{formatDate(booking.bookingDate)}</span>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-slate-400 font-medium block mb-0.5">Description / Route</span>
+                <span className="font-bold text-slate-900">{booking.description || booking.sector}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-medium block mb-0.5">Reference No / PNR</span>
+                <span className="font-bold text-brand-700 font-mono text-sm">{booking.pnr || booking.referenceNo}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-medium block mb-0.5">Passenger Name</span>
+                <span className="font-semibold text-slate-900">{booking.passengerName || booking.passengers?.[0]?.firstName || 'N/A'}</span>
+              </div>
+              {booking.journeyDate && (
+                <div>
+                  <span className="text-slate-400 font-medium block mb-0.5">Date of Journey</span>
+                  <span className="font-semibold text-slate-900">{formatDate(booking.journeyDate)}</span>
+                </div>
+              )}
               {booking.returnDate && (
                 <div>
                   <span className="text-slate-400 font-medium block mb-0.5">Return Date</span>
                   <span className="font-semibold text-slate-900">{formatDate(booking.returnDate)}</span>
                 </div>
               )}
-              <div>
-                <span className="text-slate-400 font-medium block mb-0.5">Airline</span>
-                <span className="font-semibold text-slate-900">{booking.airline?.name} ({booking.airline?.code})</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-medium block mb-0.5">Flight Number</span>
-                <span className="font-semibold text-slate-900 font-mono">{booking.flightNumber}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-medium block mb-0.5">PNR Number</span>
-                <span className="font-bold text-brand-700 font-mono text-sm">{booking.pnr}</span>
-              </div>
-              {booking.ticketNumber && (
-                <div>
-                  <span className="text-slate-400 font-medium block mb-0.5">Ticket Number</span>
-                  <span className="font-mono text-slate-800">{booking.ticketNumber}</span>
-                </div>
-              )}
-              <div>
-                <span className="text-slate-400 font-medium block mb-0.5">Booking Type</span>
-                <span className="capitalize font-semibold text-slate-800">{booking.bookingType?.replace('_', ' ')}</span>
-              </div>
             </div>
           </div>
 
@@ -379,33 +436,40 @@ export const BookingDetailsPage = () => {
 
             <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex justify-between">
-                <span>Base Fare:</span>
-                <span className="font-mono font-semibold text-slate-900">{formatCurrency(booking.baseFare)}</span>
+                <span>Cost Price (Buy):</span>
+                <span className="font-mono font-semibold text-slate-900">{formatCurrency(cost)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Taxes & Fees:</span>
-                <span className="font-mono font-semibold text-slate-900">{formatCurrency(booking.tax)}</span>
+                <span>Sell Price:</span>
+                <span className="font-mono font-bold text-slate-900">{formatCurrency(sell)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Service Markup:</span>
-                <span className="font-mono font-semibold text-slate-900">{formatCurrency(booking.serviceCharge)}</span>
+
+              {/* Profit Pill */}
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between font-mono font-bold text-xs ${
+                profit >= 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+              }`}>
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5" /> Gross Margin / Profit:
+                </span>
+                <span>{profit >= 0 ? `+${formatCurrency(profit)}` : `-${formatCurrency(Math.abs(profit))}`}</span>
               </div>
-              {parseFloat(booking.otherCharges || 0) > 0 && (
-                <div className="flex justify-between">
-                  <span>Other Charges:</span>
-                  <span className="font-mono font-semibold text-slate-900">{formatCurrency(booking.otherCharges)}</span>
+
+              {parseFloat(booking.tax || 0) > 0 && (
+                <div className="flex justify-between text-[11px] text-slate-500 pt-1">
+                  <span>Taxes & Fees:</span>
+                  <span className="font-mono">{formatCurrency(booking.tax)}</span>
                 </div>
               )}
               {parseFloat(booking.discount || 0) > 0 && (
-                <div className="flex justify-between text-emerald-700">
+                <div className="flex justify-between text-emerald-700 text-[11px]">
                   <span>Discount:</span>
-                  <span className="font-mono font-semibold">-{formatCurrency(booking.discount)}</span>
+                  <span className="font-mono">-{formatCurrency(booking.discount)}</span>
                 </div>
               )}
 
-              <div className="pt-3 border-t-2 border-slate-200 flex justify-between text-sm font-bold text-slate-900">
-                <span>Total Charged:</span>
-                <span className="font-mono text-brand-700">{formatCurrency(booking.totalAmount)}</span>
+              <div className="pt-2 border-t-2 border-slate-200 flex justify-between text-sm font-bold text-slate-900">
+                <span>Total Amount Charged:</span>
+                <span className="font-mono text-brand-700">{formatCurrency(booking.totalAmount || sell)}</span>
               </div>
 
               <div className="flex justify-between text-emerald-700 pt-1">
@@ -423,6 +487,7 @@ export const BookingDetailsPage = () => {
           </div>
         </div>
       </div>
+
 
       {/* Invoice Modal */}
       <InvoiceModal
