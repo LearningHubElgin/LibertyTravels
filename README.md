@@ -6,7 +6,7 @@ A modern, full-featured Travel Agency ERP and Booking Management System built wi
 
 ## 🌟 Key Features
 
-- **Flight Bookings & Manifest Management**: Complete booking workflow with PNR, sector, airline, multiple passengers, and custom fare breakdown.
+- **Multi-Service Bookings & Manifest Management**: Complete booking workflow with PNR/Reference, sector, company/vendor, multiple passengers, and custom fare breakdown.
 - **Tax Invoice Generation**: Clean PDF/printable tax invoices with custom agency branding, sequence numbers, and GST breakdown.
 - **Double-Entry Accounting & Ledger**: Customer running ledger statements and agency general ledger.
 - **Financial Transactions & Receivables**: Transaction tracking, partial payments, payment receipts, and balance due tracking.

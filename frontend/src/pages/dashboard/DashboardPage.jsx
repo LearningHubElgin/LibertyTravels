@@ -349,18 +349,18 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Airline Bookings & Revenue Bar Charts */}
+      {/* Company Bookings & Revenue Bar Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
         <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs min-w-0">
-          <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-0.5">Airline-wise Bookings</h3>
-          <p className="text-[10px] sm:text-xs text-slate-500 mb-3">Number of flight bookings per airline partner</p>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-0.5">Company-wise Bookings</h3>
+          <p className="text-[10px] sm:text-xs text-slate-500 mb-3">Number of bookings per company / supplier partner</p>
           <div className="h-48 sm:h-56 w-full min-w-0">
-            {charts?.airlineStats && charts.airlineStats.length > 0 ? (
+            {charts?.companyStats && charts.companyStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.airlineStats} layout="vertical">
+                <BarChart data={charts.companyStats} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                   <XAxis type="number" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} />
-                  <YAxis type="category" dataKey="airline" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} width={90} />
+                  <YAxis type="category" dataKey="company" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} width={90} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '10px' }}
                   />
@@ -368,20 +368,20 @@ export const DashboardPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">No airline data</div>
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">No company data</div>
             )}
           </div>
         </div>
 
         <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs min-w-0">
-          <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-0.5">Revenue by Airline Partner</h3>
-          <p className="text-[10px] sm:text-xs text-slate-500 mb-3">Gross ticket sales volume generated per airline</p>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-0.5">Revenue by Company / Supplier</h3>
+          <p className="text-[10px] sm:text-xs text-slate-500 mb-3">Gross sales volume generated per supplier company</p>
           <div className="h-48 sm:h-56 w-full min-w-0">
-            {charts?.airlineStats && charts.airlineStats.length > 0 ? (
+            {charts?.companyStats && charts.companyStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.airlineStats}>
+                <BarChart data={charts.companyStats}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="airline" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} />
+                  <XAxis dataKey="company" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
                   <Tooltip
                     formatter={(val) => formatCurrency(val)}

@@ -58,12 +58,7 @@ const companySchema = new mongoose.Schema(
   }
 );
 
-// Register Company model (mapped to 'airlines' MongoDB collection)
-const Company = mongoose.models.Company || mongoose.model('Company', companySchema, 'airlines');
-
-// Also register Airline model alias so existing database relations resolve seamlessly
-if (!mongoose.models.Airline) {
-  mongoose.model('Airline', companySchema, 'airlines');
-}
+// Register and export Company model (mapped to 'companies' MongoDB collection)
+const Company = mongoose.models.Company || mongoose.model('Company', companySchema);
 
 module.exports = Company;

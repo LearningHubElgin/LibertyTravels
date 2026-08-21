@@ -21,7 +21,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { formatDate } from '../../utils/formatters';
 
 export const ReportsPage = () => {
-  const [activeReport, setActiveReport] = useState('sales'); // 'sales', 'bookings', 'revenue', 'profit', 'outstanding', 'expenses', 'airlines'
+  const [activeReport, setActiveReport] = useState('sales'); // 'sales', 'bookings', 'revenue', 'profit', 'outstanding', 'expenses', 'companies'
 
   // Date filters
   const [startDate, setStartDate] = useState('');
@@ -35,7 +35,7 @@ export const ReportsPage = () => {
   const [profitData, setProfitData] = useState(null);
   const [outstandingData, setOutstandingData] = useState(null);
   const [expenseData, setExpenseData] = useState(null);
-  const [airlineData, setAirlineData] = useState(null);
+  const [companyData, setCompanyData] = useState(null);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -62,9 +62,9 @@ export const ReportsPage = () => {
       } else if (activeReport === 'expenses') {
         const res = await api.get(`/reports/expenses?${query}`);
         if (res.data.success) setExpenseData(res.data);
-      } else if (activeReport === 'airlines') {
-        const res = await api.get(`/reports/airlines?${query}`);
-        if (res.data.success) setAirlineData(res.data);
+      } else if (activeReport === 'companies') {
+        const res = await api.get(`/reports/companies?${query}`);
+        if (res.data.success) setCompanyData(res.data);
       }
     } catch (e) {
       console.error('Error fetching report:', e);
@@ -86,18 +86,18 @@ export const ReportsPage = () => {
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     if (activeReport === 'sales' && salesData?.bookings) {
-      csvContent += 'Reference No,Customer,Sector,Journey Date,Airline,Total Amount,Paid,Balance,Status\n';
+      csvContent += 'Reference No,Customer,Sector,Journey Date,Company,Total Amount,Paid,Balance,Status\n';
       salesData.bookings.forEach((b) => {
-        csvContent += `"${b.referenceNo}","${b.customer?.name}","${b.sector}","${b.journeyDate}","${b.airline?.name}",${b.totalAmount},${b.amountReceived},${b.balanceDue},"${b.status}"\n`;
+        csvContent += `"${b.referenceNo}","${b.customer?.name}","${b.sector}","${b.journeyDate}","${b.company?.name || ''}",${b.totalAmount},${b.amountReceived},${b.balanceDue},"${b.status}"\n`;
       });
     } else if (activeReport === 'outstanding' && outstandingData?.customers) {
       csvContent += 'Customer Code,Name,Phone,Total Bookings,Total Charged,Paid Amount,Outstanding Balance\n';
       outstandingData.customers.forEach((c) => {
         csvContent += `"${c.customerCode}","${c.name}","${c.phone}",${c.totalBookings},${c.totalAmount},${c.paidAmount},${c.outstandingAmount}\n`;
       });
-    } else if (activeReport === 'airlines' && airlineData?.airlines) {
-      csvContent += 'Airline,Code,Country,Bookings,Revenue,Booking Share %,Revenue Share %\n';
-      airlineData.airlines.forEach((a) => {
+    } else if (activeReport === 'companies' && companyData?.companies) {
+      csvContent += 'Company,Code,Country,Bookings,Revenue,Booking Share %,Revenue Share %\n';
+      companyData.companies.forEach((a) => {
         csvContent += `"${a.name}","${a.code}","${a.country}",${a.bookingsCount},${a.revenue},${a.bookingShare},${a.revenueShare}\n`;
       });
     } else {
@@ -120,7 +120,7 @@ export const ReportsPage = () => {
     { id: 'profit', label: 'Profit & Loss Statement', icon: TrendingUp },
     { id: 'outstanding', label: 'Customer Receivables', icon: Users2 },
     { id: 'expenses', label: 'Expenses Analysis', icon: WalletCards },
-    { id: 'airlines', label: 'Airline Partner Share', icon: Plane }
+    { id: 'companies', label: 'Company Partner Share', icon: Building2 }
   ];
 
   return (
@@ -240,7 +240,7 @@ export const ReportsPage = () => {
                         <th className="py-3 px-4">Customer</th>
                         <th className="py-3 px-4">Sector</th>
                         <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Airline</th>
+                        <th className="py-3 px-4">Company</th>
                         <th className="py-3 px-4 text-right">Amount</th>
                         <th className="py-3 px-4 text-right">Paid</th>
                         <th className="py-3 px-4 text-right">Balance</th>
@@ -253,7 +253,7 @@ export const ReportsPage = () => {
                           <td className="py-2.5 px-4 font-sans font-semibold text-slate-900">{b.customer?.name}</td>
                           <td className="py-2.5 px-4 font-sans font-bold">{b.sector}</td>
                           <td className="py-2.5 px-4 text-slate-500">{formatDate(b.bookingDate)}</td>
-                          <td className="py-2.5 px-4 font-sans">{b.airline?.name}</td>
+                          <td className="py-2.5 px-4 font-sans">{b.company?.name || ''}</td>
                           <td className="py-2.5 px-4 text-right font-bold text-slate-900">{formatCurrency(b.totalAmount)}</td>
                           <td className="py-2.5 px-4 text-right text-emerald-600 font-semibold">{formatCurrency(b.amountReceived)}</td>
                           <td className="py-2.5 px-4 text-right text-rose-600 font-semibold">{formatCurrency(b.balanceDue)}</td>
@@ -303,11 +303,11 @@ export const ReportsPage = () => {
                   <h4 className="font-black text-slate-900 mb-4 text-base">Revenue Composition Breakdown</h4>
                   <div className="space-y-3 text-xs font-mono">
                     <div className="flex justify-between py-2 border-b border-slate-200">
-                      <span className="font-sans font-semibold text-slate-600">Base Airfare Revenue:</span>
+                      <span className="font-sans font-semibold text-slate-600">Base Fare Revenue:</span>
                       <span className="font-bold text-slate-900">{formatCurrency(revenueData.revenueSummary.baseFare)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-200">
-                      <span className="font-sans font-semibold text-slate-600">Airline Taxes & Surcharges:</span>
+                      <span className="font-sans font-semibold text-slate-600">Supplier Taxes & Surcharges:</span>
                       <span className="font-bold text-slate-900">{formatCurrency(revenueData.revenueSummary.tax)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-200 text-brand-700">
@@ -315,7 +315,7 @@ export const ReportsPage = () => {
                       <span className="font-bold text-sm">{formatCurrency(revenueData.revenueSummary.serviceCharge)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-200 text-teal-700">
-                      <span className="font-sans font-bold">Airline Commissions:</span>
+                      <span className="font-sans font-bold">Supplier Commissions:</span>
                       <span className="font-bold text-sm">{formatCurrency(revenueData.revenueSummary.commission)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-200">
@@ -445,14 +445,14 @@ export const ReportsPage = () => {
               </div>
             )}
 
-            {/* 7. AIRLINE PARTNER SHARE REPORT */}
-            {activeReport === 'airlines' && airlineData && (
+            {/* 7. COMPANY PARTNER SHARE REPORT */}
+            {activeReport === 'companies' && companyData && (
               <div className="space-y-6">
                 <div className="overflow-x-auto border border-slate-200 rounded-xl text-xs">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 font-bold text-slate-600 border-b border-slate-200">
-                        <th className="py-3 px-4">Airline Partner</th>
+                        <th className="py-3 px-4">Company / Supplier</th>
                         <th className="py-3 px-4 font-mono">Code</th>
                         <th className="py-3 px-4 text-center">Bookings Count</th>
                         <th className="py-3 px-4 text-right">Gross Revenue (₹)</th>
@@ -461,7 +461,7 @@ export const ReportsPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
-                      {airlineData.airlines?.map((a) => (
+                      {companyData.companies?.map((a) => (
                         <tr key={a.id} className="hover:bg-slate-50">
                           <td className="py-2.5 px-4 font-sans font-bold text-slate-900">{a.name}</td>
                           <td className="py-2.5 px-4 font-bold text-brand-700">{a.code}</td>

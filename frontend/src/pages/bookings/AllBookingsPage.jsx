@@ -34,7 +34,7 @@ export const AllBookingsPage = () => {
   const { success, error: toastError } = useToast();
 
   const [bookings, setBookings] = useState([]);
-  const [airlines, setAirlines] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
@@ -43,7 +43,7 @@ export const AllBookingsPage = () => {
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [serviceType, setServiceType] = useState('');
-  const [airlineId, setAirlineId] = useState('');
+  const [companyId, setCompanyId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -71,7 +71,7 @@ export const AllBookingsPage = () => {
       if (status) query += `&status=${status}`;
       if (paymentStatus) query += `&paymentStatus=${paymentStatus}`;
       if (serviceType && serviceType !== 'all') query += `&serviceType=${serviceType}`;
-      if (airlineId) query += `&airlineId=${airlineId}`;
+      if (companyId) query += `&companyId=${companyId}`;
       if (startDate) query += `&startDate=${startDate}`;
       if (endDate) query += `&endDate=${endDate}`;
 
@@ -89,18 +89,18 @@ export const AllBookingsPage = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [pagination.page, pagination.limit, status, paymentStatus, serviceType, airlineId, startDate, endDate]);
+  }, [pagination.page, pagination.limit, status, paymentStatus, serviceType, companyId, startDate, endDate]);
 
   useEffect(() => {
-    const fetchAirlines = async () => {
+    const fetchCompanies = async () => {
       try {
-        const res = await api.get('/companies').catch(() => api.get('/airlines'));
-        if (res.data.success) setAirlines(res.data.companies || res.data.airlines || []);
+        const res = await api.get('/companies');
+        if (res.data.success) setCompanies(res.data.companies || []);
       } catch (e) {
         console.error(e);
       }
     };
-    fetchAirlines();
+    fetchCompanies();
   }, []);
 
   const handleSearchSubmit = (e) => {
@@ -243,7 +243,7 @@ export const AllBookingsPage = () => {
     {
       header: 'Company & Description',
       render: (row) => {
-        const comp = row.company || row.airline;
+        const comp = row.company;
         return (
           <div>
             <span className="font-bold text-slate-800 block truncate max-w-xs">{row.description || row.sector}</span>
@@ -425,12 +425,12 @@ export const AllBookingsPage = () => {
             </select>
 
             <select
-              value={airlineId}
-              onChange={(e) => setAirlineId(e.target.value)}
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none max-w-[120px] sm:max-w-none"
             >
               <option value="">All Companies</option>
-              {airlines.map((a) => (
+              {companies.map((a) => (
                 <option key={a.id || a._id} value={a.id || a._id}>
                   {a.code} - {a.name}
                 </option>
@@ -460,14 +460,14 @@ export const AllBookingsPage = () => {
             >
               Filter
             </button>
-            {(search || status || paymentStatus || airlineId || startDate || endDate) && (
+            {(search || status || paymentStatus || companyId || startDate || endDate) && (
               <button
                 type="button"
                 onClick={() => {
                   setSearch('');
                   setStatus('');
                   setPaymentStatus('');
-                  setAirlineId('');
+                  setCompanyId('');
                   setStartDate('');
                   setEndDate('');
                 }}

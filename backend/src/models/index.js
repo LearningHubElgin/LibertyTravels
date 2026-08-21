@@ -14,7 +14,6 @@ module.exports = {
   User,
   Customer,
   Company,
-  Airline: Company,
   Booking,
   Passenger,
   Payment,

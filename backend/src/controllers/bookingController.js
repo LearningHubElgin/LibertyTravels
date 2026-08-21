@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Booking, Customer, Airline, Passenger, Payment, Transaction, Notification } = require('../models');
+const { Booking, Customer, Company, Passenger, Payment, Transaction, Notification } = require('../models');
 const { generateBookingReference, generateCustomerCode, generateTransactionReference, generatePaymentReference } = require('../utils/referenceGenerator');
 const { calculateBookingFinancials, toDecimal } = require('../utils/financialCalculations');
 const { logActivity } = require('../middleware/activityLogger');
@@ -18,7 +18,6 @@ exports.getBookings = async (req, res, next) => {
       paymentStatus,
       bookingType,
       serviceType,
-      airlineId,
       companyId,
       customerId,
       startDate,
@@ -36,9 +35,8 @@ exports.getBookings = async (req, res, next) => {
     if (bookingType) query.bookingType = bookingType;
     if (serviceType && serviceType !== 'all') query.serviceType = serviceType;
     
-    const targetCompId = companyId || airlineId;
-    if (targetCompId) {
-      query.$or = [{ companyId: targetCompId }, { airlineId: targetCompId }];
+    if (companyId) {
+      query.companyId = companyId;
     }
     if (customerId) query.customerId = customerId;
 
@@ -84,7 +82,6 @@ exports.getBookings = async (req, res, next) => {
     const total = await Booking.countDocuments(query);
     const bookings = await Booking.find(query)
       .populate('customer', 'customerCode name phone email')
-      .populate('airline', 'name code type')
       .populate('company', 'name code type')
       .populate('passengers', 'title firstName lastName passportNumber phone')
       .sort(sortObj)
@@ -95,7 +92,7 @@ exports.getBookings = async (req, res, next) => {
     const normalizedBookings = bookings.map(b => ({
       ...b,
       id: b._id,
-      company: b.company || b.airline
+      company: b.company
     }));
 
     return res.status(200).json({
@@ -129,7 +126,6 @@ exports.getBookingById = async (req, res, next) => {
 
     const booking = await Booking.findById(id)
       .populate('customer')
-      .populate('airline')
       .populate('company')
       .populate('passengers')
       .populate({
@@ -151,7 +147,6 @@ exports.getBookingById = async (req, res, next) => {
       .sort({ transactionDate: -1, createdAt: -1 });
 
     const bookingData = booking.toJSON();
-    bookingData.company = bookingData.company || bookingData.airline;
     bookingData.transactions = transactions;
 
     return res.status(200).json({
@@ -176,7 +171,6 @@ exports.createBooking = async (req, res, next) => {
       description = '',
       journeyDate = '',
       returnDate = null,
-      airlineId,
       companyId,
       flightNumber = '',
       pnr = '',
@@ -209,7 +203,7 @@ exports.createBooking = async (req, res, next) => {
       passengers = []
     } = req.body;
 
-    const chosenCompanyId = companyId || airlineId || null;
+    const chosenCompanyId = companyId || null;
 
     if (!existingCustomerId && (!customerName || !customerPhone)) {
       return res.status(400).json({
@@ -295,7 +289,6 @@ exports.createBooking = async (req, res, next) => {
       description: description ? description.trim() : (sector || ''),
       journeyDate: journeyDate || bookingDate,
       returnDate: returnDate || null,
-      airlineId: chosenCompanyId,
       companyId: chosenCompanyId,
       flightNumber: flightNumber ? flightNumber.trim().toUpperCase() : '',
       pnr: (pnr || referenceNo).trim().toUpperCase(),
@@ -435,7 +428,6 @@ exports.updateBooking = async (req, res, next) => {
       description,
       journeyDate,
       returnDate,
-      airlineId,
       companyId,
       flightNumber,
       pnr,
@@ -466,10 +458,8 @@ exports.updateBooking = async (req, res, next) => {
     if (journeyDate) booking.journeyDate = journeyDate;
     if (returnDate !== undefined) booking.returnDate = returnDate || null;
     
-    const chosenCompanyId = companyId || airlineId;
-    if (chosenCompanyId) {
-      booking.airlineId = chosenCompanyId;
-      booking.companyId = chosenCompanyId;
+    if (companyId) {
+      booking.companyId = companyId;
     }
     if (flightNumber !== undefined) booking.flightNumber = flightNumber ? flightNumber.trim().toUpperCase() : '';
     if (pnr) booking.pnr = pnr.trim().toUpperCase();

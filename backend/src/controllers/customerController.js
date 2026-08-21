@@ -90,7 +90,7 @@ exports.getCustomerById = async (req, res, next) => {
 
     const [bookings, payments, passengers] = await Promise.all([
       Booking.find({ customerId: id })
-        .populate('airlineId', 'name code')
+        .populate('company', 'name code')
         .sort({ createdAt: -1 })
         .lean(),
       Payment.find({ customerId: id })

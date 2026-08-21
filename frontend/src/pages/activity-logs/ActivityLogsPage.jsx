@@ -148,7 +148,7 @@ export const ActivityLogsPage = () => {
             <option value="Booking">Bookings</option>
             <option value="Payment">Payments</option>
             <option value="Customer">Customers</option>
-            <option value="Airline">Airlines</option>
+            <option value="Company">Companies</option>
             <option value="Expense">Expenses</option>
             <option value="User Management">Users</option>
             <option value="Agency Settings">Settings</option>

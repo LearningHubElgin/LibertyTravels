@@ -133,8 +133,10 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
                     <span className="font-bold text-slate-900">{booking.sector}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Airline / Flight:</span>
-                    <span className="font-semibold text-slate-900">{booking.airline?.name || 'Airline'} ({booking.flightNumber})</span>
+                    <span className="text-slate-500">Company / Supplier:</span>
+                    <span className="font-semibold text-slate-900">
+                      {booking.company?.name || 'Company'} {booking.flightNumber ? `(${booking.flightNumber})` : ''}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Journey Date:</span>
@@ -165,11 +167,11 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   <tr>
-                    <td className="py-2.5 px-4 font-medium">Base Airfare ({booking.sector})</td>
+                    <td className="py-2.5 px-4 font-medium">Base Fare / Package ({booking.sector})</td>
                     <td className="py-2.5 px-4 text-right font-mono font-semibold">₹{parseFloat(booking.baseFare || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-4 text-slate-600">Airline Fuel & Airport Taxes</td>
+                    <td className="py-2 px-4 text-slate-600">Applicable Taxes & Surcharges</td>
                     <td className="py-2 px-4 text-right font-mono">₹{parseFloat(booking.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>

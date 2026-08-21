@@ -161,7 +161,7 @@ export const BookingDetailsPage = () => {
     );
   }
 
-  const comp = booking.company || booking.airline;
+  const comp = booking.company;
   const cost = parseFloat(booking.costPrice || 0);
   const sell = parseFloat(booking.sellPrice || booking.totalAmount || 0);
   const profit = booking.profit !== undefined ? parseFloat(booking.profit) : Math.round((sell - cost) * 100) / 100;

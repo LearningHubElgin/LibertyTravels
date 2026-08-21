@@ -285,8 +285,10 @@ export const CalendarPage = () => {
                 <span className="font-bold text-slate-900 text-sm">{selectedEvent.sector}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Airline & Flight:</span>
-                <span className="font-semibold text-slate-900 font-mono">{selectedEvent.airline} ({selectedEvent.flightNumber})</span>
+                <span className="text-slate-500 font-medium">Company & Details:</span>
+                <span className="font-semibold text-slate-900 font-mono">
+                  {selectedEvent.company} {selectedEvent.flightNumber ? `(${selectedEvent.flightNumber})` : ''}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Passenger(s):</span>

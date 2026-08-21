@@ -3,7 +3,7 @@ const { connectDB } = require('../config/db');
 const {
   User,
   Customer,
-  Airline,
+  Company,
   Booking,
   Passenger,
   Payment,
@@ -28,7 +28,7 @@ const seedDatabase = async () => {
     await Promise.all([
       User.deleteMany({}),
       Customer.deleteMany({}),
-      Airline.deleteMany({}),
+      Company.deleteMany({}),
       Booking.deleteMany({}),
       Passenger.deleteMany({}),
       Payment.deleteMany({}),
@@ -70,26 +70,28 @@ const seedDatabase = async () => {
       panNumber: 'AAACL1234K',
       invoicePrefix: 'INV-2026-',
       invoiceNextNumber: 1001,
-      termsAndConditions: '1. Flight ticket cancellation and date change charges apply as per airline policy.\n2. Please carry valid Govt ID / Passport for domestic / international travel.\n3. Recheck flight timings 24 hours prior to scheduled departure.\n4. Baggage allowance is subject to airline rules specified on ticket.',
+      termsAndConditions: '1. Service cancellation and date change charges apply as per company policy.\n2. Please carry valid Govt ID / Passport for domestic / international travel.\n3. Recheck travel timings 24 hours prior to scheduled departure.\n4. Baggage allowance is subject to company rules specified on ticket / voucher.',
       invoiceFooter: 'Thank you for choosing Liberty Tours & Travels. Have a pleasant and safe journey!'
     });
     console.log('⚙️ Created Agency & Invoice Settings.');
 
-    // 3. Create Standard Airlines Master List
-    const airlinesData = [
-      { name: 'IndiGo Airlines', code: '6E', country: 'India', status: 'active', commissionRate: 2.5 },
-      { name: 'Air India', code: 'AI', country: 'India', status: 'active', commissionRate: 3.0 },
-      { name: 'Emirates', code: 'EK', country: 'UAE', status: 'active', commissionRate: 4.0 },
-      { name: 'Qatar Airways', code: 'QR', country: 'Qatar', status: 'active', commissionRate: 3.5 },
-      { name: 'Singapore Airlines', code: 'SQ', country: 'Singapore', status: 'active', commissionRate: 3.5 },
-      { name: 'Vistara', code: 'UK', country: 'India', status: 'active', commissionRate: 2.5 },
-      { name: 'Akasa Air', code: 'QP', country: 'India', status: 'active', commissionRate: 2.0 },
-      { name: 'SpiceJet', code: 'SG', country: 'India', status: 'active', commissionRate: 2.0 },
-      { name: 'Etihad Airways', code: 'EY', country: 'UAE', status: 'active', commissionRate: 3.5 },
-      { name: 'British Airways', code: 'BA', country: 'UK', status: 'active', commissionRate: 4.0 }
+    // 3. Create Standard Companies Master List
+    const companiesData = [
+      { name: 'IndiGo', code: '6E', type: 'flight', country: 'India', status: 'active', commissionRate: 2.5 },
+      { name: 'Air India', code: 'AI', type: 'flight', country: 'India', status: 'active', commissionRate: 3.0 },
+      { name: 'Emirates', code: 'EK', type: 'flight', country: 'UAE', status: 'active', commissionRate: 4.0 },
+      { name: 'Qatar Airways', code: 'QR', type: 'flight', country: 'Qatar', status: 'active', commissionRate: 3.5 },
+      { name: 'Singapore Air', code: 'SQ', type: 'flight', country: 'Singapore', status: 'active', commissionRate: 3.5 },
+      { name: 'Vistara', code: 'UK', type: 'flight', country: 'India', status: 'active', commissionRate: 2.5 },
+      { name: 'Akasa Air', code: 'QP', type: 'flight', country: 'India', status: 'active', commissionRate: 2.0 },
+      { name: 'SpiceJet', code: 'SG', type: 'flight', country: 'India', status: 'active', commissionRate: 2.0 },
+      { name: 'Indian Railways (IRCTC)', code: 'IRCTC', type: 'train', country: 'India', status: 'active', commissionRate: 1.5 },
+      { name: 'RedBus Intercity', code: 'REDBUS', type: 'bus', country: 'India', status: 'active', commissionRate: 2.0 },
+      { name: 'Taj Hotels & Resorts', code: 'TAJ', type: 'hotel', country: 'India', status: 'active', commissionRate: 5.0 },
+      { name: 'Marriott International', code: 'MARRIOTT', type: 'hotel', country: 'India', status: 'active', commissionRate: 5.0 }
     ];
-    const airlines = await Airline.insertMany(airlinesData);
-    console.log(`✈️ Created ${airlines.length} Standard Airlines.`);
+    const companies = await Company.insertMany(companiesData);
+    console.log(`🏢 Created ${companies.length} Standard Companies & Suppliers.`);
 
     // 4. Initial System Notification
     await Notification.create({

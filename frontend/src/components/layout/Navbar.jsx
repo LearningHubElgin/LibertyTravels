@@ -213,7 +213,7 @@ export const Navbar = ({ onOpenMobile }) => {
     if (p.startsWith('/bookings/')) return 'Booking Details';
     if (p === '/transactions') return 'Financial Transactions';
     if (p === '/customers') return 'Customer Management';
-    if (p === '/companies' || p === '/airlines') return 'Companies & Suppliers';
+    if (p === '/companies') return 'Companies & Suppliers';
     if (p === '/payments') return 'Payments Received';
     if (p === '/ledger') return 'Ledger & Accounts';
     if (p === '/expenses') return 'Expenses Management';

@@ -46,12 +46,6 @@ const bookingSchema = new mongoose.Schema(
       default: '',
       trim: true
     },
-    airlineId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
-      default: null,
-      index: true
-    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
@@ -166,13 +160,6 @@ const bookingSchema = new mongoose.Schema(
 );
 
 // Virtual relationships
-bookingSchema.virtual('airline', {
-  ref: 'Company',
-  localField: 'airlineId',
-  foreignField: '_id',
-  justOne: true
-});
-
 bookingSchema.virtual('company', {
   ref: 'Company',
   localField: 'companyId',

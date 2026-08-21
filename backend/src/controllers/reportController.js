@@ -1,4 +1,4 @@
-const { Booking, Customer, Airline, Expense } = require('../models');
+const { Booking, Customer, Company, Expense } = require('../models');
 const { toDecimal } = require('../utils/financialCalculations');
 
 // Helper for date filtering
@@ -17,17 +17,17 @@ const applyDateFilter = (query, startDate, endDate, dateField = 'bookingDate') =
  */
 exports.getSalesReport = async (req, res, next) => {
   try {
-    const { startDate, endDate, airlineId, customerId, sector } = req.query;
+    const { startDate, endDate, companyId, customerId, sector } = req.query;
     const query = {};
     applyDateFilter(query, startDate, endDate, 'bookingDate');
 
-    if (airlineId) query.airlineId = airlineId;
+    if (companyId) query.companyId = companyId;
     if (customerId) query.customerId = customerId;
     if (sector) query.sector = new RegExp(sector.trim(), 'i');
 
     const bookings = await Booking.find(query)
       .populate('customer', 'name customerCode')
-      .populate('airline', 'name code')
+      .populate('company', 'name code')
       .sort({ bookingDate: -1 })
       .lean();
 
@@ -242,39 +242,40 @@ exports.getExpenseReport = async (req, res, next) => {
 };
 
 /**
- * 7. Airline Share & Revenue Report
+ * 7. Company Share & Revenue Report
  */
-exports.getAirlineReport = async (req, res, next) => {
+exports.getCompanyReport = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
     const bookingQuery = { status: { $ne: 'cancelled' } };
     applyDateFilter(bookingQuery, startDate, endDate, 'bookingDate');
 
-    const airlines = await Airline.find();
-    const bookings = await Booking.find(bookingQuery).select('airlineId totalAmount amountReceived');
+    const companies = await Company.find();
+    const bookings = await Booking.find(bookingQuery).select('companyId totalAmount amountReceived');
 
-    const airlineBookingsMap = {};
+    const companyBookingsMap = {};
     bookings.forEach(b => {
-      const aId = String(b.airlineId);
-      if (!airlineBookingsMap[aId]) airlineBookingsMap[aId] = [];
-      airlineBookingsMap[aId].push(b);
+      const cId = String(b.companyId);
+      if (!companyBookingsMap[cId]) companyBookingsMap[cId] = [];
+      companyBookingsMap[cId].push(b);
     });
 
     let overallBookings = 0;
     let overallRevenue = 0;
 
-    const stats = airlines.map(a => {
-      const bList = airlineBookingsMap[String(a._id)] || [];
+    const stats = companies.map(c => {
+      const bList = companyBookingsMap[String(c._id)] || [];
       const bookingsCount = bList.length;
       const revenue = bList.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
       overallBookings += bookingsCount;
       overallRevenue += revenue;
 
       return {
-        id: a.id || a._id,
-        name: a.name,
-        code: a.code,
-        country: a.country,
+        id: c.id || c._id,
+        name: c.name,
+        code: c.code,
+        country: c.country,
+        type: c.type || 'flight',
         bookingsCount,
         revenue: toDecimal(revenue)
       };
@@ -290,7 +291,7 @@ exports.getAirlineReport = async (req, res, next) => {
       success: true,
       totalBookings: overallBookings,
       totalRevenue: toDecimal(overallRevenue),
-      airlines: report
+      companies: report
     });
   } catch (error) {
     next(error);

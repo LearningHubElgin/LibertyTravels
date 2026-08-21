@@ -166,8 +166,8 @@ exports.getDashboardCharts = async (req, res, next) => {
     const bookings = await Booking.find({
       bookingDate: { $gte: startDate, $lte: endDate }
     })
-      .select('bookingDate totalAmount amountReceived status airlineId')
-      .populate('airline', 'name code')
+      .select('bookingDate totalAmount amountReceived status companyId')
+      .populate('company', 'name code')
       .lean();
 
     const expenses = await Expense.find({
@@ -226,20 +226,21 @@ exports.getDashboardCharts = async (req, res, next) => {
       count
     }));
 
-    // Airline-wise Bookings & Revenue
-    const airlineMap = {};
+    // Company-wise Bookings & Revenue
+    const companyMap = {};
     bookings.forEach(b => {
-      const name = b.airline ? b.airline.name : 'Other';
-      if (!airlineMap[name]) {
-        airlineMap[name] = { airline: name, bookings: 0, revenue: 0 };
+      const compObj = b.company;
+      const name = compObj ? compObj.name : 'Other';
+      if (!companyMap[name]) {
+        companyMap[name] = { company: name, bookings: 0, revenue: 0 };
       }
-      airlineMap[name].bookings += 1;
+      companyMap[name].bookings += 1;
       if (b.status !== 'cancelled') {
-        airlineMap[name].revenue += parseFloat(b.totalAmount || 0);
+        companyMap[name].revenue += parseFloat(b.totalAmount || 0);
       }
     });
 
-    const airlineStats = Object.values(airlineMap).map(a => ({
+    const companyStats = Object.values(companyMap).map(a => ({
       ...a,
       revenue: toDecimal(a.revenue)
     })).sort((a, b) => b.revenue - a.revenue);
@@ -248,7 +249,7 @@ exports.getDashboardCharts = async (req, res, next) => {
       success: true,
       salesOverview,
       statusDonut,
-      airlineStats
+      companyStats
     });
   } catch (error) {
     next(error);
@@ -263,7 +264,7 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(6)
       .populate('customer', 'name phone')
-      .populate('airline', 'name code')
+      .populate('company', 'name code')
       .populate('passengers', 'firstName lastName')
       .lean();
 
@@ -274,7 +275,7 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .sort({ journeyDate: 1 })
       .limit(6)
       .populate('customer', 'name phone')
-      .populate('airline', 'name code')
+      .populate('company', 'name code')
       .populate('passengers', 'firstName lastName title')
       .lean();
 

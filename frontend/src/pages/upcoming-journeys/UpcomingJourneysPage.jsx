@@ -88,15 +88,18 @@ export const UpcomingJourneysPage = () => {
       }
     },
     {
-      header: 'Flight & Sector',
-      render: (row) => (
-        <div>
-          <span className="font-bold text-slate-900 block">{row.sector}</span>
-          <span className="text-[11px] text-slate-500 font-mono">
-            {row.airline?.code || ''} {row.flightNumber} ({row.airline?.name})
-          </span>
-        </div>
-      )
+      header: 'Service & Sector',
+      render: (row) => {
+        const compObj = row.company;
+        return (
+          <div>
+            <span className="font-bold text-slate-900 block">{row.sector}</span>
+            <span className="text-[11px] text-slate-500 font-mono">
+              {compObj?.code || ''} {row.flightNumber ? `${row.flightNumber} ` : ''}{compObj?.name ? `(${compObj.name})` : ''}
+            </span>
+          </div>
+        );
+      }
     },
     {
       header: 'PNR Number',

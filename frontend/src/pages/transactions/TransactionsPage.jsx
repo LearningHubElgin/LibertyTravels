@@ -380,7 +380,7 @@ export const TransactionsPage = () => {
             <input
               type="text"
               required
-              placeholder="e.g. Incentive received from airline or account adjustment"
+              placeholder="e.g. Incentive received from supplier/partner or account adjustment"
               value={txnForm.description}
               onChange={(e) => setTxnForm({ ...txnForm, description: e.target.value })}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"

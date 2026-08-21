@@ -60,7 +60,7 @@ exports.getUpcomingJourneys = async (req, res, next) => {
     const total = await Booking.countDocuments(query);
     const journeys = await Booking.find(query)
       .populate('customer', 'name phone email')
-      .populate('airline', 'name code')
+      .populate('company', 'name code type')
       .populate('passengers', 'title firstName lastName phone passportNumber')
       .sort({ journeyDate: 1, flightNumber: 1 })
       .skip(skip)

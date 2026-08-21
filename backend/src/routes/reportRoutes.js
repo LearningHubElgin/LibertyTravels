@@ -11,6 +11,6 @@ router.get('/revenue', reportController.getRevenueReport);
 router.get('/profit', reportController.getProfitReport);
 router.get('/outstanding', reportController.getCustomerOutstandingReport);
 router.get('/expenses', reportController.getExpenseReport);
-router.get('/airlines', reportController.getAirlineReport);
+router.get('/companies', reportController.getCompanyReport);
 
 module.exports = router;

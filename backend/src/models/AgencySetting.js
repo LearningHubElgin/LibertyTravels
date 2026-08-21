@@ -45,7 +45,7 @@ const agencySettingSchema = new mongoose.Schema(
     },
     termsAndConditions: {
       type: String,
-      default: '1. All tickets are subject to airline fare rules and cancellation policies.\n2. Date change or cancellation penalties are levied as per respective carrier rules.\n3. Refunds, if applicable, will be credited after deduction of airline charges and agency service fees.\n4. Valid passport (min 6 months validity) and relevant visas are the sole responsibility of the passenger.\n5. Please report at airport check-in at least 3 hours prior for international and 2 hours for domestic flights.'
+      default: '1. All tickets and vouchers are subject to carrier / supplier fare rules and cancellation policies.\n2. Date change or cancellation penalties are levied as per respective supplier rules.\n3. Refunds, if applicable, will be credited after deduction of supplier cancellation charges and agency service fees.\n4. Valid Govt ID / Passport (min 6 months validity) and relevant visas are the responsibility of the passenger.\n5. Please report for departure well in advance as per service guidelines.'
     },
     invoiceFooter: {
       type: String,

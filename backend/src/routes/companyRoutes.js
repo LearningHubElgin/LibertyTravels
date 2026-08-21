@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const airlineController = require('../controllers/airlineController');
+const companyController = require('../controllers/companyController');
 const { authenticate, authorizeAdmin } = require('../middleware/auth');
 
 router.use(authenticate, authorizeAdmin);
 
-router.get('/', airlineController.getAirlines);
-router.post('/', airlineController.createAirline);
-router.put('/:id', airlineController.updateAirline);
-router.delete('/:id', airlineController.deleteAirline);
+router.get('/', companyController.getCompanies);
+router.post('/', companyController.createCompany);
+router.put('/:id', companyController.updateCompany);
+router.delete('/:id', companyController.deleteCompany);
 
 module.exports = router;
 

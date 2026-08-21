@@ -97,12 +97,12 @@ export const NewBookingPage = () => {
   const loadMasterData = async () => {
     try {
       const [companiesRes, customersRes] = await Promise.all([
-        api.get('/companies?status=active').catch(() => api.get('/airlines?status=active')),
+        api.get('/companies?status=active'),
         api.get('/customers?limit=200')
       ]);
 
       if (companiesRes.data.success) {
-        setCompanies(companiesRes.data.companies || companiesRes.data.airlines || []);
+        setCompanies(companiesRes.data.companies || []);
       }
       if (customersRes.data.success) {
         setCustomers(customersRes.data.customers || []);
@@ -156,7 +156,7 @@ export const NewBookingPage = () => {
       activeTab: 'bg-sky-600 text-white shadow-sky-600/30',
       refPlaceholder: 'e.g. EK98XA or 6E-208',
       descPlaceholder: 'e.g. DEL-DXB Flight EK-511 / Economy',
-      companyLabel: 'Airline / Airline Partner'
+      companyLabel: 'Flight Operator / Carrier'
     },
     train: {
       name: 'Train',
@@ -240,7 +240,7 @@ export const NewBookingPage = () => {
         type: formData.serviceType
       });
       if (res.data.success) {
-        const created = res.data.company || res.data.airline;
+        const created = res.data.company;
         success(`Company ${created.name} added!`);
         setCompanies((prev) => [...prev, created]);
         setFormData((prev) => ({ ...prev, companyId: created.id || created._id }));
@@ -313,7 +313,6 @@ export const NewBookingPage = () => {
       const payload = {
         serviceType: formData.serviceType,
         companyId: formData.companyId,
-        airlineId: formData.companyId,
         bookingDate: formData.bookingDate,
         journeyDate: formData.journeyDate || formData.bookingDate,
         referenceNo: formData.referenceNo ? formData.referenceNo.trim().toUpperCase() : undefined,

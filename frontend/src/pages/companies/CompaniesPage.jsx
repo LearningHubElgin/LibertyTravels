@@ -61,9 +61,9 @@ export const CompaniesPage = () => {
       if (statusFilter) query += `status=${statusFilter}&`;
       if (typeFilter && typeFilter !== 'all') query += `type=${typeFilter}&`;
 
-      const res = await api.get(`/companies?${query}`).catch(() => api.get(`/airlines?${query}`));
+      const res = await api.get(`/companies?${query}`);
       if (res.data.success) {
-        setCompanies(res.data.companies || res.data.airlines || []);
+        setCompanies(res.data.companies || []);
       }
     } catch (e) {
       console.error('Failed to load companies:', e);
@@ -120,14 +120,14 @@ export const CompaniesPage = () => {
     try {
       if (editingCompany) {
         const id = editingCompany.id || editingCompany._id;
-        const res = await api.put(`/companies/${id}`, companyForm).catch(() => api.put(`/airlines/${id}`, companyForm));
+        const res = await api.put(`/companies/${id}`, companyForm);
         if (res.data.success) {
           success(`Company ${companyForm.name} updated successfully!`);
           setIsModalOpen(false);
           fetchCompanies();
         }
       } else {
-        const res = await api.post('/companies', companyForm).catch(() => api.post('/airlines', companyForm));
+        const res = await api.post('/companies', companyForm);
         if (res.data.success) {
           success(`Company ${companyForm.name} added successfully!`);
           setIsModalOpen(false);
@@ -145,7 +145,7 @@ export const CompaniesPage = () => {
     if (!deleteCompanyId) return;
     setActionLoading(true);
     try {
-      const res = await api.delete(`/companies/${deleteCompanyId}`).catch(() => api.delete(`/airlines/${deleteCompanyId}`));
+      const res = await api.delete(`/companies/${deleteCompanyId}`);
       if (res.data.success) {
         success('Company deleted successfully.');
         setDeleteCompanyId(null);
@@ -277,7 +277,7 @@ export const CompaniesPage = () => {
     <div className="space-y-4 sm:space-y-6 w-full pb-8 min-w-0">
       <PageHeader
         title="Companies & Suppliers"
-        subtitle="Manage airline partners, railway operators, bus lines, hotels, and car rental vendors"
+        subtitle="Manage flight operators, railway networks, bus lines, hotel chains, and car rental vendors"
         icon={Building2}
         breadcrumbs={['Master', 'Companies']}
         actions={
@@ -403,7 +403,7 @@ export const CompaniesPage = () => {
               <input
                 type="text"
                 required
-                placeholder="e.g. Indigo Airlines, IRCTC, Taj Hotels, RedBus, Uber"
+                placeholder="e.g. Indigo, Air India, IRCTC, Taj Hotels, RedBus, Uber"
                 value={companyForm.name}
                 onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
