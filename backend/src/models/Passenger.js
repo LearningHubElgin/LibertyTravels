@@ -25,7 +25,7 @@ const passengerSchema = new mongoose.Schema(
     },
     lastName: {
       type: String,
-      required: [true, 'Passenger last name is required'],
+      default: '',
       trim: true
     },
     dateOfBirth: {

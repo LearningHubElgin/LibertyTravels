@@ -162,7 +162,9 @@ export const BookingDetailsPage = () => {
   }
 
   const comp = booking.company || booking.airline;
+  const cost = parseFloat(booking.costPrice || 0);
   const sell = parseFloat(booking.sellPrice || booking.totalAmount || 0);
+  const profit = booking.profit !== undefined ? parseFloat(booking.profit) : Math.round((sell - cost) * 100) / 100;
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-8 sm:pb-12 min-w-0">

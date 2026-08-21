@@ -262,6 +262,17 @@ exports.createBooking = async (req, res, next) => {
 
     const referenceNo = customRefNo && customRefNo.trim() ? customRefNo.trim().toUpperCase() : await generateBookingReference();
 
+    // Check if custom reference number already exists to give a clear user-friendly response
+    if (customRefNo && customRefNo.trim()) {
+      const existingRef = await Booking.findOne({ referenceNo });
+      if (existingRef) {
+        return res.status(409).json({
+          success: false,
+          message: `Booking Reference No / PNR "${referenceNo}" already exists in the system. Please enter a different reference number or leave it blank to auto-generate.`
+        });
+      }
+    }
+
     // Determine primary passenger name
     let primaryPassengerName = passengerName ? passengerName.trim() : '';
     if (!primaryPassengerName && passengers && passengers.length > 0) {
@@ -270,6 +281,9 @@ exports.createBooking = async (req, res, next) => {
     }
     if (!primaryPassengerName && customerObj) {
       primaryPassengerName = customerObj.name;
+    }
+    if (!primaryPassengerName) {
+      primaryPassengerName = 'Passenger';
     }
 
     const booking = await Booking.create({
@@ -313,7 +327,7 @@ exports.createBooking = async (req, res, next) => {
         bookingId: booking._id,
         customerId,
         title: p.title || 'Mr',
-        firstName: (p.firstName || primaryPassengerName.split(' ')[0] || '').trim(),
+        firstName: (p.firstName || primaryPassengerName.split(' ')[0] || 'Passenger').trim(),
         lastName: (p.lastName || primaryPassengerName.split(' ').slice(1).join(' ') || '').trim(),
         dateOfBirth: p.dateOfBirth || '',
         passportNumber: p.passportNumber ? p.passportNumber.trim().toUpperCase() : '',

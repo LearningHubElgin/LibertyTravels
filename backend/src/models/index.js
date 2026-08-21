@@ -1,6 +1,6 @@
 const User = require('./User');
 const Customer = require('./Customer');
-const Airline = require('./Airline');
+const Company = require('./Company');
 const Booking = require('./Booking');
 const Passenger = require('./Passenger');
 const Payment = require('./Payment');
@@ -13,8 +13,8 @@ const Notification = require('./Notification');
 module.exports = {
   User,
   Customer,
-  Airline,
-  Company: Airline,
+  Company,
+  Airline: Company,
   Booking,
   Passenger,
   Payment,
@@ -24,4 +24,5 @@ module.exports = {
   ActivityLog,
   Notification
 };
+
 

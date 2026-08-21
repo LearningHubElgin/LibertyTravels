@@ -375,29 +375,29 @@ export const NewBookingPage = () => {
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 w-full min-w-0">
         
         {/* TOP CARD: SERVICE TYPE SELECTION (FLIGHT / TRAIN / BUS / HOTEL / CAR) */}
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden p-3 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-2.5 sm:pb-3.5 border-b border-slate-100">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-md bg-brand-600 text-white font-bold text-[10px] flex items-center justify-center">1</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-brand-600 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center">1</span>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
                   Service Category Option
                 </h3>
               </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">
                 Select from the 5 service options: Flight, Train, Bus, Hotel, or Car
               </p>
             </div>
 
             {/* Quick Dropdown Selector */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 self-start sm:self-auto">
               <label className="text-xs font-semibold text-slate-600 whitespace-nowrap hidden sm:inline">
                 Service Dropdown:
               </label>
               <select
                 value={formData.serviceType}
                 onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl font-bold text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
+                className="px-2.5 py-1 sm:px-3 sm:py-1.5 border border-slate-200 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
               >
                 <option value="flight">✈️ Flight Booking</option>
                 <option value="train">🚆 Train Booking</option>
@@ -409,7 +409,7 @@ export const NewBookingPage = () => {
           </div>
 
           {/* Visual Interactive Category Tabs */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mt-3.5">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-3 mt-2.5 sm:mt-3.5">
             {Object.entries(serviceConfigs).map(([typeKey, config]) => {
               const Icon = config.icon;
               const isSelected = formData.serviceType === typeKey;
@@ -418,14 +418,14 @@ export const NewBookingPage = () => {
                   key={typeKey}
                   type="button"
                   onClick={() => setFormData({ ...formData, serviceType: typeKey })}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex flex-col items-center justify-center py-2 px-1 sm:p-3 rounded-lg sm:rounded-xl border transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? `${config.activeTab} border-transparent shadow-md scale-[1.02]`
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-700'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 mb-1 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
-                  <span className="text-xs font-bold">{config.name}</span>
+                  <Icon className={`w-3.5 h-3.5 sm:w-5 sm:h-5 mb-0.5 sm:mb-1 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
+                  <span className="text-[10px] sm:text-xs font-bold leading-tight truncate">{config.name}</span>
                 </button>
               );
             })}

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const airlineSchema = new mongoose.Schema(
+const companySchema = new mongoose.Schema(
   {
     code: {
       type: String,
@@ -58,5 +58,12 @@ const airlineSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.models.Airline || mongoose.model('Airline', airlineSchema);
+// Register Company model (mapped to 'airlines' MongoDB collection)
+const Company = mongoose.models.Company || mongoose.model('Company', companySchema, 'airlines');
 
+// Also register Airline model alias so existing database relations resolve seamlessly
+if (!mongoose.models.Airline) {
+  mongoose.model('Airline', companySchema, 'airlines');
+}
+
+module.exports = Company;

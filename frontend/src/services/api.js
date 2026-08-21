@@ -3,6 +3,7 @@ import axios from 'axios';
 // Toggle API URL: Comment / Uncomment the option you want to use
 const defaultBaseUrl = 'https://libertytourandtravels.onrender.com/api'; // Production (Render)
 // const defaultBaseUrl = 'http://localhost:5000/api'; // Local Development (Localhost)
+
 // 
 
 const api = axios.create({
