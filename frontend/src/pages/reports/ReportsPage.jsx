@@ -12,7 +12,8 @@ import {
   Calendar,
   Filter,
   ArrowDownRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Building2
 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -214,19 +215,19 @@ export const ReportsPage = () => {
             {activeReport === 'sales' && salesData && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                  <div className="p-2.5 sm:p-4 bg-slate-50 rounded-lg sm:rounded-xl border border-slate-200 min-w-0">
+                  <div className="p-2.5 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 border-l-4 border-l-brand-600 shadow-xs min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 truncate">Total Bookings</p>
                     <p className="text-xs sm:text-xl font-bold text-slate-900 mt-0.5 sm:mt-1 font-mono truncate">{salesData.summary?.totalBookings}</p>
                   </div>
-                  <div className="p-2.5 sm:p-4 bg-brand-50/50 rounded-lg sm:rounded-xl border border-brand-100 min-w-0">
-                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-brand-600 truncate">Gross Sales</p>
+                  <div className="p-2.5 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 border-l-4 border-l-blue-500 shadow-xs min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-blue-600 truncate">Gross Sales</p>
                     <p className="text-xs sm:text-xl font-bold text-brand-700 mt-0.5 sm:mt-1 font-mono truncate">{formatCurrency(salesData.summary?.totalRevenue)}</p>
                   </div>
-                  <div className="p-2.5 sm:p-4 bg-emerald-50/50 rounded-lg sm:rounded-xl border border-emerald-100 min-w-0">
+                  <div className="p-2.5 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 border-l-4 border-l-emerald-500 shadow-xs min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase font-bold text-emerald-600 truncate">Collected</p>
                     <p className="text-xs sm:text-xl font-bold text-emerald-700 mt-0.5 sm:mt-1 font-mono truncate">{formatCurrency(salesData.summary?.totalReceived)}</p>
                   </div>
-                  <div className="p-2.5 sm:p-4 bg-rose-50/50 rounded-lg sm:rounded-xl border border-rose-100 min-w-0">
+                  <div className="p-2.5 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 border-l-4 border-l-rose-500 shadow-xs min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase font-bold text-rose-600 truncate">Receivables</p>
                     <p className="text-xs sm:text-xl font-bold text-rose-700 mt-0.5 sm:mt-1 font-mono truncate">{formatCurrency(salesData.summary?.totalOutstanding)}</p>
                   </div>
@@ -247,8 +248,8 @@ export const ReportsPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
-                      {salesData.bookings?.map((b) => (
-                        <tr key={b.id} className="hover:bg-slate-50">
+                      {salesData.bookings?.map((b, idx) => (
+                        <tr key={b.id || b._id || b.referenceNo || `sale-${idx}`} className="hover:bg-slate-50">
                           <td className="py-2.5 px-4 font-bold text-brand-700">{b.referenceNo}</td>
                           <td className="py-2.5 px-4 font-sans font-semibold text-slate-900">{b.customer?.name}</td>
                           <td className="py-2.5 px-4 font-sans font-bold">{b.sector}</td>
@@ -395,8 +396,8 @@ export const ReportsPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
-                      {outstandingData.customers?.map((c) => (
-                        <tr key={c.id} className="hover:bg-slate-50">
+                      {outstandingData.customers?.map((c, idx) => (
+                        <tr key={c.id || c._id || c.customerCode || `cust-${idx}`} className="hover:bg-slate-50">
                           <td className="py-2.5 px-4 font-bold text-brand-700">{c.customerCode}</td>
                           <td className="py-2.5 px-4 font-sans font-bold text-slate-900">{c.name}</td>
                           <td className="py-2.5 px-4 font-sans text-slate-600">{c.phone}</td>
@@ -432,8 +433,8 @@ export const ReportsPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {expenseData.categories?.map((cat) => (
-                        <tr key={cat.category} className="hover:bg-slate-50">
+                      {expenseData.categories?.map((cat, idx) => (
+                        <tr key={cat.category || `cat-${idx}`} className="hover:bg-slate-50">
                           <td className="py-2.5 px-4 font-bold text-slate-900">{cat.category}</td>
                           <td className="py-2.5 px-4 text-right font-mono font-bold text-rose-600">{formatCurrency(cat.amount)}</td>
                           <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-700">{cat.percentage}%</td>
@@ -461,8 +462,8 @@ export const ReportsPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
-                      {companyData.companies?.map((a) => (
-                        <tr key={a.id} className="hover:bg-slate-50">
+                      {companyData.companies?.map((a, idx) => (
+                        <tr key={a.id || a._id || a.code || `comp-${idx}`} className="hover:bg-slate-50">
                           <td className="py-2.5 px-4 font-sans font-bold text-slate-900">{a.name}</td>
                           <td className="py-2.5 px-4 font-bold text-brand-700">{a.code}</td>
                           <td className="py-2.5 px-4 text-center font-bold">{a.bookingsCount}</td>

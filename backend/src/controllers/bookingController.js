@@ -389,6 +389,13 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
+    if (chosenCompanyId) {
+      const ticketsUsedCount = passengerRecords.length || 1;
+      await Company.findByIdAndUpdate(chosenCompanyId, {
+        $inc: { usedTickets: ticketsUsedCount }
+      });
+    }
+
     await Notification.create({
       userId: null,
       title: `New ${typeLabel} Booking Created`,

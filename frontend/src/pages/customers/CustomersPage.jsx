@@ -356,20 +356,20 @@ export const CustomersPage = () => {
         >
           <div className="space-y-6">
             {/* KPI Summary Banner */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-              <div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 border-l-4 border-l-brand-600">
                 <span className="text-slate-400 font-medium block">Total Bookings</span>
                 <span className="text-lg font-bold text-slate-900 font-mono">{viewingCustomer.totalBookings}</span>
               </div>
-              <div>
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 border-l-4 border-l-blue-500">
                 <span className="text-slate-400 font-medium block">Total Charged</span>
                 <span className="text-lg font-bold text-slate-900 font-mono">{formatCurrency(viewingCustomer.totalAmount)}</span>
               </div>
-              <div>
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 border-l-4 border-l-emerald-500">
                 <span className="text-slate-400 font-medium block">Paid to Date</span>
                 <span className="text-lg font-bold text-emerald-600 font-mono">{formatCurrency(viewingCustomer.paidAmount)}</span>
               </div>
-              <div>
+              <div className={`bg-slate-50 p-3.5 rounded-xl border border-slate-200 border-l-4 ${parseFloat(viewingCustomer.outstandingAmount || 0) > 0 ? 'border-l-rose-500' : 'border-l-emerald-500'}`}>
                 <span className="text-slate-400 font-medium block">Outstanding Balance</span>
                 <span className={`text-lg font-bold font-mono ${parseFloat(viewingCustomer.outstandingAmount || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                   {formatCurrency(viewingCustomer.outstandingAmount)}
@@ -402,8 +402,8 @@ export const CustomersPage = () => {
                   </div>
                 ) : viewingCustomer.bookings && viewingCustomer.bookings.length > 0 ? (
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs">
-                    {viewingCustomer.bookings.map((b) => (
-                      <div key={b.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
+                    {viewingCustomer.bookings.map((b, idx) => (
+                      <div key={b.id || b._id || b.referenceNo || `cb-${idx}`} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-bold text-brand-700">{b.referenceNo}</span>
@@ -449,8 +449,8 @@ export const CustomersPage = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {customerLedger?.ledger?.length > 0 ? (
-                          customerLedger.ledger.map((entry) => (
-                            <tr key={entry.id} className="hover:bg-slate-50">
+                          customerLedger.ledger.map((entry, idx) => (
+                            <tr key={entry.id || entry._id || entry.referenceNo || `cledger-${idx}`} className="hover:bg-slate-50">
                               <td className="py-2.5 px-3 text-slate-500">{formatDate(entry.date)}</td>
                               <td className="py-2.5 px-3 font-bold text-brand-700">{entry.referenceNo}</td>
                               <td className="py-2.5 px-3 font-sans max-w-xs truncate">{entry.description}</td>

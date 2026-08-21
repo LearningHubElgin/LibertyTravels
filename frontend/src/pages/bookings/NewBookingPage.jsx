@@ -23,7 +23,9 @@ import {
   ChevronDown,
   Search,
   Percent,
-  Layers
+  Layers,
+  Ticket,
+  Wallet
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -89,9 +91,8 @@ export const NewBookingPage = () => {
     notes: ''
   });
 
-  // Additional passengers list (for multi-pax)
-  const [additionalPassengers, setAdditionalPassengers] = useState([]);
-  const [showAdditionalPax, setShowAdditionalPax] = useState(false);
+  // Extra passengers / guests count
+  const [extraGuests, setExtraGuests] = useState(0);
 
   // Load Companies & Customers
   const loadMasterData = async () => {
@@ -199,32 +200,13 @@ export const NewBookingPage = () => {
   const currentConfig = serviceConfigs[formData.serviceType] || serviceConfigs.flight;
   const CurrentIcon = currentConfig.icon;
 
-  // Passenger management
-  const addPassenger = () => {
-    setAdditionalPassengers((prev) => [
-      ...prev,
-      {
-        title: 'Mr',
-        firstName: '',
-        lastName: '',
-        dateOfBirth: '',
-        passportNumber: '',
-        phone: ''
-      }
-    ]);
-  };
+  // Selected company object with stock & balance
+  const selectedCompanyObj = useMemo(() => {
+    return companies.find((c) => String(c.id || c._id) === String(formData.companyId));
+  }, [companies, formData.companyId]);
 
-  const removePassenger = (index) => {
-    setAdditionalPassengers((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updatePassenger = (index, field, value) => {
-    setAdditionalPassengers((prev) => {
-      const updated = [...prev];
-      updated[index][field] = value;
-      return updated;
-    });
-  };
+  // Total Pax Count (1 Primary + Extra Guests)
+  const totalPassengersCount = 1 + (parseInt(extraGuests, 10) || 0);
 
   // Quick Add Company Handler
   const handleQuickAddCompany = async (e) => {
@@ -289,7 +271,8 @@ export const NewBookingPage = () => {
 
     setSubmitting(true);
     try {
-      // Build passengers payload
+      // Build passengers payload based on Lead Pax + Extra Guests
+      const totalPax = 1 + (parseInt(extraGuests, 10) || 0);
       const passengersPayload = [];
       const nameParts = formData.passengerName.trim().split(' ');
       const p1FirstName = nameParts[0] || formData.passengerName.trim();
@@ -302,11 +285,12 @@ export const NewBookingPage = () => {
         phone: formData.customerPhone || ''
       });
 
-      if (additionalPassengers.length > 0) {
-        additionalPassengers.forEach((p) => {
-          if (p.firstName.trim()) {
-            passengersPayload.push(p);
-          }
+      for (let i = 1; i < totalPax; i++) {
+        passengersPayload.push({
+          title: 'Mr',
+          firstName: `${p1FirstName} (Guest ${i})`,
+          lastName: p1LastName,
+          phone: ''
         });
       }
 
@@ -320,6 +304,8 @@ export const NewBookingPage = () => {
         description: formData.description.trim() || `${formData.serviceType.toUpperCase()} Booking`,
         sector: formData.description.trim() || `${formData.serviceType.toUpperCase()} Booking`,
         passengerName: formData.passengerName.trim(),
+        passengerCount: totalPax,
+        extraGuests: parseInt(extraGuests, 10) || 0,
         
         costPrice: cost,
         sellPrice: sell,
@@ -482,11 +468,65 @@ export const NewBookingPage = () => {
                       <option value="">-- Choose Company ({currentConfig.name}) --</option>
                       {relevantCompanies.map((c) => (
                         <option key={c.id || c._id} value={c.id || c._id}>
-                          {c.name} ({c.code}) {c.type ? `• ${c.type.toUpperCase()}` : ''}
+                          {c.name} ({c.code}) {c.type ? `• ${c.type.toUpperCase()}` : ''} {c.availableTickets !== undefined ? `[${c.availableTickets} Tkts Avail]` : ''}
                         </option>
                       ))}
                     </select>
                   </div>
+
+                  {/* Live Selected Company Stock & Balance Info Box */}
+                  {selectedCompanyObj && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-sm border border-slate-700 animate-fadeIn">
+                      <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-brand-500/20 text-brand-400 font-mono font-bold text-xs flex items-center justify-center border border-brand-500/30 uppercase">
+                            {selectedCompanyObj.code?.slice(0, 3)}
+                          </span>
+                          <div>
+                            <span className="font-bold text-xs text-white block">{selectedCompanyObj.name}</span>
+                            <span className="text-[10px] text-slate-400 capitalize">{selectedCompanyObj.type || 'Supplier'} Provider</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                            (selectedCompanyObj.availableTickets ?? 0) > 0
+                              ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
+                              : 'text-amber-400 bg-amber-950/60 border-amber-800/60'
+                          }`}
+                        >
+                          <Ticket className="w-3 h-3" />
+                          {(selectedCompanyObj.availableTickets ?? 0).toLocaleString('en-IN')} Tickets Avail
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-[11px]">
+                        <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
+                          <p className="text-[10px] text-slate-400 font-medium">Available Stock</p>
+                          <p className="font-mono font-black text-emerald-400 text-xs mt-0.5">
+                            {(selectedCompanyObj.availableTickets ?? 0).toLocaleString('en-IN')}
+                            <span className="text-[10px] text-slate-400 font-normal ml-0.5">
+                              / {selectedCompanyObj.totalPurchasedTickets || 0}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
+                          <p className="text-[10px] text-slate-400 font-medium">Wallet / Balance</p>
+                          <p className="font-mono font-black text-teal-300 text-xs mt-0.5">
+                            ₹{(selectedCompanyObj.walletBalance || 0).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
+                          <p className="text-[10px] text-slate-400 font-medium">Approx Unit Cost</p>
+                          <p className="font-mono font-black text-amber-300 text-xs mt-0.5">
+                            ₹{selectedCompanyObj.ticketUnitPrice ? selectedCompanyObj.ticketUnitPrice : '0'}/tkt
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-slate-400 mt-1">
                     Fetched from Company Master module (accessible via sidebar "Companies")
                   </p>
@@ -539,102 +579,93 @@ export const NewBookingPage = () => {
                   </div>
                 </div>
 
-                {/* 5. PASSENGER NAME */}
-                <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-slate-800">
-                      Passenger Name *
+                {/* 5. LEAD PASSENGER NAME & EXTRA GUESTS COUNT */}
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50/70 rounded-xl border border-slate-200">
+                  {/* Lead Passenger */}
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1 text-xs">
+                      Passenger Name (Lead) *
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!showAdditionalPax) {
-                          setShowAdditionalPax(true);
-                          if (additionalPassengers.length === 0) addPassenger();
-                        } else {
-                          addPassenger();
-                        }
-                      }}
-                      className="text-[11px] font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Additional Passenger
-                    </button>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Rahul Sharma"
+                        value={formData.passengerName}
+                        onChange={(e) => setFormData({ ...formData, passengerName: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none font-semibold text-slate-900 text-xs"
+                      />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Rahul Sharma"
-                      value={formData.passengerName}
-                      onChange={(e) => setFormData({ ...formData, passengerName: e.target.value })}
-                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none font-semibold text-slate-900"
-                    />
-                  </div>
-                </div>
 
-                {/* Additional Passengers Expandable List */}
-                {showAdditionalPax && additionalPassengers.length > 0 && (
-                  <div className="sm:col-span-2 space-y-2.5 pt-2 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                        Additional Passengers ({additionalPassengers.length})
+                  {/* Extra Passengers / Guests Counter */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-800 text-xs">
+                        Extra Passengers / Guests
+                      </label>
+                      <span className="text-[10px] font-mono font-bold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.2 rounded-full">
+                        {totalPassengersCount} {totalPassengersCount === 1 ? 'Total Ticket' : 'Total Tickets'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={addPassenger}
-                        className="text-[11px] font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add One More
-                      </button>
                     </div>
 
-                    {additionalPassengers.map((p, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center gap-2"
-                      >
-                        <div className="w-full sm:w-20">
-                          <select
-                            value={p.title}
-                            onChange={(e) => updatePassenger(idx, 'title', e.target.value)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                          >
-                            <option value="Mr">Mr</option>
-                            <option value="Mrs">Mrs</option>
-                            <option value="Ms">Ms</option>
-                            <option value="Master">Master</option>
-                          </select>
-                        </div>
-                        <div className="flex-1 w-full">
-                          <input
-                            type="text"
-                            placeholder={`Passenger #${idx + 2} First Name`}
-                            value={p.firstName}
-                            onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                          />
-                        </div>
-                        <div className="flex-1 w-full">
-                          <input
-                            type="text"
-                            placeholder="Last Name"
-                            value={p.lastName}
-                            onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                          />
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-slate-200 rounded-xl bg-white p-0.5 shadow-xs">
                         <button
                           type="button"
-                          onClick={() => removePassenger(idx)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0"
+                          onClick={() => setExtraGuests((prev) => Math.max(0, (parseInt(prev, 10) || 0) - 1))}
+                          disabled={extraGuests <= 0}
+                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center disabled:opacity-30 transition text-sm cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={extraGuests}
+                          onWheel={(e) => e.target.blur()}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                            setExtraGuests(val);
+                          }}
+                          className="w-10 text-center font-mono font-bold text-slate-900 text-xs focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setExtraGuests((prev) => (parseInt(prev, 10) || 0) + 1)}
+                          className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold flex items-center justify-center transition text-sm cursor-pointer"
+                        >
+                          +
                         </button>
                       </div>
-                    ))}
+
+                      {/* Quick guest count chips */}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {[0, 1, 2, 3, 4, 5].map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setExtraGuests(num)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer ${
+                              extraGuests === num
+                                ? 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 hover:bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            +{num}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {extraGuests === 0
+                        ? '1 single ticket will be booked for the lead passenger.'
+                        : `${totalPassengersCount} tickets will be booked (1 Lead + ${extraGuests} Extra ${extraGuests === 1 ? 'Guest' : 'Guests'}).`}
+                    </p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -814,6 +845,7 @@ export const NewBookingPage = () => {
                       step="0.01"
                       placeholder="0.00"
                       value={formData.costPrice || ''}
+                      onWheel={(e) => e.target.blur()}
                       onChange={(e) => setFormData({ ...formData, costPrice: parseFloat(e.target.value) || 0 })}
                       className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                     />
@@ -834,6 +866,7 @@ export const NewBookingPage = () => {
                       required
                       placeholder="0.00"
                       value={formData.sellPrice || ''}
+                      onWheel={(e) => e.target.blur()}
                       onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })}
                       className="w-full pl-8 pr-3 py-2 border border-brand-300 bg-brand-50/20 rounded-xl font-mono font-black text-brand-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                     />
@@ -873,6 +906,7 @@ export const NewBookingPage = () => {
                         step="0.01"
                         placeholder="0.00"
                         value={formData.initialPayment || ''}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => setFormData({ ...formData, initialPayment: parseFloat(e.target.value) || 0 })}
                         className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                       />

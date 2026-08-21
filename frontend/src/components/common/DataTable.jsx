@@ -10,6 +10,7 @@ export const DataTable = ({
   pagination,
   onPageChange,
   onLimitChange,
+  onRowClick,
   emptyTitle = 'No data available',
   emptyDescription = 'No records match your current filter criteria.',
   emptyAction,
@@ -56,8 +57,24 @@ export const DataTable = ({
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {data.map((row, rowIdx) => (
               <tr
-                key={row.id || rowIdx}
-                className="hover:bg-slate-50/80 transition-colors duration-150 group"
+                key={row.id || row._id || `row-${rowIdx}`}
+                onClick={(e) => {
+                  if (
+                    e.target.closest('button') ||
+                    e.target.closest('a') ||
+                    e.target.closest('input') ||
+                    e.target.closest('select') ||
+                    e.target.closest('[data-stop-propagation]')
+                  ) {
+                    return;
+                  }
+                  if (onRowClick) onRowClick(row, rowIdx);
+                }}
+                className={`transition-colors duration-150 group ${
+                  onRowClick
+                    ? 'cursor-pointer hover:bg-brand-50/40 hover:shadow-xs'
+                    : 'hover:bg-slate-50/80'
+                }`}
               >
                 {columns.map((col, colIdx) => (
                   <td key={colIdx} className={`py-2.5 px-3 sm:py-3.5 sm:px-4 ${col.cellClassName || ''}`}>

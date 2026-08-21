@@ -13,6 +13,7 @@ const BookingDetailsPage = lazy(() => import('../pages/bookings/BookingDetailsPa
 const TransactionsPage = lazy(() => import('../pages/transactions/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
 const CustomersPage = lazy(() => import('../pages/customers/CustomersPage').then(m => ({ default: m.CustomersPage })));
 const CompaniesPage = lazy(() => import('../pages/companies/CompaniesPage').then(m => ({ default: m.CompaniesPage })));
+const CompanyDetailsPage = lazy(() => import('../pages/companies/CompanyDetailsPage').then(m => ({ default: m.CompanyDetailsPage })));
 const PaymentsPage = lazy(() => import('../pages/payments/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
 const LedgerPage = lazy(() => import('../pages/ledger/LedgerPage').then(m => ({ default: m.LedgerPage })));
 const ExpensesPage = lazy(() => import('../pages/expenses/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
@@ -63,6 +64,7 @@ export const AppRoutes = () => {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/companies" element={<CompaniesPage />} />
+        <Route path="/companies/:id" element={<CompanyDetailsPage />} />
         <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/ledger" element={<LedgerPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />

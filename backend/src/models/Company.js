@@ -49,7 +49,38 @@ const companySchema = new mongoose.Schema(
     commissionRate: {
       type: Number,
       default: 0
-    }
+    },
+    walletBalance: {
+      type: Number,
+      default: 0
+    },
+    totalPurchasedTickets: {
+      type: Number,
+      default: 0
+    },
+    purchasedPrice: {
+      type: Number,
+      default: 0
+    },
+    ticketUnitPrice: {
+      type: Number,
+      default: 0
+    },
+    usedTickets: {
+      type: Number,
+      default: 0
+    },
+    purchases: [
+      {
+        ticketsCount: { type: Number, default: 0 },
+        totalPrice: { type: Number, default: 0 },
+        unitPrice: { type: Number, default: 0 },
+        purchaseDate: { type: String, default: () => new Date().toISOString().split('T')[0] },
+        reference: { type: String, default: '' },
+        notes: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ]
   },
   {
     timestamps: true,

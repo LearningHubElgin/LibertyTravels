@@ -180,128 +180,196 @@ export const AllBookingsPage = () => {
     }
   };
 
-  const getServiceIcon = (type) => {
+  const getServiceBadge = (type) => {
     switch (type) {
       case 'flight':
-        return <Plane className="w-3.5 h-3.5 text-sky-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+            <Plane className="w-3.5 h-3.5" />
+            <span>Flight</span>
+          </span>
+        );
       case 'train':
-        return <Train className="w-3.5 h-3.5 text-emerald-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Train className="w-3.5 h-3.5" />
+            <span>Train</span>
+          </span>
+        );
       case 'bus':
-        return <Bus className="w-3.5 h-3.5 text-amber-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            <Bus className="w-3.5 h-3.5" />
+            <span>Bus</span>
+          </span>
+        );
       case 'hotel':
-        return <Hotel className="w-3.5 h-3.5 text-purple-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+            <Hotel className="w-3.5 h-3.5" />
+            <span>Hotel</span>
+          </span>
+        );
       case 'car':
-        return <Car className="w-3.5 h-3.5 text-indigo-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <Car className="w-3.5 h-3.5" />
+            <span>Car</span>
+          </span>
+        );
       default:
-        return <Plane className="w-3.5 h-3.5 text-sky-600" />;
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            <Plane className="w-3.5 h-3.5" />
+            <span>{type || 'Travel'}</span>
+          </span>
+        );
     }
   };
 
   const columns = [
+    // 1. Service (Flight / Train / Bus / Hotel / Car)
     {
-      header: 'Reference & Service',
-      accessor: 'referenceNo',
-      render: (row) => (
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="p-1 rounded-md bg-slate-100 border border-slate-200">
-              {getServiceIcon(row.serviceType || 'flight')}
-            </span>
-            <span
-              onClick={() => navigate(`/bookings/${row.id || row._id}`)}
-              className="font-mono font-bold text-brand-700 hover:underline cursor-pointer"
-            >
-              {row.referenceNo}
-            </span>
-          </div>
-          <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">{formatDate(row.bookingDate)}</span>
-        </div>
-      )
+      header: 'Service',
+      render: (row) => getServiceBadge(row.serviceType || 'flight')
     },
+    // 2. Company
     {
-      header: 'Passenger / Customer',
-      render: (row) => {
-        const lead = row.passengerName || (row.passengers?.[0] ? `${row.passengers[0].firstName} ${row.passengers[0].lastName}` : 'No passenger');
-        const count = row.passengers?.length || 1;
-        return (
-          <div>
-            <p className="font-semibold text-slate-900 leading-tight">
-              {lead}
-            </p>
-            <p className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-              <span>Cust: {row.customer?.name || 'Unknown'}</span>
-              {count > 1 && (
-                <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold text-[10px]">
-                  +{count - 1} more
-                </span>
-              )}
-            </p>
-          </div>
-        );
-      }
-    },
-    {
-      header: 'Company & Description',
+      header: 'Company',
       render: (row) => {
         const comp = row.company;
+        if (!comp) return <span className="text-slate-400 font-mono text-[11px]">—</span>;
         return (
           <div>
-            <span className="font-bold text-slate-800 block truncate max-w-xs">{row.description || row.sector}</span>
-            <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
-              {comp?.name ? (
-                <span className="font-semibold text-slate-700">{comp.name}</span>
-              ) : null}
-              {row.pnr && (
-                <span>&bull; PNR: <strong className="text-slate-700">{row.pnr}</strong></span>
-              )}
-            </span>
-          </div>
-        );
-      }
-    },
-    {
-      header: 'Cost / Sell Price (₹)',
-      render: (row) => {
-        const c = parseFloat(row.costPrice || 0);
-        const s = parseFloat(row.sellPrice || row.totalAmount || 0);
-        const profit = Math.round((s - c) * 100) / 100;
-        return (
-          <div className="font-mono text-xs">
-            <div className="font-bold text-brand-900">Sell: ₹{s.toLocaleString('en-IN')}</div>
-            <div className="text-[11px] text-slate-500">Cost: ₹{c.toLocaleString('en-IN')}</div>
-            {profit > 0 && (
-              <span className="text-[10px] font-bold text-emerald-600">
-                Profit: +₹{profit.toLocaleString('en-IN')}
+            <span className="font-bold text-slate-900 block leading-tight">{comp.name}</span>
+            {comp.code && (
+              <span className="text-[10px] font-mono font-bold text-brand-600 bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200 mt-0.5 inline-block">
+                {comp.code}
               </span>
             )}
           </div>
         );
       }
     },
+    // 3. Date of Booking
     {
-      header: 'Balance & Status',
+      header: 'Date of Booking',
       render: (row) => (
-        <div className="space-y-1">
-          <div className="font-mono text-xs">
-            <span className="text-emerald-700 font-semibold">Paid: ₹{parseFloat(row.amountReceived || 0).toLocaleString('en-IN')}</span>
-            {parseFloat(row.balanceDue || 0) > 0 && (
-              <span className="text-rose-600 font-semibold block text-[10px]">Due: ₹{parseFloat(row.balanceDue || 0).toLocaleString('en-IN')}</span>
-            )}
-          </div>
-          <div className="flex gap-1">
-            <StatusBadge status={row.paymentStatus} />
-          </div>
+        <div>
+          <span className="font-mono font-semibold text-slate-800 block text-xs">
+            {formatDate(row.bookingDate)}
+          </span>
+          {row.journeyDate && row.journeyDate !== row.bookingDate && (
+            <span className="text-[10px] text-slate-400 font-mono">
+              Travel: {formatDate(row.journeyDate)}
+            </span>
+          )}
         </div>
       )
     },
+    // 4. Reference Number
+    {
+      header: 'Reference Number',
+      render: (row) => (
+        <div>
+          <span className="font-mono font-bold text-brand-700 block text-xs">
+            {row.referenceNo}
+          </span>
+          {row.pnr && row.pnr !== row.referenceNo && (
+            <span className="text-[10px] text-slate-500 font-mono">
+              PNR: <strong className="text-slate-700">{row.pnr}</strong>
+            </span>
+          )}
+        </div>
+      )
+    },
+    // 5. Description
+    {
+      header: 'Description',
+      render: (row) => (
+        <div className="max-w-[220px]">
+          <span className="font-semibold text-slate-800 block truncate text-xs" title={row.description || row.sector}>
+            {row.description || row.sector || '—'}
+          </span>
+          {row.flightNumber && (
+            <span className="text-[10px] text-slate-400 font-mono">
+              Flight: {row.flightNumber}
+            </span>
+          )}
+        </div>
+      )
+    },
+    // 6. Customer Name
+    {
+      header: 'Customer Name',
+      render: (row) => {
+        const custName = row.customer?.name || 'Walk-in / Direct';
+        const leadPax = row.passengerName;
+        const count = row.passengers?.length || 1;
+        return (
+          <div>
+            <p className="font-bold text-slate-900 leading-tight text-xs">
+              {custName}
+            </p>
+            <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+              {leadPax && leadPax !== custName && (
+                <span className="truncate max-w-[130px]" title={leadPax}>Pax: {leadPax}</span>
+              )}
+              {count > 1 && (
+                <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-bold text-[10px] font-mono">
+                  {count} Pax
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }
+    },
+    // 7. Cost Price
+    {
+      header: 'Cost Price',
+      render: (row) => (
+        <span className="font-mono font-bold text-slate-700 text-xs">
+          ₹{parseFloat(row.costPrice || 0).toLocaleString('en-IN')}
+        </span>
+      )
+    },
+    // 8. Sale Price
+    {
+      header: 'Sale Price',
+      render: (row) => {
+        const s = parseFloat(row.sellPrice || row.totalAmount || 0);
+        const c = parseFloat(row.costPrice || 0);
+        const profit = Math.round((s - c) * 100) / 100;
+        return (
+          <div className="font-mono text-xs">
+            <span className="font-black text-slate-900 block">
+              ₹{s.toLocaleString('en-IN')}
+            </span>
+            {profit > 0 && (
+              <span className="text-[10px] font-bold text-emerald-600">
+                +₹{profit.toLocaleString('en-IN')}
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    // 9. Status
     {
       header: 'Status',
       render: (row) => (
-        <div>
+        <div className="space-y-1">
           <StatusBadge status={row.status} />
+          {row.paymentStatus && row.paymentStatus !== 'paid' && (
+            <div className="text-[10px] font-mono font-bold text-rose-600">
+              Due: ₹{parseFloat(row.balanceDue || 0).toLocaleString('en-IN')}
+            </div>
+          )}
         </div>
       )
     },
+    // 10. Actions
     {
       header: 'Actions',
       className: 'text-right',
@@ -309,7 +377,10 @@ export const AllBookingsPage = () => {
       render: (row) => (
         <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={() => navigate(`/bookings/${row.id || row._id}`)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/bookings/${row.id || row._id}`);
+            }}
             title="View Details"
             className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
           >
@@ -318,7 +389,10 @@ export const AllBookingsPage = () => {
 
           {parseFloat(row.balanceDue || 0) > 0 && row.status !== 'cancelled' && (
             <button
-              onClick={() => handleOpenPaymentModal(row)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenPaymentModal(row);
+              }}
               title="Add Payment"
               className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
             >
@@ -327,7 +401,10 @@ export const AllBookingsPage = () => {
           )}
 
           <button
-            onClick={() => setSelectedBookingForInvoice(row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedBookingForInvoice(row);
+            }}
             title="Generate & Print Invoice"
             className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
           >
@@ -336,7 +413,10 @@ export const AllBookingsPage = () => {
 
           {row.status !== 'cancelled' && (
             <button
-              onClick={() => setCancelBookingId(row.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCancelBookingId(row.id || row._id);
+              }}
               title="Cancel Booking"
               className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition"
             >
@@ -345,7 +425,10 @@ export const AllBookingsPage = () => {
           )}
 
           <button
-            onClick={() => setDeleteBookingId(row.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteBookingId(row.id || row._id);
+            }}
             title="Delete Booking"
             className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
           >
@@ -486,6 +569,7 @@ export const AllBookingsPage = () => {
         data={bookings}
         loading={loading}
         pagination={pagination}
+        onRowClick={(row) => navigate(`/bookings/${row.id || row._id}`)}
         onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         onLimitChange={(limit) => setPagination((prev) => ({ ...prev, limit, page: 1 }))}
         emptyTitle="No bookings found"
