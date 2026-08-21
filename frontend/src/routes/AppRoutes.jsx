@@ -13,7 +13,6 @@ const BookingDetailsPage = lazy(() => import('../pages/bookings/BookingDetailsPa
 const TransactionsPage = lazy(() => import('../pages/transactions/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
 const CustomersPage = lazy(() => import('../pages/customers/CustomersPage').then(m => ({ default: m.CustomersPage })));
 const CompaniesPage = lazy(() => import('../pages/companies/CompaniesPage').then(m => ({ default: m.CompaniesPage })));
-const AirlinesPage = lazy(() => import('../pages/airlines/AirlinesPage').then(m => ({ default: m.AirlinesPage })));
 const PaymentsPage = lazy(() => import('../pages/payments/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
 const LedgerPage = lazy(() => import('../pages/ledger/LedgerPage').then(m => ({ default: m.LedgerPage })));
 const ExpensesPage = lazy(() => import('../pages/expenses/ExpensesPage').then(m => ({ default: m.ExpensesPage })));

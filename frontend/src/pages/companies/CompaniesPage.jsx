@@ -61,7 +61,7 @@ export const CompaniesPage = () => {
       if (statusFilter) query += `status=${statusFilter}&`;
       if (typeFilter && typeFilter !== 'all') query += `type=${typeFilter}&`;
 
-      const res = await api.get(`/companies?${query}`);
+      const res = await api.get(`/companies?${query}`).catch(() => api.get(`/airlines?${query}`));
       if (res.data.success) {
         setCompanies(res.data.companies || res.data.airlines || []);
       }
@@ -120,14 +120,14 @@ export const CompaniesPage = () => {
     try {
       if (editingCompany) {
         const id = editingCompany.id || editingCompany._id;
-        const res = await api.put(`/companies/${id}`, companyForm);
+        const res = await api.put(`/companies/${id}`, companyForm).catch(() => api.put(`/airlines/${id}`, companyForm));
         if (res.data.success) {
           success(`Company ${companyForm.name} updated successfully!`);
           setIsModalOpen(false);
           fetchCompanies();
         }
       } else {
-        const res = await api.post('/companies', companyForm);
+        const res = await api.post('/companies', companyForm).catch(() => api.post('/airlines', companyForm));
         if (res.data.success) {
           success(`Company ${companyForm.name} added successfully!`);
           setIsModalOpen(false);
@@ -145,7 +145,7 @@ export const CompaniesPage = () => {
     if (!deleteCompanyId) return;
     setActionLoading(true);
     try {
-      const res = await api.delete(`/companies/${deleteCompanyId}`);
+      const res = await api.delete(`/companies/${deleteCompanyId}`).catch(() => api.delete(`/airlines/${deleteCompanyId}`));
       if (res.data.success) {
         success('Company deleted successfully.');
         setDeleteCompanyId(null);
