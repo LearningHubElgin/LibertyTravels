@@ -42,6 +42,7 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
     { name: 'Upcoming Journeys', path: '/upcoming-journeys', icon: CalendarDays },
     { name: 'Calendar', path: '/calendar', icon: Calendar },
     { name: 'Reports', path: '/reports', icon: BarChart3 },
+    { name: 'Travel Agencies', path: '/agencies', icon: Building2, superAdminOnly: true },
     { name: 'Users', path: '/users', icon: UserCheck, superAdminOnly: true },
     { name: 'Activity Logs', path: '/activity-logs', icon: History },
     { name: 'Settings', path: '/settings', icon: Settings }

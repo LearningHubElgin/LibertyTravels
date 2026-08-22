@@ -9,6 +9,10 @@ exports.getCustomers = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const query = {};
+    if (req.agencyId) {
+      query.agencyId = req.agencyId;
+    }
+
     if (search && search.trim()) {
       const q = search.trim();
       const regex = new RegExp(q, 'i');
@@ -134,9 +138,11 @@ exports.createCustomer = async (req, res, next) => {
     }
 
     const customerCode = await generateCustomerCode();
+    const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
 
     const customer = await Customer.create({
       customerCode,
+      agencyId: activeAgencyId,
       name: name.trim(),
       phone: phone.trim(),
       email: email ? email.toLowerCase().trim() : '',

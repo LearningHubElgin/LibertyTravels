@@ -9,6 +9,12 @@ const paymentSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
+      index: true
+    },
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Booking',

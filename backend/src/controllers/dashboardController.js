@@ -73,11 +73,13 @@ exports.getDashboardStats = async (req, res, next) => {
     const todayStr = now.toISOString().split('T')[0];
     const firstDayMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
-    const allBookings = await Booking.find()
+    const tenantFilter = req.agencyId ? { agencyId: req.agencyId } : {};
+
+    const allBookings = await Booking.find(tenantFilter)
       .select('bookingDate totalAmount amountReceived balanceDue status')
       .lean();
 
-    const allExpenses = await Expense.find()
+    const allExpenses = await Expense.find(tenantFilter)
       .select('expenseDate amount')
       .lean();
 
@@ -163,16 +165,19 @@ exports.getDashboardCharts = async (req, res, next) => {
     const { period = 'this_year', startDate: customStart, endDate: customEnd } = req.query;
     const { startDate, endDate } = getDateBounds(period, customStart, customEnd);
 
-    const bookings = await Booking.find({
-      bookingDate: { $gte: startDate, $lte: endDate }
-    })
+    const bQuery = { bookingDate: { $gte: startDate, $lte: endDate } };
+    const eQuery = { expenseDate: { $gte: startDate, $lte: endDate } };
+    if (req.agencyId) {
+      bQuery.agencyId = req.agencyId;
+      eQuery.agencyId = req.agencyId;
+    }
+
+    const bookings = await Booking.find(bQuery)
       .select('bookingDate totalAmount amountReceived status companyId')
       .populate('company', 'name code')
       .lean();
 
-    const expenses = await Expense.find({
-      expenseDate: { $gte: startDate, $lte: endDate }
-    }).select('expenseDate amount').lean();
+    const expenses = await Expense.find(eQuery).select('expenseDate amount').lean();
 
     // Timeline mapping
     const dateMap = {};

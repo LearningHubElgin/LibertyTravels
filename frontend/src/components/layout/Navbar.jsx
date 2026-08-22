@@ -19,6 +19,7 @@ import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { AgencySwitcher } from './AgencySwitcher';
 
 export const Navbar = ({ onOpenMobile }) => {
   const { user, logout, updateUserProfile } = useAuth();
@@ -208,6 +209,7 @@ export const Navbar = ({ onOpenMobile }) => {
   const getPageTitle = () => {
     const p = location.pathname;
     if (p === '/dashboard') return 'Dashboard';
+    if (p === '/agencies') return 'Travel Agencies Hub';
     if (p === '/bookings/new') return 'Create New Booking';
     if (p === '/bookings') return 'All Bookings';
     if (p.startsWith('/bookings/')) return 'Booking Details';
@@ -293,8 +295,11 @@ export const Navbar = ({ onOpenMobile }) => {
           )}
         </div>
 
-        {/* Right Side: Notifications & User Profile */}
-        <div className="flex items-center gap-3">
+        {/* Right Side: Agency Switcher, Notifications & User Profile */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Super Admin Agency Switcher */}
+          <AgencySwitcher />
+
           {/* Notifications Dropdown */}
           <div className="relative" ref={notifRef}>
             <button

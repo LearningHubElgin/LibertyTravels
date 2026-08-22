@@ -22,7 +22,10 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
+      .select('+password')
+      .populate('agencyId');
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -71,6 +74,14 @@ exports.login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         status: user.status,
+        agencyId: user.agencyId ? (user.agencyId._id || user.agencyId) : null,
+        agency: user.agencyId ? {
+          id: user.agencyId._id,
+          name: user.agencyId.name,
+          code: user.agencyId.code,
+          logo: user.agencyId.logo,
+          plan: user.agencyId.plan
+        } : null,
         lastLogin: user.lastLogin
       }
     });

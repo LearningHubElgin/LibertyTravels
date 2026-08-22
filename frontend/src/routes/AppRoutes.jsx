@@ -21,6 +21,7 @@ const ExpensesPage = lazy(() => import('../pages/expenses/ExpensesPage').then(m 
 const UpcomingJourneysPage = lazy(() => import('../pages/upcoming-journeys/UpcomingJourneysPage').then(m => ({ default: m.UpcomingJourneysPage })));
 const CalendarPage = lazy(() => import('../pages/calendar/CalendarPage').then(m => ({ default: m.CalendarPage })));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const AgenciesPage = lazy(() => import('../pages/agencies/AgenciesPage').then(m => ({ default: m.AgenciesPage })));
 const UsersPage = lazy(() => import('../pages/users/UsersPage').then(m => ({ default: m.UsersPage })));
 const ActivityLogsPage = lazy(() => import('../pages/activity-logs/ActivityLogsPage').then(m => ({ default: m.ActivityLogsPage })));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
@@ -76,6 +77,14 @@ export const AppRoutes = () => {
         <Route path="/reports" element={<ReportsPage />} />
 
         {/* Administration */}
+        <Route
+          path="/agencies"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <AgenciesPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/users"
           element={

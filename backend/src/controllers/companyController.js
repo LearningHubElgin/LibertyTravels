@@ -202,9 +202,12 @@ exports.createCompany = async (req, res, next) => {
     const pPrice = parseFloat(purchasedPrice) || 0;
     const uPrice = tCount > 0 ? Math.round((pPrice / tCount) * 100) / 100 : 0;
 
+    const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
+
     const company = await Company.create({
       name: name.trim(),
       code: code.trim().toUpperCase(),
+      agencyId: activeAgencyId,
       type: type || 'flight',
       category: category || type || 'flight',
       country: country ? country.trim() : 'India',

@@ -8,6 +8,12 @@ const activityLogSchema = new mongoose.Schema(
       default: null,
       index: true
     },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
+      index: true
+    },
     action: {
       type: String,
       required: true,

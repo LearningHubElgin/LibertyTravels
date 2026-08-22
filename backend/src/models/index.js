@@ -1,3 +1,4 @@
+const Agency = require('./Agency');
 const User = require('./User');
 const Customer = require('./Customer');
 const Company = require('./Company');
@@ -11,6 +12,7 @@ const ActivityLog = require('./ActivityLog');
 const Notification = require('./Notification');
 
 module.exports = {
+  Agency,
   User,
   Customer,
   Company,

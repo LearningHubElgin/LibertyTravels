@@ -17,7 +17,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026');
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).populate('agencyId');
 
     if (!user) {
       return res.status(401).json({
@@ -34,6 +34,18 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+
+    // Tenant resolution:
+    if (user.role === ROLES.SUPER_ADMIN) {
+      const headerAgencyId = req.headers['x-agency-id'];
+      const queryAgencyId = req.query.agencyId;
+      req.agencyId = queryAgencyId || headerAgencyId || null;
+      req.isSuperAdmin = true;
+    } else {
+      req.agencyId = user.agencyId ? (user.agencyId._id || user.agencyId) : null;
+      req.isSuperAdmin = false;
+    }
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

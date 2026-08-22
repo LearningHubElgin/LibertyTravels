@@ -9,6 +9,12 @@ const bookingSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
+      index: true
+    },
     serviceType: {
       type: String,
       enum: ['flight', 'train', 'bus', 'hotel', 'car', 'other'],
@@ -160,6 +166,13 @@ const bookingSchema = new mongoose.Schema(
 );
 
 // Virtual relationships
+bookingSchema.virtual('agency', {
+  ref: 'Agency',
+  localField: 'agencyId',
+  foreignField: '_id',
+  justOne: true
+});
+
 bookingSchema.virtual('company', {
   ref: 'Company',
   localField: 'companyId',

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./app');
 const { connectDB } = require('./config/db');
+const { autoMigrateAgencies } = require('./database/autoMigrateAgencies');
 require('./models');
 
 const PORT = process.env.PORT || 5000;
@@ -8,6 +9,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
+    await autoMigrateAgencies();
  
     app.listen(PORT, () => {
       console.log(`🚀 Liberty Tours & Travels ERP API running on http://localhost:${PORT}`);

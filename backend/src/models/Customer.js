@@ -9,6 +9,12 @@ const customerSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
+      index: true
+    },
     name: {
       type: String,
       required: [true, 'Customer name is required'],

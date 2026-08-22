@@ -9,6 +9,12 @@ const transactionSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
+      index: true
+    },
     transactionDate: {
       type: String,
       required: true,

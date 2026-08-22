@@ -6,6 +6,7 @@ const dashboardRoutes = require('./dashboardRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const customerRoutes = require('./customerRoutes');
 const companyRoutes = require('./companyRoutes');
+const agencyRoutes = require('./agencyRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const transactionRoutes = require('./transactionRoutes');
 const ledgerRoutes = require('./ledgerRoutes');
@@ -21,6 +22,7 @@ const settingRoutes = require('./settingRoutes');
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/agencies', agencyRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/customers', customerRoutes);
 router.use('/companies', companyRoutes);

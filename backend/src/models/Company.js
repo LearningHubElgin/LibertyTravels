@@ -5,9 +5,14 @@ const companySchema = new mongoose.Schema(
     code: {
       type: String,
       required: [true, 'Company code is required'],
-      unique: true,
       trim: true,
       uppercase: true,
+      index: true
+    },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Agency',
+      default: null,
       index: true
     },
     name: {

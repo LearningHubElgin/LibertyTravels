@@ -35,6 +35,10 @@ exports.getBookings = async (req, res, next) => {
     if (bookingType) query.bookingType = bookingType;
     if (serviceType && serviceType !== 'all') query.serviceType = serviceType;
     
+    if (req.agencyId) {
+      query.agencyId = req.agencyId;
+    }
+    
     if (companyId) {
       query.companyId = companyId;
     }
@@ -280,8 +284,11 @@ exports.createBooking = async (req, res, next) => {
       primaryPassengerName = 'Passenger';
     }
 
+    const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
+
     const booking = await Booking.create({
       referenceNo,
+      agencyId: activeAgencyId,
       serviceType: serviceType || 'flight',
       bookingDate,
       bookingType,
