@@ -2,15 +2,15 @@ const mongoose = require('mongoose');
 
 const expenseSchema = new mongoose.Schema(
   {
+    expenseDate: {
+      type: String,
+      required: true,
+      index: true
+    },
     agencyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Agency',
       default: null,
-      index: true
-    },
-    expenseDate: {
-      type: String,
-      required: true,
       index: true
     },
     category: {

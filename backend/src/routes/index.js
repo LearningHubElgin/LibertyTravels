@@ -22,10 +22,11 @@ const settingRoutes = require('./settingRoutes');
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
-router.use('/agencies', agencyRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/customers', customerRoutes);
 router.use('/companies', companyRoutes);
+router.use('/agencies', agencyRoutes);
+router.use('/superadmin/agencies', agencyRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/ledger', ledgerRoutes);

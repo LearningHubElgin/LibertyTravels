@@ -79,19 +79,6 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const [activeAgencyId, setActiveAgencyIdState] = useState(() => {
-    return localStorage.getItem('liberty_active_agency_id') || 'all';
-  });
-
-  const setActiveAgencyId = (id) => {
-    setActiveAgencyIdState(id || 'all');
-    if (id && id !== 'all') {
-      localStorage.setItem('liberty_active_agency_id', id);
-    } else {
-      localStorage.removeItem('liberty_active_agency_id');
-    }
-  };
-
   const isSuperAdmin = user?.role === 'super_admin';
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -106,9 +93,7 @@ export const AuthProvider = ({ children }) => {
         updateUserProfile,
         isAuthenticated: !!token && !!user,
         isSuperAdmin,
-        isAdmin,
-        activeAgencyId,
-        setActiveAgencyId
+        isAdmin
       }}
     >
       {children}

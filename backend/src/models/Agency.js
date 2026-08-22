@@ -1,41 +1,40 @@
 const mongoose = require('mongoose');
+const { AGENCY_STATUS, AGENCY_PLANS } = require('../config/constants');
 
 const agencySchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Agency name is required'],
-      trim: true
+      required: [true, 'Travel agency name is required'],
+      trim: true,
+      index: true
     },
     code: {
       type: String,
-      required: [true, 'Agency code is required'],
+      required: [true, 'Agency code / identifier is required'],
       unique: true,
+      trim: true,
       uppercase: true,
-      trim: true,
       index: true
     },
-    slug: {
-      type: String,
-      lowercase: true,
-      trim: true,
-      index: true
-    },
-    ownerName: {
+    tagline: {
       type: String,
       default: '',
       trim: true
+    },
+    logo: {
+      type: String,
+      default: ''
     },
     email: {
       type: String,
-      required: [true, 'Agency contact email is required'],
-      unique: true,
-      lowercase: true,
-      trim: true
+      required: [true, 'Official agency email is required'],
+      trim: true,
+      lowercase: true
     },
     phone: {
       type: String,
-      default: '',
+      required: [true, 'Contact phone number is required'],
       trim: true
     },
     address: {
@@ -48,14 +47,14 @@ const agencySchema = new mongoose.Schema(
       default: '',
       trim: true
     },
-    state: {
-      type: String,
-      default: '',
-      trim: true
-    },
     country: {
       type: String,
       default: 'India',
+      trim: true
+    },
+    website: {
+      type: String,
+      default: '',
       trim: true
     },
     gstNumber: {
@@ -68,42 +67,43 @@ const agencySchema = new mongoose.Schema(
       default: '',
       trim: true
     },
-    logo: {
-      type: String,
-      default: ''
-    },
     status: {
       type: String,
-      enum: ['active', 'suspended', 'trial', 'inactive'],
-      default: 'active',
+      enum: Object.values(AGENCY_STATUS),
+      default: AGENCY_STATUS.ACTIVE,
       index: true
     },
     plan: {
       type: String,
-      enum: ['trial', 'basic', 'pro', 'enterprise'],
-      default: 'pro'
+      enum: Object.values(AGENCY_PLANS),
+      default: AGENCY_PLANS.PROFESSIONAL
     },
     subscriptionExpiresAt: {
       type: Date,
       default: () => new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year default
     },
-    maxUsers: {
-      type: Number,
-      default: 10
+    contactPerson: {
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      email: { type: String, default: '' },
+      designation: { type: String, default: 'Agency Owner / Manager' }
     },
-    settings: {
-      currency: { type: String, default: 'INR' },
-      timezone: { type: String, default: 'Asia/Kolkata' },
-      invoicePrefix: { type: String, default: 'INV-' },
-      invoiceNextNumber: { type: Number, default: 1001 },
-      termsAndConditions: {
+    invoiceSettings: {
+      prefix: { type: String, default: 'INV-2026-' },
+      nextNumber: { type: Number, default: 1001 },
+      terms: {
         type: String,
-        default: '1. All bookings are subject to respective service provider policies.\n2. Date changes or cancellations apply as per carrier / hotel fare rules.\n3. Valid government ID / Passport required for travel.'
+        default:
+          '1. Service cancellation and date change charges apply as per company policy.\n2. Please carry valid Govt ID / Passport for travel.\n3. Recheck travel timings 24 hours prior to scheduled departure.\n4. Baggage allowance is subject to company rules.'
       },
-      invoiceFooter: {
+      footer: {
         type: String,
-        default: 'Thank you for choosing our travel services. Have a pleasant journey!'
+        default: 'Thank you for choosing our travel services. Have a pleasant and safe journey!'
       }
+    },
+    notes: {
+      type: String,
+      default: ''
     }
   },
   {
@@ -113,14 +113,17 @@ const agencySchema = new mongoose.Schema(
   }
 );
 
-// Pre-save slug generation if not provided
-agencySchema.pre('save', function () {
-  if (this.isModified('name') && !this.slug) {
-    this.slug = this.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  }
+// Virtual for linked users count & bookings count
+agencySchema.virtual('users', {
+  ref: 'User',
+  localField: '_id',
+  foreignField: 'agencyId'
+});
+
+agencySchema.virtual('bookings', {
+  ref: 'Booking',
+  localField: '_id',
+  foreignField: 'agencyId'
 });
 
 const Agency = mongoose.models.Agency || mongoose.model('Agency', agencySchema);

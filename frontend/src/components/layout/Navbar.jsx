@@ -209,7 +209,6 @@ export const Navbar = ({ onOpenMobile }) => {
   const getPageTitle = () => {
     const p = location.pathname;
     if (p === '/dashboard') return 'Dashboard';
-    if (p === '/agencies') return 'Travel Agencies Hub';
     if (p === '/bookings/new') return 'Create New Booking';
     if (p === '/bookings') return 'All Bookings';
     if (p.startsWith('/bookings/')) return 'Booking Details';

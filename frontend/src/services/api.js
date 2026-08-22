@@ -41,9 +41,9 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    const activeAgencyId = localStorage.getItem('liberty_active_agency_id');
-    if (activeAgencyId && activeAgencyId !== 'all') {
-      config.headers['x-agency-id'] = activeAgencyId;
+    const activeAgency = localStorage.getItem('liberty_active_agency');
+    if (activeAgency && activeAgency !== 'all') {
+      config.headers['x-agency-id'] = activeAgency;
     }
 
     // Set a timer to notify UI if request takes longer than 2.2s (server sleeping)

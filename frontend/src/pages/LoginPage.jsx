@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Compass, ShieldCheck, UserCheck, ArrowRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -21,9 +21,15 @@ export const LoginPage = () => {
     setLoading(true);
 
     try {
-      await login(email, password);
-      success('Welcome back! Successfully logged into Liberty ERP.');
-      navigate('/dashboard');
+      const data = await login(email, password);
+      const userRole = data?.user?.role;
+      success(`Welcome back, ${data?.user?.name || 'User'}!`);
+
+      if (userRole === 'super_admin') {
+        navigate('/superadmin/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setErrorMsg(err.response?.data?.message || err.message || 'Invalid email or password.');
     } finally {
@@ -133,29 +139,41 @@ export const LoginPage = () => {
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">
               Quick Login Roles (Demo)
             </p>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin@libertytravel.com', 'admin123')}
-                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
+                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
-                <div className="flex items-center gap-1.5 text-brand-400 font-bold text-[11px] mb-0.5">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Super Admin
+                <div className="flex items-center gap-1 text-amber-400 font-bold text-[10px] mb-0.5 truncate">
+                  <ShieldCheck className="w-3 h-3 shrink-0" /> Super Admin
                 </div>
-                <p className="text-[10px] text-slate-400">admin@libertytravel.com</p>
-                <span className="text-[9px] text-brand-400 group-hover:underline">Click to Fill &rarr;</span>
+                <p className="text-[9px] text-slate-400 truncate">admin@liberty</p>
+                <span className="text-[8px] text-amber-400 group-hover:underline">Fill &rarr;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('admin@royalheritageholidays.com', 'agency123')}
+                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
+              >
+                <div className="flex items-center gap-1 text-sky-400 font-bold text-[10px] mb-0.5 truncate">
+                  <Building2 className="w-3 h-3 shrink-0" /> Agency Admin
+                </div>
+                <p className="text-[9px] text-slate-400 truncate">admin@royal</p>
+                <span className="text-[8px] text-sky-400 group-hover:underline">Fill &rarr;</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('staff@libertytravel.com', 'staff123')}
-                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
+                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
-                <div className="flex items-center gap-1.5 text-sky-400 font-bold text-[11px] mb-0.5">
-                  <UserCheck className="w-3.5 h-3.5" /> Admin
+                <div className="flex items-center gap-1 text-emerald-400 font-bold text-[10px] mb-0.5 truncate">
+                  <UserCheck className="w-3 h-3 shrink-0" /> Staff
                 </div>
-                <p className="text-[10px] text-slate-400">staff@libertytravel.com</p>
-                <span className="text-[9px] text-sky-400 group-hover:underline">Click to Fill &rarr;</span>
+                <p className="text-[9px] text-slate-400 truncate">staff@liberty</p>
+                <span className="text-[8px] text-emerald-400 group-hover:underline">Fill &rarr;</span>
               </button>
             </div>
           </div>

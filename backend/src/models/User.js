@@ -24,7 +24,8 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ['super_admin', 'admin', 'staff'],
-      default: 'admin'
+      default: 'staff',
+      index: true
     },
     agencyId: {
       type: mongoose.Schema.Types.ObjectId,

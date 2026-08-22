@@ -1,7 +1,18 @@
 module.exports = {
   ROLES: {
     SUPER_ADMIN: 'super_admin',
-    ADMIN: 'admin'
+    ADMIN: 'admin',
+    STAFF: 'staff'
+  },
+  AGENCY_STATUS: {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    SUSPENDED: 'suspended'
+  },
+  AGENCY_PLANS: {
+    STARTER: 'starter',
+    PROFESSIONAL: 'professional',
+    ENTERPRISE: 'enterprise'
   },
   USER_STATUS: {
     ACTIVE: 'active',

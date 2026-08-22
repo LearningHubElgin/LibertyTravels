@@ -2,12 +2,6 @@ const mongoose = require('mongoose');
 
 const agencySettingSchema = new mongoose.Schema(
   {
-    agencyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Agency',
-      default: null,
-      index: true
-    },
     agencyName: {
       type: String,
       required: true,

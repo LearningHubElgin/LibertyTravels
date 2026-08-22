@@ -3,10 +3,17 @@ const router = express.Router();
 const agencyController = require('../controllers/agencyController');
 const { authenticate, authorizeSuperAdmin } = require('../middleware/auth');
 
-// All agency management endpoints are protected and restricted to Super Admin
+// All agency management routes require Super Admin authentication
 router.use(authenticate, authorizeSuperAdmin);
 
-router.get('/stats/overview', agencyController.getPlatformStats);
+// Super Admin Platform Statistics
+router.get('/dashboard-stats', agencyController.getPlatformStats);
+
+// Super Admin User Management
+router.get('/users', agencyController.getSuperAdminUsers);
+router.post('/users', agencyController.createAgencyUser);
+
+// Travel Agencies CRUD
 router.get('/', agencyController.getAgencies);
 router.get('/:id', agencyController.getAgencyDetails);
 router.post('/', agencyController.createAgency);

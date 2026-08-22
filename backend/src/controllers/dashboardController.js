@@ -264,8 +264,9 @@ exports.getDashboardCharts = async (req, res, next) => {
 exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
   try {
     const todayStr = new Date().toISOString().split('T')[0];
+    const tenantFilter = req.agencyId ? { agencyId: req.agencyId } : {};
 
-    const recentBookings = await Booking.find()
+    const recentBookings = await Booking.find(tenantFilter)
       .sort({ createdAt: -1 })
       .limit(6)
       .populate('customer', 'name phone')
@@ -274,6 +275,7 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .lean();
 
     const upcomingJourneys = await Booking.find({
+      ...tenantFilter,
       journeyDate: { $gte: todayStr },
       status: { $in: ['confirmed', 'pending'] }
     })
@@ -285,6 +287,7 @@ exports.getDashboardUpcomingAndRecent = async (req, res, next) => {
       .lean();
 
     const outstandingBookings = await Booking.find({
+      ...tenantFilter,
       balanceDue: { $gt: 0 },
       status: { $ne: 'cancelled' }
     })

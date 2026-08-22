@@ -4,8 +4,16 @@ const { logActivity } = require('../middleware/activityLogger');
 
 exports.getUsers = async (req, res, next) => {
   try {
-    const users = await User.find()
-      .select('name email role status lastLogin createdAt updatedAt')
+    const query = {};
+    if (req.user.role !== ROLES.SUPER_ADMIN) {
+      query.agencyId = req.user.agencyId || req.agencyId;
+    } else if (req.agencyId) {
+      query.agencyId = req.agencyId;
+    }
+
+    const users = await User.find(query)
+      .populate('agencyId', 'name code')
+      .select('name email role status agencyId phone lastLogin createdAt updatedAt')
       .sort({ role: 1, name: 1 });
 
     return res.status(200).json({
@@ -19,7 +27,7 @@ exports.getUsers = async (req, res, next) => {
 
 exports.createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role = ROLES.ADMIN } = req.body;
+    const { name, email, password, role = ROLES.STAFF, agencyId, phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -35,12 +43,22 @@ exports.createUser = async (req, res, next) => {
       });
     }
 
-    if (role !== ROLES.ADMIN && role !== ROLES.SUPER_ADMIN) {
+    if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Allowed roles are: super_admin, admin'
+        message: 'Invalid role. Allowed roles are: super_admin, admin, staff'
       });
     }
+
+    // Only super admin can create super admin or create users for other agencies
+    if (role === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admin can create Super Admin accounts'
+      });
+    }
+
+    const targetAgencyId = req.user.role === ROLES.SUPER_ADMIN ? (agencyId || null) : (req.user.agencyId || null);
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
@@ -55,6 +73,8 @@ exports.createUser = async (req, res, next) => {
       email: email.toLowerCase().trim(),
       password,
       role,
+      agencyId: targetAgencyId,
+      phone: phone ? phone.trim() : '',
       status: USER_STATUS.ACTIVE
     });
 

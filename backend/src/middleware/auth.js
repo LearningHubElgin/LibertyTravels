@@ -17,7 +17,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026');
-    const user = await User.findById(decoded.id).populate('agencyId');
+    const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(401).json({
@@ -35,15 +35,14 @@ const authenticate = async (req, res, next) => {
 
     req.user = user;
 
-    // Tenant resolution:
+    // Multi-tenant agency resolution
     if (user.role === ROLES.SUPER_ADMIN) {
-      const headerAgencyId = req.headers['x-agency-id'];
-      const queryAgencyId = req.query.agencyId;
-      req.agencyId = queryAgencyId || headerAgencyId || null;
-      req.isSuperAdmin = true;
+      // Super Admin can switch active agency via Header or Query
+      const activeAgencyHeader = req.headers['x-agency-id'] || req.query.agencyId;
+      req.agencyId = activeAgencyHeader && activeAgencyHeader !== 'all' ? activeAgencyHeader : user.agencyId || null;
     } else {
-      req.agencyId = user.agencyId ? (user.agencyId._id || user.agencyId) : null;
-      req.isSuperAdmin = false;
+      // Admin and Staff are strictly locked to their assigned agency
+      req.agencyId = user.agencyId || null;
     }
 
     next();
@@ -75,7 +74,7 @@ const authorizeSuperAdmin = (req, res, next) => {
 };
 
 /**
- * Admin authorization guard (Accessible to both Super Admin and Admin)
+ * Admin authorization guard (Accessible to Super Admin and Agency Admin)
  */
 const authorizeAdmin = (req, res, next) => {
   if (req.user && (req.user.role === ROLES.SUPER_ADMIN || req.user.role === ROLES.ADMIN)) {
@@ -83,12 +82,26 @@ const authorizeAdmin = (req, res, next) => {
   }
   return res.status(403).json({
     success: false,
-    message: 'Access denied. Authorized personnel only.'
+    message: 'Access denied. Administrator privileges required.'
+  });
+};
+
+/**
+ * Staff authorization guard (Accessible to Super Admin, Admin, and Staff)
+ */
+const authorizeStaff = (req, res, next) => {
+  if (req.user && (req.user.role === ROLES.SUPER_ADMIN || req.user.role === ROLES.ADMIN || req.user.role === ROLES.STAFF)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Authorized staff only.'
   });
 };
 
 module.exports = {
   authenticate,
   authorizeSuperAdmin,
-  authorizeAdmin
+  authorizeAdmin,
+  authorizeStaff
 };
