@@ -112,81 +112,81 @@ export const SuperAdminDashboardPage = () => {
         </div>
       </div>
 
-      {/* 2. High-Density 2x2 on Mobile, 4x1 on Desktop KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* 2. High-Density Extra-Compact 2x2 on Mobile, 4x1 on Desktop KPI Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
         {/* KPI 1: Connected Agencies (Sky Blue) */}
-        <div className="bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-white rounded-2xl p-3 sm:p-4 border border-sky-200/80 shadow-xs hover:shadow-md transition">
+        <div className="bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-sky-200/80 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-extrabold text-sky-800 uppercase tracking-wider">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-sky-800 uppercase tracking-wider">
               Agencies
             </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-sky-600 text-white flex items-center justify-center shadow-2xs">
+              <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-3xl font-black text-slate-900">
+          <div className="mt-1 sm:mt-2 flex items-baseline gap-1">
+            <span className="text-base sm:text-2xl font-black text-slate-900 leading-tight">
               {stats?.totalAgencies || agencies.length || 0}
             </span>
-            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.2 rounded-md">
+            <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1 py-0.2 rounded">
               {stats?.activeAgencies || 0} Active
             </span>
           </div>
-          <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 truncate">Connected partner agencies</p>
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-slate-400 truncate">Connected partner agencies</p>
         </div>
 
         {/* KPI 2: Platform Gross Sales (Emerald Green) */}
-        <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white rounded-2xl p-3 sm:p-4 border border-emerald-200/80 shadow-xs hover:shadow-md transition">
+        <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-emerald-200/80 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-800 uppercase tracking-wider">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider">
               Gross Sales
             </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-2xs">
+              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-3">
-            <span className="text-base sm:text-2xl font-black text-slate-900 font-mono tracking-tight block truncate">
+          <div className="mt-1 sm:mt-2">
+            <span className="text-sm sm:text-xl font-black text-slate-900 font-mono tracking-tight block truncate leading-tight">
               {formatCurrency(stats?.totalGrossVolume)}
             </span>
           </div>
-          <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 truncate">Total volume across agencies</p>
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-slate-400 truncate">Total volume across agencies</p>
         </div>
 
         {/* KPI 3: Total Bookings (Purple / Violet) */}
-        <div className="bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-white rounded-2xl p-3 sm:p-4 border border-purple-200/80 shadow-xs hover:shadow-md transition">
+        <div className="bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-purple-200/80 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-extrabold text-purple-800 uppercase tracking-wider">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-purple-800 uppercase tracking-wider">
               Bookings
             </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
-              <CreditCard className="w-4 h-4" />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-2xs">
+              <CreditCard className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-3">
-            <span className="text-xl sm:text-3xl font-black text-slate-900">
+          <div className="mt-1 sm:mt-2">
+            <span className="text-base sm:text-2xl font-black text-slate-900 leading-tight">
               {stats?.totalBookings || 0}
             </span>
           </div>
-          <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 truncate">Flights, trains & hotels</p>
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-slate-400 truncate">Flights, trains & hotels</p>
         </div>
 
         {/* KPI 4: Platform Users (Amber / Gold) */}
-        <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white rounded-2xl p-3 sm:p-4 border border-amber-200/80 shadow-xs hover:shadow-md transition">
+        <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-amber-200/80 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-extrabold text-amber-900 uppercase tracking-wider">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-amber-900 uppercase tracking-wider">
               Users
             </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs font-bold">
-              <Users className="w-4 h-4" />
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-2xs font-bold">
+              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
           </div>
-          <div className="mt-2 sm:mt-3">
-            <span className="text-xl sm:text-3xl font-black text-slate-900">
+          <div className="mt-1 sm:mt-2">
+            <span className="text-base sm:text-2xl font-black text-slate-900 leading-tight">
               {stats?.totalUsers || 0}
             </span>
           </div>
-          <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 truncate">Admins & managers</p>
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-slate-400 truncate">Admins & managers</p>
         </div>
       </div>
 

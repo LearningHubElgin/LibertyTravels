@@ -121,101 +121,123 @@ export const AgencyDetailPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 sm:space-y-5 pb-8">
       {/* Back button & Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-row items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => navigate('/superadmin/agencies')}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            className="p-1.5 sm:p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-base sm:text-xl font-black text-slate-800 tracking-tight truncate">
                 {agency.name}
               </h1>
-              <span className="font-mono font-bold text-xs uppercase px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 border border-brand-200">
+              <span className="font-mono font-bold text-[10px] uppercase px-1.5 py-0.2 rounded-md bg-brand-50 text-brand-700 border border-brand-200 shrink-0">
                 {agency.code}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {agency.city ? `${agency.city}, ` : ''}{agency.country || 'India'} • Joined on {new Date(agency.createdAt).toLocaleDateString()}
+            <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+              {agency.city ? `${agency.city}, ` : ''}{agency.country || 'India'} • {agency.plan || 'Professional'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsAddUserModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-600/20 transition active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Admin User</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setIsAddUserModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/20 transition active:scale-95 shrink-0"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Add Admin</span>
+        </button>
       </div>
 
-      {/* Agency KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Bookings</span>
-          <div className="mt-2 text-2xl font-extrabold text-slate-800">
+      {/* Agency KPI Cards: High-Density Extra-Compact 2x2 on Mobile, 4x1 on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
+        {/* Bookings (Sky Blue) */}
+        <div className="bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-sky-200/80 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-sky-800 uppercase tracking-wider">Bookings</span>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-sky-600 text-white flex items-center justify-center shadow-2xs">
+              <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </div>
+          </div>
+          <div className="mt-1 sm:mt-2 text-base sm:text-2xl font-black text-slate-900 leading-tight">
             {agency.stats?.totalBookings || 0}
           </div>
-          <span className="text-xs text-slate-400">Total flight & travel bookings</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 truncate block mt-0.5">Total trips booked</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Sales Revenue</span>
-          <div className="mt-2 text-2xl font-extrabold text-slate-800 font-mono text-emerald-600">
+        {/* Sales Revenue (Emerald Green) */}
+        <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-emerald-200/80 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider">Gross Sales</span>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-2xs">
+              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </div>
+          </div>
+          <div className="mt-1 sm:mt-2 text-sm sm:text-xl font-black text-slate-900 font-mono truncate leading-tight">
             {formatCurrency(agency.stats?.totalSales)}
           </div>
-          <span className="text-xs text-slate-400">Gross booking value</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 truncate block mt-0.5">Total gross volume</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Payments Collected</span>
-          <div className="mt-2 text-2xl font-extrabold text-slate-800 font-mono text-brand-600">
+        {/* Collected (Purple) */}
+        <div className="bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-purple-200/80 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-purple-800 uppercase tracking-wider">Collected</span>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-2xs">
+              <CreditCard className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </div>
+          </div>
+          <div className="mt-1 sm:mt-2 text-sm sm:text-xl font-black text-slate-900 font-mono truncate leading-tight">
             {formatCurrency(agency.stats?.totalCollected)}
           </div>
-          <span className="text-xs text-slate-400">Received customer payments</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 truncate block mt-0.5">Customer payments</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Team Members</span>
-          <div className="mt-2 text-2xl font-extrabold text-slate-800">
+        {/* Users (Amber) */}
+        <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-200/80 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] sm:text-[11px] font-extrabold text-amber-900 uppercase tracking-wider">Team</span>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shadow-2xs font-bold">
+              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </div>
+          </div>
+          <div className="mt-1 sm:mt-2 text-base sm:text-2xl font-black text-slate-900 leading-tight">
             {agency.users?.length || 0}
           </div>
-          <span className="text-xs text-slate-400">Admins and staff users</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-400 truncate block mt-0.5">Agency admins</span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-5 flex items-center gap-6 text-xs font-bold">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="border-b border-slate-100 px-3 sm:px-5 flex items-center gap-3 sm:gap-6 text-xs font-bold overflow-x-auto">
           <button
             onClick={() => setActiveTab('users')}
-            className={`py-4 border-b-2 transition flex items-center gap-2 ${
+            className={`py-2.5 sm:py-3.5 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap text-[11px] sm:text-xs ${
               activeTab === 'users'
                 ? 'border-brand-600 text-brand-700 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <Users className="w-4 h-4" />
-            <span>Admin Accounts ({agency.users?.length || 0})</span>
+            <Users className="w-3.5 h-3.5" />
+            <span>Admins ({agency.users?.length || 0})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('bookings')}
-            className={`py-4 border-b-2 transition flex items-center gap-2 ${
+            className={`py-2.5 sm:py-3.5 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap text-[11px] sm:text-xs ${
               activeTab === 'bookings'
                 ? 'border-brand-600 text-brand-700 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <CreditCard className="w-4 h-4" />
+            <CreditCard className="w-3.5 h-3.5" />
             <span>Recent Bookings</span>
           </button>
 

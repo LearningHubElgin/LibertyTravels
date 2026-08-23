@@ -238,42 +238,42 @@ export const SuperAdminUsersPage = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 sm:space-y-5 pb-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-row items-center justify-between gap-2.5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-              Platform User Accounts
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <h1 className="text-base sm:text-2xl font-black text-slate-800 tracking-tight">
+              Platform Users
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-700">
-              {users.length} Users
+            <span className="px-2 py-0.2 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-purple-100 text-purple-700">
+              {users.length}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Manage Super Admins, Travel Agency Admins, and Agency Staff across the platform
+          <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
+            Manage Super Admins & Agency Admins across the platform
           </p>
         </div>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md transition"
+          className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/20 transition active:scale-95 shrink-0"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Create User</span>
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-white rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2">
           {/* Agency Filter */}
           <select
             value={agencyFilter}
             onChange={(e) => setAgencyFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold"
+            className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white"
           >
-            <option value="all">All Travel Agencies</option>
+            <option value="all">All Agencies</option>
             {agencies.map((a) => (
               <option key={a._id || a.id} value={a._id || a.id}>
                 {a.name} ({a.code})
@@ -285,7 +285,7 @@ export const SuperAdminUsersPage = () => {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold"
+            className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white"
           >
             <option value="all">All Roles</option>
             <option value="super_admin">Super Admin</option>
@@ -293,14 +293,14 @@ export const SuperAdminUsersPage = () => {
           </select>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); fetchUsers(); }} className="relative min-w-[240px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <form onSubmit={(e) => { e.preventDefault(); fetchUsers(); }} className="relative w-full sm:w-auto sm:min-w-[220px]">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="w-full pl-9 pr-4 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold"
+            placeholder="Search name or email..."
+            className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
           />
         </form>
       </div>

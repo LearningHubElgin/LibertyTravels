@@ -138,9 +138,9 @@ export const LoginPage = () => {
               Quick Login Demo Portals
             </p>
             <div className="grid grid-cols-2 gap-3">
-              {/* <button
+              <button
                 type="button"
-                onClick={() => handleQuickLogin('superadmin', 'password123')}
+                onClick={() => handleQuickLogin('superadmin', 'password')}
                 className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
                 <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-0.5">
@@ -148,8 +148,7 @@ export const LoginPage = () => {
                 </div>
                 <p className="text-[10px] text-slate-300 font-mono">superadmin</p>
                 <span className="text-[9px] text-amber-400 group-hover:underline">Click to Fill &rarr;</span>
-              </button> */}
-
+              </button>
 
               <button
                 type="button"
