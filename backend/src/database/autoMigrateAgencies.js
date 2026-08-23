@@ -97,7 +97,43 @@ const autoMigrateAgencies = async () => {
       console.log('🏢 Initialized Demo Agency: Royal Heritage Holidays (ROYAL)');
     }
 
-    // 4. Clean up / remove staff user
+    // 4. Ensure Super Admin (superadmin / password123)
+    let superAdmin = await User.findOne({ email: 'superadmin' });
+    if (!superAdmin) {
+      superAdmin = await User.create({
+        name: 'Global Super Admin',
+        email: 'superadmin',
+        password: 'password123',
+        role: ROLES.SUPER_ADMIN,
+        status: USER_STATUS.ACTIVE
+      });
+      console.log('👑 Created Super Admin: superadmin / password123');
+    } else {
+      superAdmin.role = ROLES.SUPER_ADMIN;
+      superAdmin.password = 'password123';
+      await superAdmin.save();
+    }
+
+    // 5. Ensure Liberty Agency Admin (admin@libertytravel.com / admin123)
+    let libertyAdmin = await User.findOne({ email: 'admin@libertytravel.com' });
+    if (!libertyAdmin) {
+      libertyAdmin = await User.create({
+        name: 'Liberty Agency Admin',
+        email: 'admin@libertytravel.com',
+        password: 'admin123',
+        role: ROLES.ADMIN,
+        agencyId: masterAgency._id,
+        status: USER_STATUS.ACTIVE
+      });
+      console.log('🏢 Created Liberty Agency Admin: admin@libertytravel.com / admin123');
+    } else {
+      libertyAdmin.role = ROLES.ADMIN;
+      libertyAdmin.agencyId = masterAgency._id;
+      libertyAdmin.password = 'admin123';
+      await libertyAdmin.save();
+    }
+
+    // 6. Clean up legacy accounts
     await User.deleteMany({ email: 'staff@libertytravel.com' });
     await User.updateMany({ role: 'staff' }, { role: ROLES.ADMIN });
 

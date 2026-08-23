@@ -146,21 +146,21 @@ export const LoginPage = () => {
                 className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
                 <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-0.5">
-                  <ShieldCheck className="w-4 h-4 shrink-0" /> Superadmin
+                  <ShieldCheck className="w-4 h-4 shrink-0" /> Super Admin
                 </div>
-                <p className="text-[10px] text-slate-400">password123</p>
+                <p className="text-[10px] text-slate-300 font-mono">superadmin</p>
                 <span className="text-[9px] text-amber-400 group-hover:underline">Click to Fill &rarr;</span>
               </button> */}
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin@royalheritageholidays.com', 'agency123')}
+                onClick={() => handleQuickLogin('admin@libertytravel.com', 'admin123')}
                 className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
                 <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs mb-0.5">
                   <Building2 className="w-4 h-4 shrink-0" /> Agency Admin
                 </div>
-                <p className="text-[10px] text-slate-400">admin@royalheritageholidays.com</p>
+                <p className="text-[10px] text-slate-300 font-mono truncate">admin@libertytravel.com</p>
                 <span className="text-[9px] text-sky-400 group-hover:underline">Click to Fill &rarr;</span>
               </button>
             </div>
