@@ -50,16 +50,14 @@ export const LoginPage = () => {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
-        <img
-          src="/Liberty.jpg"
-          alt="Liberty Tours & Travels"
-          className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain bg-white p-1 shadow-2xl border-2 border-slate-700/80 mb-4"
-        />
-        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          Liberty Tours & Travels
+        <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-brand-600 via-sky-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-brand-500/20 border border-white/20 mb-3">
+          <Compass className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2.25]" />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          Travel ERP Portal
         </h2>
-        <p className="mt-1 text-xs font-semibold text-brand-300 uppercase tracking-widest">
-          Enterprise ERP & Booking Portal
+        <p className="mt-1 text-xs font-semibold text-slate-400">
+          Sign in to access your platform or agency workspace
         </p>
       </div>
 
@@ -151,6 +149,7 @@ export const LoginPage = () => {
                 <p className="text-[10px] text-slate-300 font-mono">superadmin</p>
                 <span className="text-[9px] text-amber-400 group-hover:underline">Click to Fill &rarr;</span>
               </button> */}
+
 
               <button
                 type="button"
