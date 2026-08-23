@@ -316,12 +316,9 @@ export const ManageAgenciesPage = () => {
               <Eye className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
-                setSelectedAgency(row);
-                setIsEditModalOpen(true);
-              }}
+              onClick={() => navigate(`/superadmin/agencies/${aId}/edit`)}
               className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 transition"
-              title="Edit Agency"
+              title="Edit Agency Configuration"
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -368,7 +365,7 @@ export const ManageAgenciesPage = () => {
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => navigate('/superadmin/agencies/new')}
           className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/20 transition active:scale-95 shrink-0"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />

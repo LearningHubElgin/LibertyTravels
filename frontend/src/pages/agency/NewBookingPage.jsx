@@ -140,13 +140,35 @@ export const NewBookingPage = () => {
     );
   }, [customers, customerSearch]);
 
+  // GST & Profit Configuration (Calculated strictly on Profit margin)
+  const [gstMode, setGstMode] = useState('profit'); // 'profit' | 'none'
+  const [gstRate, setGstRate] = useState(18); // default 18% (can be 5, 12, 18, 28)
+  const [customGstAmount, setCustomGstAmount] = useState(''); // editable manual ₹ GST amount
+
   // Live Financial Calculations
   const cost = parseFloat(formData.costPrice || 0);
   const sell = parseFloat(formData.sellPrice || 0);
   const grossProfit = Math.round((sell - cost) * 100) / 100;
   const profitMarginPercent = sell > 0 ? Math.round(((sell - cost) / sell) * 10000) / 100 : 0;
+
+  // Calculate GST Amount (Auto on Profit or User-Edited)
+  let calculatedGst = 0;
+  if (customGstAmount !== '' && !isNaN(parseFloat(customGstAmount))) {
+    calculatedGst = Math.max(0, Math.round(parseFloat(customGstAmount) * 100) / 100);
+  } else if (gstMode === 'profit') {
+    calculatedGst = grossProfit > 0 ? Math.round(((grossProfit * gstRate) / 100) * 100) / 100 : 0;
+  } else {
+    calculatedGst = 0;
+  }
+
+  // Net Profit (Agent's actual take-home earnings after GST deduction)
+  const netProfit = Math.round((grossProfit - calculatedGst) * 100) / 100;
+
+  // Total Final Amount charged to Customer is the Sell Price
+  const finalTotalAmount = sell;
+
   const initPayment = parseFloat(formData.initialPayment || 0);
-  const balanceDue = Math.max(0, Math.round((sell - initPayment) * 100) / 100);
+  const balanceDue = Math.max(0, Math.round((finalTotalAmount - initPayment) * 100) / 100);
 
   // Service Type Metadata & Placeholders
   const serviceConfigs = {
@@ -265,8 +287,8 @@ export const NewBookingPage = () => {
       return toastError('Sell Price must be greater than 0.');
     }
 
-    if (initPayment > sell) {
-      return toastError(`Initial payment (₹${initPayment}) cannot exceed Sell Price (₹${sell}).`);
+    if (initPayment > finalTotalAmount) {
+      return toastError(`Initial payment (₹${initPayment}) cannot exceed total bill amount (₹${finalTotalAmount}).`);
     }
 
     setSubmitting(true);
@@ -310,8 +332,9 @@ export const NewBookingPage = () => {
         costPrice: cost,
         sellPrice: sell,
         baseFare: sell,
-        totalAmount: sell,
-        profit: grossProfit,
+        tax: calculatedGst,
+        totalAmount: finalTotalAmount,
+        profit: netProfit,
 
         initialPayment: initPayment,
         paymentMethod: formData.paymentMethod,
@@ -873,21 +896,146 @@ export const NewBookingPage = () => {
                   </div>
                 </div>
 
-                {/* LIVE PROFIT / MARGIN BADGE */}
+                {/* LIVE GROSS PROFIT BADGE */}
                 <div className={`p-3.5 rounded-xl border transition-all ${
-                  grossProfit >= 0 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-rose-50/70 border-rose-200 text-rose-900'
+                  grossProfit >= 0 ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-rose-50/80 border-rose-200 text-rose-950'
                 }`}>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1.5">
-                      <TrendingUp className="w-4 h-4" /> Gross Profit
+                    <span className="font-bold flex items-center gap-1.5 text-xs">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" /> Gross Profit (Margin)
                     </span>
                     <span className="font-mono font-black text-sm">
                       {grossProfit >= 0 ? `+₹${grossProfit.toLocaleString('en-IN')}` : `-₹${Math.abs(grossProfit).toLocaleString('en-IN')}`}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] mt-1 pt-1 border-t border-emerald-200/50">
-                    <span className="opacity-80">Profit Margin:</span>
+                    <span className="opacity-80">Profit Margin %:</span>
                     <span className="font-mono font-bold">{profitMarginPercent}%</span>
+                  </div>
+                </div>
+
+                {/* GST TAX ON PROFIT CONFIGURATION SUITE */}
+                <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
+                      <Percent className="w-3.5 h-3.5 text-brand-600" /> GST on Profit (Margin)
+                    </label>
+                    <span className="text-[10px] font-bold text-brand-700 bg-brand-100/80 px-1.5 py-0.5 rounded">
+                      {gstMode === 'profit' ? `${gstRate}% on Margin` : 'No GST'}
+                    </span>
+                  </div>
+
+                  {/* Mode Toggle: On Profit vs No GST */}
+                  <div className="grid grid-cols-2 gap-1.5 bg-white p-1 rounded-lg border border-slate-200 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => { setGstMode('profit'); setCustomGstAmount(''); }}
+                      className={`py-1.5 rounded-md text-center transition ${
+                        gstMode === 'profit' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Calculate GST on Profit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setGstMode('none'); setCustomGstAmount(''); }}
+                      className={`py-1.5 rounded-md text-center transition ${
+                        gstMode === 'none' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      No GST (Exempt)
+                    </button>
+                  </div>
+
+                  {gstMode !== 'none' && (
+                    <div className="space-y-2.5 pt-1">
+                      {/* Quick Rate Buttons */}
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-500 mb-1">
+                          Select GST Rate %:
+                        </span>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[5, 12, 18, 28].map((rate) => (
+                            <button
+                              key={rate}
+                              type="button"
+                              onClick={() => {
+                                setGstRate(rate);
+                                setCustomGstAmount('');
+                              }}
+                              className={`py-1 px-1.5 rounded-lg font-mono font-bold text-[10px] transition border ${
+                                gstRate === rate && customGstAmount === ''
+                                  ? 'bg-brand-50 border-brand-500 text-brand-700 ring-1 ring-brand-500'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              {rate}% {rate === 18 ? '★' : ''}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Editable GST Amount Field */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-bold text-slate-700">
+                            GST Amount (₹) <span className="text-slate-400 font-normal">(Editable)</span>
+                          </label>
+                          {customGstAmount !== '' && (
+                            <button
+                              type="button"
+                              onClick={() => setCustomGstAmount('')}
+                              className="text-[9px] text-brand-600 font-bold hover:underline"
+                            >
+                              Reset to Auto ({gstRate}%)
+                            </button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder={calculatedGst.toString()}
+                            value={customGstAmount !== '' ? customGstAmount : (calculatedGst || '')}
+                            onChange={(e) => setCustomGstAmount(e.target.value)}
+                            className="w-full pl-7 pr-3 py-1.5 border border-slate-300 rounded-lg font-mono font-black text-slate-900 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-0.5">
+                          {customGstAmount !== ''
+                            ? `Custom GST amount of ₹${parseFloat(customGstAmount) || 0} applied.`
+                            : `Calculated: ${gstRate}% on ₹${grossProfit.toLocaleString('en-IN')} profit = ₹${calculatedGst.toLocaleString('en-IN')}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* FINANCIAL BREAKDOWN SUMMARY TABLE */}
+                <div className="p-3 rounded-xl bg-slate-900 text-white space-y-1.5 font-mono text-[11px]">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Cost (Buy Rate):</span>
+                    <span>₹{cost.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span>Base Sell Price:</span>
+                    <span>₹{sell.toLocaleString('en-IN')}</span>
+                  </div>
+                  {gstMode !== 'none' && calculatedGst > 0 && (
+                    <div className="flex justify-between text-amber-300">
+                      <span>GST Tax (Margin):</span>
+                      <span>₹{calculatedGst.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-emerald-400 font-bold border-t border-slate-800 pt-1">
+                    <span>Net Profit (Take-Home):</span>
+                    <span>+₹{netProfit.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-black text-white border-t border-slate-700 pt-1">
+                    <span>Customer Total Bill:</span>
+                    <span className="text-amber-400 font-bold">₹{finalTotalAmount.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
 
@@ -902,7 +1050,7 @@ export const NewBookingPage = () => {
                       <input
                         type="number"
                         min="0"
-                        max={sell}
+                        max={finalTotalAmount}
                         step="0.01"
                         placeholder="0.00"
                         value={formData.initialPayment || ''}

@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('../pages/LoginPage').then(m => ({ default: 
 // Super Admin Pages
 const SuperAdminDashboardPage = lazy(() => import('../pages/superadmin/SuperAdminDashboardPage').then(m => ({ default: m.SuperAdminDashboardPage })));
 const ManageAgenciesPage = lazy(() => import('../pages/superadmin/ManageAgenciesPage').then(m => ({ default: m.ManageAgenciesPage })));
+const AgencyFormPage = lazy(() => import('../pages/superadmin/AgencyFormPage').then(m => ({ default: m.AgencyFormPage })));
 const AgencyDetailPage = lazy(() => import('../pages/superadmin/AgencyDetailPage').then(m => ({ default: m.AgencyDetailPage })));
 const SuperAdminUsersPage = lazy(() => import('../pages/superadmin/SuperAdminUsersPage').then(m => ({ default: m.SuperAdminUsersPage })));
 
@@ -93,10 +94,26 @@ export const AppRoutes = () => {
           }
         />
         <Route
+          path="/superadmin/agencies/new"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <AgencyFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/superadmin/agencies/:id"
           element={
             <ProtectedRoute superAdminOnly>
               <AgencyDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/superadmin/agencies/:id/edit"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <AgencyFormPage />
             </ProtectedRoute>
           }
         />

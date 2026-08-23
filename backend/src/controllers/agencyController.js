@@ -211,14 +211,16 @@ exports.createAgency = async (req, res, next) => {
       panNumber: panNumber ? panNumber.trim().toUpperCase() : '',
       plan: plan || 'professional',
       status: AGENCY_STATUS.ACTIVE,
-      contactPerson: {
+      contactPerson: contactPerson || {
         name: adminName ? adminName.trim() : name.trim(),
         phone: adminPhone || phone,
         email: cleanAdminEmail
       },
-      invoiceSettings: {
+      invoiceSettings: invoiceSettings || {
         prefix: invoicePrefix ? invoicePrefix.trim() : `${cleanCode}-INV-`,
-        nextNumber: 1001
+        nextNumber: 1001,
+        terms: '1. Service cancellation and date change charges apply as per company policy.\n2. Please carry valid Govt ID / Passport for travel.',
+        footer: `Thank you for choosing ${name.trim()}. Have a pleasant and safe journey!`
       },
       notes: notes || ''
     });

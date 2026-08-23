@@ -7,6 +7,7 @@ router.use(authenticate, authorizeAdmin);
 
 router.get('/', bookingController.getBookings);
 router.post('/', bookingController.createBooking);
+router.post('/bulk-import', bookingController.bulkImportBookings);
 router.get('/:id', bookingController.getBookingById);
 router.put('/:id', bookingController.updateBooking);
 router.put('/:id/status', bookingController.updateBookingStatus);

@@ -70,7 +70,7 @@ export const MobileBottomNav = ({ onOpenMenu }) => {
 
             {/* 3. Center Highlight: Register New Agency */}
             <NavLink
-              to="/superadmin/agencies?new=true"
+              to="/superadmin/agencies/new"
               className="flex flex-col items-center justify-center -mt-5 active:scale-95 transition-transform duration-200"
               aria-label="Register New Travel Agency"
             >

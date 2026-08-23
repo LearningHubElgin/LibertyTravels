@@ -727,3 +727,291 @@ exports.deleteBooking = async (req, res, next) => {
   }
 };
 
+/**
+ * Bulk Import Bookings from Excel / CSV Sheet
+ */
+exports.bulkImportBookings = async (req, res, next) => {
+  try {
+    const { bookings = [] } = req.body;
+
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No booking rows provided for Excel import.'
+      });
+    }
+
+    const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
+    const userId = req.user ? (req.user.id || req.user._id) : null;
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    const errors = [];
+    const createdBookings = [];
+
+    // Cache of companies to avoid redundant lookups
+    const agencyCompanies = await Company.find({
+      ...(activeAgencyId ? { agencyId: activeAgencyId } : {})
+    });
+    const companyMap = new Map();
+    agencyCompanies.forEach((c) => {
+      companyMap.set(c.name.toLowerCase().trim(), c);
+      if (c.code) companyMap.set(c.code.toLowerCase().trim(), c);
+    });
+
+    const normalizeServiceType = (val) => {
+      if (!val) return 'flight';
+      const s = String(val).toLowerCase().trim();
+      if (s.includes('train') || s.includes('rail') || s.includes('irctc')) return 'train';
+      if (s.includes('bus') || s.includes('volvo') || s.includes('coach')) return 'bus';
+      if (s.includes('hotel') || s.includes('room') || s.includes('resort') || s.includes('stay') || s.includes('villa')) return 'hotel';
+      if (s.includes('car') || s.includes('cab') || s.includes('taxi') || s.includes('driver')) return 'car';
+      if (s.includes('flight') || s.includes('air') || s.includes('plane') || s.includes('indigo') || s.includes('spicejet') || s.includes('airindia')) return 'flight';
+      return 'flight';
+    };
+
+    const parseExcelDate = (val) => {
+      if (!val) return new Date().toISOString().split('T')[0];
+      if (val instanceof Date && !isNaN(val)) {
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      if (typeof val === 'number' && val > 0) {
+        const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      const str = String(val).trim();
+      const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmyMatch) {
+        const day = dmyMatch[1].padStart(2, '0');
+        const month = dmyMatch[2].padStart(2, '0');
+        const year = dmyMatch[3];
+        return `${year}-${month}-${day}`;
+      }
+      const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+      if (ymdMatch) {
+        const year = ymdMatch[1];
+        const month = ymdMatch[2].padStart(2, '0');
+        const day = ymdMatch[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      const dmyShortMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+      if (dmyShortMatch) {
+        const day = dmyShortMatch[1].padStart(2, '0');
+        const month = dmyShortMatch[2].padStart(2, '0');
+        const year = `20${dmyShortMatch[3]}`;
+        return `${year}-${month}-${day}`;
+      }
+      return str;
+    };
+
+    for (let i = 0; i < bookings.length; i++) {
+      const row = bookings[i];
+      try {
+        const customerName = (row.customerName || row.name || row.passengerName || 'Valued Guest').trim();
+        const customerPhone = (row.customerPhone || row.phone || row.mobile || '').toString().trim();
+        const customerEmail = (row.customerEmail || row.email || '').toString().toLowerCase().trim();
+        const serviceType = normalizeServiceType(row.serviceType || row.service || row.type);
+
+        // 1. Find existing customer by ID, Name (case-insensitive), or Phone within agency
+        let customer = null;
+        if (row.customerId && mongoose.Types.ObjectId.isValid(row.customerId)) {
+          customer = await Customer.findOne({
+            _id: row.customerId,
+            ...(activeAgencyId ? { agencyId: activeAgencyId } : {})
+          });
+        }
+
+        if (!customer && customerName) {
+          const escapedName = customerName.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+          customer = await Customer.findOne({
+            ...(activeAgencyId ? { agencyId: activeAgencyId } : {}),
+            name: { $regex: new RegExp(`^${escapedName}$`, 'i') }
+          });
+        }
+
+        if (!customer && customerPhone && customerPhone !== '+91 9800000000' && customerPhone !== '+919800000000') {
+          customer = await Customer.findOne({
+            ...(activeAgencyId ? { agencyId: activeAgencyId } : {}),
+            phone: customerPhone
+          });
+        }
+
+        // If still not found, create new Customer record
+        if (!customer) {
+          const customerCode = await generateCustomerCode();
+          customer = await Customer.create({
+            agencyId: activeAgencyId,
+            customerCode,
+            name: customerName,
+            phone: customerPhone || '+91 9800000000',
+            email: customerEmail,
+            address: row.customerAddress || row.address || ''
+          });
+        }
+
+        // 2. Find or create Company / Vendor
+        const rawCompName = (row.companyName || row.company || row.vendor || `${serviceType.toUpperCase()} Vendor`).trim();
+        let company = companyMap.get(rawCompName.toLowerCase());
+        if (!company) {
+          const compCode = rawCompName.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase() || 'VND';
+          company = await Company.create({
+            agencyId: activeAgencyId,
+            name: rawCompName,
+            code: compCode,
+            type: serviceType,
+            status: 'active'
+          });
+          companyMap.set(rawCompName.toLowerCase(), company);
+        }
+
+        // 3. Compute Financials
+        const costPrice = toDecimal(parseFloat(row.costPrice || row.cost || row.buyRate || 0));
+        const sellPrice = toDecimal(parseFloat(row.sellPrice || row.sell || row.price || row.amount || costPrice || 0));
+        const tax = toDecimal(parseFloat(row.tax || row.gst || 0));
+        const initialPayment = toDecimal(parseFloat(row.initialPayment || row.paid || row.amountReceived || 0));
+        
+        const grossProfit = toDecimal(sellPrice - costPrice);
+        const netProfit = tax > 0 ? toDecimal(grossProfit - tax) : grossProfit;
+        const totalAmount = sellPrice > 0 ? sellPrice : costPrice;
+        const balanceDue = toDecimal(Math.max(0, totalAmount - initialPayment));
+        const paymentStatus = balanceDue <= 0 ? 'paid' : initialPayment > 0 ? 'partially_paid' : 'unpaid';
+
+        // 4. Generate reference if not given & Check if booking already exists in DB
+        let referenceNo = (row.referenceNo || row.pnr || row.ref || '').toString().trim().toUpperCase();
+        const rawPnr = (row.pnr || referenceNo || '').toString().trim().toUpperCase();
+
+        if (referenceNo) {
+          const existingBooking = await Booking.findOne({
+            ...(activeAgencyId ? { agencyId: activeAgencyId } : {}),
+            $or: [{ referenceNo }, { pnr: referenceNo }, { pnr: rawPnr }]
+          });
+
+          if (existingBooking) {
+            // DO NOT change previous data! Skip insertion to preserve existing booking completely.
+            skippedCount++;
+            continue;
+          }
+        } else {
+          referenceNo = await generateBookingReference();
+        }
+
+        const bookingDate = parseExcelDate(row.bookingDate || row.date);
+        const journeyDate = parseExcelDate(row.journeyDate || row.travelDate || row.bookingDate || row.date);
+        const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
+
+        // 5. Create Booking Document
+        const newBooking = await Booking.create({
+          referenceNo,
+          agencyId: activeAgencyId,
+          serviceType,
+          bookingDate,
+          bookingType: row.bookingType || 'one_way',
+          sector,
+          description: row.description || sector,
+          journeyDate,
+          returnDate: row.returnDate || null,
+          companyId: company._id,
+          flightNumber: (row.flightNumber || row.trainNumber || '').toString().trim().toUpperCase(),
+          pnr: (row.pnr || referenceNo).toString().trim().toUpperCase(),
+          ticketNumber: (row.ticketNumber || '').toString().trim(),
+          passengerName: (row.passengerName || customerName).trim(),
+          status: row.status || 'confirmed',
+          paymentStatus,
+          customerId: customer._id,
+          costPrice,
+          sellPrice,
+          profit: netProfit,
+          baseFare: sellPrice,
+          tax,
+          totalAmount,
+          amountReceived: initialPayment,
+          balanceDue,
+          commission: 0,
+          notes: row.notes || 'Imported via Excel Sheet',
+          createdBy: userId
+        });
+
+        // 6. Create Primary Passenger
+        await Passenger.create({
+          bookingId: newBooking._id,
+          customerId: customer._id,
+          title: 'Mr',
+          firstName: customerName.split(' ')[0] || 'Passenger',
+          lastName: customerName.split(' ').slice(1).join(' ') || '',
+          phone: customerPhone
+        });
+
+        // 7. If initial payment exists, record Payment and Ledger Transaction
+        if (initialPayment > 0) {
+          const paymentRef = await generatePaymentReference();
+          await Payment.create({
+            agencyId: activeAgencyId,
+            bookingId: newBooking._id,
+            customerId: customer._id,
+            amount: initialPayment,
+            paymentDate: bookingDate,
+            paymentMethod: row.paymentMethod || 'cash',
+            reference: paymentRef,
+            notes: 'Initial payment recorded during Excel bulk import',
+            receivedBy: userId
+          });
+
+          const txnRef = await generateTransactionReference();
+          await Transaction.create({
+            agencyId: activeAgencyId,
+            bookingId: newBooking._id,
+            customerId: customer._id,
+            type: TRANSACTION_TYPES.PAYMENT,
+            amount: initialPayment,
+            transactionDate: bookingDate,
+            reference: txnRef,
+            description: `Payment received for ${referenceNo} (Excel Import)`,
+            paymentMethod: row.paymentMethod || 'cash',
+            createdBy: userId
+          });
+        }
+
+        importedCount++;
+        createdBookings.push({
+          id: newBooking._id,
+          referenceNo: newBooking.referenceNo,
+          customerName: customer.name,
+          serviceType: newBooking.serviceType,
+          totalAmount: newBooking.totalAmount
+        });
+      } catch (rowErr) {
+        errors.push({ row: i + 1, error: rowErr.message });
+      }
+    }
+
+    await logActivity(
+      userId,
+      'Excel Bulk Import',
+      'Booking',
+      null,
+      `Successfully imported ${importedCount} bookings from Excel sheet.`,
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: skippedCount > 0
+        ? `Imported ${importedCount} new bookings. ${skippedCount} existing bookings were skipped to preserve previous data.`
+        : `Successfully imported all ${importedCount} bookings from Excel!`,
+      importedCount,
+      skippedCount,
+      totalRows: bookings.length,
+      errors: errors.length > 0 ? errors : undefined,
+      data: createdBookings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

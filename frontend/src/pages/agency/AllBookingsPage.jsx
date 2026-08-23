@@ -17,7 +17,8 @@ import {
   Car,
   Building2,
   TrendingUp,
-  Download
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -27,6 +28,7 @@ import { useToast } from '../../context/ToastContext';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Modal } from '../../components/common/Modal';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
+import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
 import { formatDate } from '../../utils/formatters';
 
 export const AllBookingsPage = () => {
@@ -37,6 +39,9 @@ export const AllBookingsPage = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+
+  // Excel Bulk Import Modal
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -446,12 +451,21 @@ export const AllBookingsPage = () => {
         subtitle="Search, filter, view details, collect payments and generate invoices"
         icon={BookOpenCheck}
         actions={
-          <button
-            onClick={() => navigate('/bookings/new')}
-            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-brand-600/20 transition"
-          >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Create New Booking
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsExcelModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Excel Sheet
+            </button>
+
+            <button
+              onClick={() => navigate('/bookings/new')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-brand-600/20 transition cursor-pointer active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Create New Booking
+            </button>
+          </div>
         }
       />
 
@@ -704,6 +718,13 @@ export const AllBookingsPage = () => {
         confirmText="Delete Booking"
         type="danger"
         loading={actionLoading}
+      />
+
+      {/* Excel Sheet Bulk Import Modal */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onSuccess={fetchBookings}
       />
     </div>
   );

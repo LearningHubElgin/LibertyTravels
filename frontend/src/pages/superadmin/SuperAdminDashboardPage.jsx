@@ -95,7 +95,7 @@ export const SuperAdminDashboardPage = () => {
           {/* Action Buttons: 2 columns on small screens, flex on desktop */}
           <div className="grid grid-cols-2 sm:flex items-center gap-2 pt-1 sm:pt-0">
             <button
-              onClick={() => navigate('/superadmin/agencies?new=true')}
+              onClick={() => navigate('/superadmin/agencies/new')}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -193,7 +193,7 @@ export const SuperAdminDashboardPage = () => {
       {/* 3. Quick Platform Shortcuts (Compact 2 or 4 cols) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <button
-          onClick={() => navigate('/superadmin/agencies?new=true')}
+          onClick={() => navigate('/superadmin/agencies/new')}
           className="p-2.5 sm:p-3 rounded-xl bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 text-left transition flex items-center gap-2.5 group shadow-xs active:scale-98"
         >
           <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">

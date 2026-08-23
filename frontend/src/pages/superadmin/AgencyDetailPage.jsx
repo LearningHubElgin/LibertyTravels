@@ -7,6 +7,7 @@ import {
   TrendingUp,
   ArrowLeft,
   Plus,
+  Edit2,
   Mail,
   Phone,
   MapPin,
@@ -146,13 +147,23 @@ export const AgencyDetailPage = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsAddUserModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/20 transition active:scale-95 shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Add Admin</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => navigate(`/superadmin/agencies/${id}/edit`)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition active:scale-95"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-amber-600" />
+            <span>Edit Agency</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddUserModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/20 transition active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Add Admin</span>
+          </button>
+        </div>
       </div>
 
       {/* Agency KPI Cards: High-Density Extra-Compact 2x2 on Mobile, 4x1 on Desktop */}
