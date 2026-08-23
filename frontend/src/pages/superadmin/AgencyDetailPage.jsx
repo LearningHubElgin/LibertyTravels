@@ -6,7 +6,6 @@ import {
   CreditCard,
   TrendingUp,
   ArrowLeft,
-  ExternalLink,
   Plus,
   Mail,
   Phone,
@@ -63,13 +62,6 @@ export const AgencyDetailPage = () => {
     }
   };
 
-  const handleSwitchToAgency = () => {
-    localStorage.setItem('liberty_active_agency', id);
-    api.defaults.headers.common['x-agency-id'] = id;
-    toastSuccess(`Switched workspace to ${agency?.name}!`);
-    navigate('/dashboard');
-  };
-
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
@@ -79,13 +71,19 @@ export const AgencyDetailPage = () => {
         agencyId: id
       });
       if (res.data?.success) {
-        toastSuccess('User account created for agency!');
+        toastSuccess('Agency user added successfully!');
         setIsAddUserModalOpen(false);
-        setUserFormData({ name: '', email: '', password: '', phone: '', role: 'staff' });
+        setUserFormData({
+          name: '',
+          email: '',
+          password: '',
+          phone: '',
+          role: 'admin'
+        });
         fetchAgencyDetails();
       }
     } catch (err) {
-      toastError(err.response?.data?.message || 'Failed to create agency user');
+      toastError(err.response?.data?.message || 'Failed to add user');
     } finally {
       setSubmittingUser(false);
     }
@@ -101,16 +99,17 @@ export const AgencyDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Loading Travel Agency Profile..." />
+      <div className="flex items-center justify-center py-24">
+        <LoadingSpinner size="lg" text="Loading Agency profile..." />
       </div>
     );
   }
 
   if (!agency) {
     return (
-      <div className="p-12 text-center bg-white rounded-2xl border border-slate-100">
-        <h2 className="text-lg font-bold text-slate-800">Agency Not Found</h2>
+      <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 p-8">
+        <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+        <h3 className="text-base font-bold text-slate-700">Agency Not Found</h3>
         <button
           onClick={() => navigate('/superadmin/agencies')}
           className="mt-4 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold"
@@ -149,11 +148,11 @@ export const AgencyDetailPage = () => {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={handleSwitchToAgency}
+            onClick={() => setIsAddUserModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-600/20 transition active:scale-95"
           >
-            <ExternalLink className="w-4 h-4" />
-            <span>Open ERP Workspace</span>
+            <Plus className="w-4 h-4" />
+            <span>Add Admin User</span>
           </button>
         </div>
       </div>

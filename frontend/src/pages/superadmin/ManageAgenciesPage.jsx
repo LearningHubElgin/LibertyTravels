@@ -5,7 +5,6 @@ import {
   Plus,
   Search,
   Filter,
-  ExternalLink,
   Edit2,
   Trash2,
   ShieldCheck,
@@ -204,13 +203,6 @@ export const ManageAgenciesPage = () => {
     }
   };
 
-  const handleSwitchToAgency = (agencyId) => {
-    localStorage.setItem('liberty_active_agency', agencyId);
-    api.defaults.headers.common['x-agency-id'] = agencyId;
-    toastSuccess('Switched to Travel Agency ERP workspace!');
-    navigate('/dashboard');
-  };
-
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -317,16 +309,9 @@ export const ManageAgenciesPage = () => {
         return (
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => handleSwitchToAgency(aId)}
-              className="p-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 transition"
-              title="Open ERP Workspace as this Agency"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </button>
-            <button
               onClick={() => navigate(`/superadmin/agencies/${aId}`)}
               className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-              title="View Agency Profile & Staff"
+              title="View Agency Profile & Users"
             >
               <Eye className="w-4 h-4" />
             </button>

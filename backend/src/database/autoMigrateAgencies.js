@@ -118,7 +118,7 @@ const autoMigrateAgencies = async () => {
     let libertyAdmin = await User.findOne({ email: 'admin@libertytravel.com' });
     if (!libertyAdmin) {
       libertyAdmin = await User.create({
-        name: 'Liberty Agency Admin',
+        name: 'Liberty Admin',
         email: 'admin@libertytravel.com',
         password: 'admin123',
         role: ROLES.ADMIN,
@@ -127,6 +127,7 @@ const autoMigrateAgencies = async () => {
       });
       console.log('🏢 Created Liberty Agency Admin: admin@libertytravel.com / admin123');
     } else {
+      libertyAdmin.name = 'Liberty Admin';
       libertyAdmin.role = ROLES.ADMIN;
       libertyAdmin.agencyId = masterAgency._id;
       libertyAdmin.password = 'admin123';

@@ -112,33 +112,33 @@ export const AppRoutes = () => {
         <Route path="/agencies" element={<Navigate to="/superadmin/agencies" replace />} />
 
         {/* ---------------------------------------------------- */}
-        {/* 2. TRAVEL AGENCY ERP MODULES                         */}
+        {/* 2. TRAVEL AGENCY ERP MODULES (Agency Admins Only)   */}
         {/* ---------------------------------------------------- */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute agencyOnly><DashboardPage /></ProtectedRoute>} />
 
         {/* Bookings */}
-        <Route path="/bookings/new" element={<NewBookingPage />} />
-        <Route path="/bookings" element={<AllBookingsPage />} />
-        <Route path="/bookings/:id" element={<BookingDetailsPage />} />
+        <Route path="/bookings/new" element={<ProtectedRoute agencyOnly><NewBookingPage /></ProtectedRoute>} />
+        <Route path="/bookings" element={<ProtectedRoute agencyOnly><AllBookingsPage /></ProtectedRoute>} />
+        <Route path="/bookings/:id" element={<ProtectedRoute agencyOnly><BookingDetailsPage /></ProtectedRoute>} />
 
         {/* Master & Financial Modules */}
-        <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/customers" element={<CustomersPage />} />
-        <Route path="/companies" element={<CompaniesPage />} />
-        <Route path="/companies/:id" element={<CompanyDetailsPage />} />
-        <Route path="/payments" element={<PaymentsPage />} />
-        <Route path="/ledger" element={<LedgerPage />} />
-        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/transactions" element={<ProtectedRoute agencyOnly><TransactionsPage /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute agencyOnly><CustomersPage /></ProtectedRoute>} />
+        <Route path="/companies" element={<ProtectedRoute agencyOnly><CompaniesPage /></ProtectedRoute>} />
+        <Route path="/companies/:id" element={<ProtectedRoute agencyOnly><CompanyDetailsPage /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute agencyOnly><PaymentsPage /></ProtectedRoute>} />
+        <Route path="/ledger" element={<ProtectedRoute agencyOnly><LedgerPage /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute agencyOnly><ExpensesPage /></ProtectedRoute>} />
 
         {/* Schedules & Management */}
-        <Route path="/upcoming-journeys" element={<UpcomingJourneysPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/upcoming-journeys" element={<ProtectedRoute agencyOnly><UpcomingJourneysPage /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute agencyOnly><CalendarPage /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute agencyOnly><ReportsPage /></ProtectedRoute>} />
 
         {/* Agency Users & Logs */}
-        <Route path="/users" element={<UsersPage />} />
+        <Route path="/users" element={<ProtectedRoute agencyOnly><UsersPage /></ProtectedRoute>} />
         <Route path="/activity-logs" element={<ActivityLogsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<ProtectedRoute agencyOnly><SettingsPage /></ProtectedRoute>} />
       </Route>
 
       {/* Fallback */}
