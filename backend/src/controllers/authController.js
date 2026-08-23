@@ -22,7 +22,10 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
+      .select('+password')
+      .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -70,6 +73,8 @@ exports.login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        agencyId: user.agencyId?._id || user.agencyId || null,
+        agency: user.agencyId && typeof user.agencyId === 'object' ? user.agencyId : null,
         status: user.status,
         lastLogin: user.lastLogin
       }
@@ -81,9 +86,21 @@ exports.login = async (req, res, next) => {
 
 exports.getMe = async (req, res, next) => {
   try {
+    const user = await User.findById(req.user.id || req.user._id)
+      .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+
     return res.status(200).json({
       success: true,
-      user: req.user
+      user: {
+        id: user.id || user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        agencyId: user.agencyId?._id || user.agencyId || null,
+        agency: user.agencyId && typeof user.agencyId === 'object' ? user.agencyId : null,
+        status: user.status,
+        lastLogin: user.lastLogin
+      }
     });
   } catch (error) {
     next(error);

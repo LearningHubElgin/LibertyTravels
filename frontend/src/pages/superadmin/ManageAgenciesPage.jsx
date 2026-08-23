@@ -17,7 +17,10 @@ import {
   MapPin,
   Sparkles,
   KeyRound,
-  UserCheck
+  UserCheck,
+  Upload,
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -47,6 +50,7 @@ export const ManageAgenciesPage = () => {
     name: '',
     code: '',
     tagline: '',
+    logo: '',
     email: '',
     phone: '',
     address: '',
@@ -93,6 +97,25 @@ export const ManageAgenciesPage = () => {
     fetchAgencies();
   };
 
+  const handleLogoUpload = (e, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toastError('Logo image size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (isEdit) {
+          setSelectedAgency((prev) => ({ ...prev, logo: reader.result }));
+        } else {
+          setFormData((prev) => ({ ...prev, logo: reader.result }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleNameChange = (e) => {
     const val = e.target.value;
     const autoCode = val
@@ -120,6 +143,7 @@ export const ManageAgenciesPage = () => {
           name: '',
           code: '',
           tagline: '',
+          logo: '',
           email: '',
           phone: '',
           address: '',
@@ -199,11 +223,19 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Agency / Tours & Travels',
       accessor: 'name',
-      cell: (row) => (
+      render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B1E36] to-[#1E3A5F] text-white flex items-center justify-center font-black text-xs shrink-0 uppercase shadow-sm">
-            {row.code ? row.code.slice(0, 3) : 'TRV'}
-          </div>
+          {row.logo ? (
+            <img
+              src={row.logo}
+              alt={row.name}
+              className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 border border-slate-200 shadow-sm shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0B1E36] to-[#1E3A5F] text-white flex items-center justify-center font-black text-xs shrink-0 uppercase shadow-sm">
+              {row.code ? row.code.slice(0, 3) : 'TRV'}
+            </div>
+          )}
           <div>
             <div className="font-bold text-slate-800 flex items-center gap-1.5">
               <span>{row.name}</span>
@@ -221,7 +253,7 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Contact & Admin',
       accessor: 'email',
-      cell: (row) => (
+      render: (row) => (
         <div className="text-xs space-y-0.5">
           <div className="font-semibold text-slate-700">{row.email}</div>
           <div className="text-slate-400">{row.phone}</div>
@@ -237,7 +269,7 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Plan',
       accessor: 'plan',
-      cell: (row) => (
+      render: (row) => (
         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-extrabold uppercase bg-brand-50 text-brand-700 border border-brand-200">
           {row.plan || 'Professional'}
         </span>
@@ -246,7 +278,7 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Bookings & Volume',
       accessor: 'totalBookings',
-      cell: (row) => (
+      render: (row) => (
         <div>
           <div className="font-extrabold text-slate-800 text-xs">
             {row.totalBookings || 0} Bookings
@@ -260,7 +292,7 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Status',
       accessor: 'status',
-      cell: (row) => (
+      render: (row) => (
         <span
           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize ${
             row.status === 'active'
@@ -280,7 +312,7 @@ export const ManageAgenciesPage = () => {
     {
       header: 'Actions',
       accessor: 'actions',
-      cell: (row) => {
+      render: (row) => {
         const aId = String(row._id || row.id);
         return (
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -423,7 +455,43 @@ export const ManageAgenciesPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Agency Details */}
             <div className="md:col-span-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1">
-              1. Agency Business Profile
+              1. Agency Business Profile & Logo
+            </div>
+
+            {/* Logo Upload Section */}
+            <div className="md:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                {formData.logo ? (
+                  <img src={formData.logo} alt="Agency Logo Preview" className="w-full h-full object-contain p-1" />
+                ) : (
+                  <ImageIcon className="w-8 h-8 text-slate-300" />
+                )}
+              </div>
+              <div className="flex-1 space-y-1.5 text-center sm:text-left">
+                <label className="block text-xs font-bold text-slate-700">Agency Logo / Photo</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-xs transition">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Upload Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleLogoUpload(e, false)}
+                      className="hidden"
+                    />
+                  </label>
+                  {formData.logo && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, logo: '' })}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400">PNG, JPG, or WebP (Max 2MB). This logo will show in the agency portal & invoices.</p>
+              </div>
             </div>
 
             <div>
@@ -597,6 +665,41 @@ export const ManageAgenciesPage = () => {
           size="md"
         >
           <form onSubmit={handleUpdateAgency} className="space-y-4">
+            {/* Edit Logo Section */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+                {selectedAgency.logo ? (
+                  <img src={selectedAgency.logo} alt="Agency Logo" className="w-full h-full object-contain p-1" />
+                ) : (
+                  <ImageIcon className="w-7 h-7 text-slate-300" />
+                )}
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="block text-xs font-bold text-slate-700">Agency Logo / Photo</label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-xs transition">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Change Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleLogoUpload(e, true)}
+                      className="hidden"
+                    />
+                  </label>
+                  {selectedAgency.logo && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAgency({ ...selectedAgency, logo: '' })}
+                      className="px-2 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-100 transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Agency Name</label>
               <input

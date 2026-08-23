@@ -185,7 +185,7 @@ export const SuperAdminDashboardPage = () => {
               {stats?.totalUsers || 0}
             </span>
           </div>
-          <p className="mt-2 text-xs text-slate-400">Super Admins, Agency Admins & Staff</p>
+          <p className="mt-2 text-xs text-slate-400">Super Admins & Agency Admins</p>
         </div>
       </div>
 

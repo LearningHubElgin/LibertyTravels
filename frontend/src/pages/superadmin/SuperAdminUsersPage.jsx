@@ -135,7 +135,7 @@ export const SuperAdminUsersPage = () => {
     {
       header: 'User Name & Email',
       accessor: 'name',
-      cell: (row) => (
+      render: (row) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs uppercase">
             {row.name ? row.name.slice(0, 2) : 'US'}
@@ -150,7 +150,7 @@ export const SuperAdminUsersPage = () => {
     {
       header: 'Travel Agency',
       accessor: 'agencyId',
-      cell: (row) => {
+      render: (row) => {
         if (row.role === 'super_admin') {
           return (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
@@ -170,19 +170,17 @@ export const SuperAdminUsersPage = () => {
     {
       header: 'Role',
       accessor: 'role',
-      cell: (row) => {
-        let badgeStyle = 'bg-slate-100 text-slate-700';
-        let label = 'Staff';
-        if (row.role === 'super_admin') {
-          badgeStyle = 'bg-purple-50 text-purple-700 border border-purple-200 font-extrabold';
-          label = 'Super Admin';
-        } else if (row.role === 'admin') {
-          badgeStyle = 'bg-amber-50 text-amber-700 border border-amber-200 font-bold';
-          label = 'Agency Admin';
-        }
+      render: (row) => {
+        const isSuper = row.role === 'super_admin';
         return (
-          <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase ${badgeStyle}`}>
-            {label}
+          <span
+            className={`px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold ${
+              isSuper
+                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}
+          >
+            {isSuper ? 'Super Admin' : 'Agency Admin'}
           </span>
         );
       }
@@ -190,7 +188,7 @@ export const SuperAdminUsersPage = () => {
     {
       header: 'Status',
       accessor: 'status',
-      cell: (row) => (
+      render: (row) => (
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold capitalize ${
             row.status === 'active'
@@ -206,7 +204,7 @@ export const SuperAdminUsersPage = () => {
     {
       header: 'Actions',
       accessor: 'actions',
-      cell: (row) => (
+      render: (row) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => {
@@ -292,7 +290,6 @@ export const SuperAdminUsersPage = () => {
             <option value="all">All Roles</option>
             <option value="super_admin">Super Admin</option>
             <option value="admin">Agency Admin</option>
-            <option value="staff">Staff Operator</option>
           </select>
         </div>
 
@@ -357,7 +354,6 @@ export const SuperAdminUsersPage = () => {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold"
               >
-                <option value="staff">Agency Staff</option>
                 <option value="admin">Agency Admin</option>
                 <option value="super_admin">Super Admin</option>
               </select>

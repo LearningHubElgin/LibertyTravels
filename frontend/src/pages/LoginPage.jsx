@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, Compass, ShieldCheck, UserCheck, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Compass, ShieldCheck, UserCheck, ArrowRight, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -77,19 +77,19 @@ export const LoginPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Email Address
+                Email Address or Username
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@libertytravel.com"
+                  placeholder="admin@libertytravel.com or superadmin"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                 />
               </div>
@@ -137,43 +137,31 @@ export const LoginPage = () => {
           {/* Quick Fill Demo Credential Helpers */}
           <div className="mt-8 pt-6 border-t border-slate-800">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">
-              Quick Login Roles (Demo)
+              Quick Login Demo Portals
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
+            <div className="grid grid-cols-2 gap-3">
+              {/* <button
                 type="button"
-                onClick={() => handleQuickLogin('admin@libertytravel.com', 'admin123')}
-                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
+                onClick={() => handleQuickLogin('superadmin', 'password123')}
+                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
-                <div className="flex items-center gap-1 text-amber-400 font-bold text-[10px] mb-0.5 truncate">
-                  <ShieldCheck className="w-3 h-3 shrink-0" /> Super Admin
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-0.5">
+                  <ShieldCheck className="w-4 h-4 shrink-0" /> Superadmin
                 </div>
-                <p className="text-[9px] text-slate-400 truncate">admin@liberty</p>
-                <span className="text-[8px] text-amber-400 group-hover:underline">Fill &rarr;</span>
-              </button>
+                <p className="text-[10px] text-slate-400">password123</p>
+                <span className="text-[9px] text-amber-400 group-hover:underline">Click to Fill &rarr;</span>
+              </button> */}
 
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin@royalheritageholidays.com', 'agency123')}
-                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
+                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
               >
-                <div className="flex items-center gap-1 text-sky-400 font-bold text-[10px] mb-0.5 truncate">
-                  <Building2 className="w-3 h-3 shrink-0" /> Agency Admin
+                <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs mb-0.5">
+                  <Building2 className="w-4 h-4 shrink-0" /> Agency Admin
                 </div>
-                <p className="text-[9px] text-slate-400 truncate">admin@royal</p>
-                <span className="text-[8px] text-sky-400 group-hover:underline">Fill &rarr;</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('staff@libertytravel.com', 'staff123')}
-                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
-              >
-                <div className="flex items-center gap-1 text-emerald-400 font-bold text-[10px] mb-0.5 truncate">
-                  <UserCheck className="w-3 h-3 shrink-0" /> Staff
-                </div>
-                <p className="text-[9px] text-slate-400 truncate">staff@liberty</p>
-                <span className="text-[8px] text-emerald-400 group-hover:underline">Fill &rarr;</span>
+                <p className="text-[10px] text-slate-400">admin@royalheritageholidays.com</p>
+                <span className="text-[9px] text-sky-400 group-hover:underline">Click to Fill &rarr;</span>
               </button>
             </div>
           </div>

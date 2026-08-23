@@ -44,6 +44,9 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = async (email, password) => {
+    localStorage.removeItem('liberty_active_agency');
+    delete api.defaults.headers.common['x-agency-id'];
+
     const res = await api.post('/auth/login', { email, password });
     if (res.data.success) {
       const { user: userData, accessToken } = res.data;
@@ -68,6 +71,8 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       localStorage.removeItem('liberty_user');
       localStorage.removeItem('liberty_token');
+      localStorage.removeItem('liberty_active_agency');
+      delete api.defaults.headers.common['x-agency-id'];
     }
   };
 

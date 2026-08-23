@@ -42,7 +42,7 @@ api.interceptors.request.use(
     }
 
     const activeAgency = localStorage.getItem('liberty_active_agency');
-    if (activeAgency && activeAgency !== 'all') {
+    if (activeAgency && activeAgency !== 'all' && !config.url?.includes('/auth/')) {
       config.headers['x-agency-id'] = activeAgency;
     }
 

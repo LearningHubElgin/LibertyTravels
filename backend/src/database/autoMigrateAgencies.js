@@ -97,13 +97,9 @@ const autoMigrateAgencies = async () => {
       console.log('🏢 Initialized Demo Agency: Royal Heritage Holidays (ROYAL)');
     }
 
-    // 4. Ensure Staff user exists for Liberty
-    const staffUser = await User.findOne({ email: 'staff@libertytravel.com' });
-    if (staffUser) {
-      staffUser.role = ROLES.STAFF;
-      staffUser.agencyId = masterId;
-      await staffUser.save();
-    }
+    // 4. Clean up / remove staff user
+    await User.deleteMany({ email: 'staff@libertytravel.com' });
+    await User.updateMany({ role: 'staff' }, { role: ROLES.ADMIN });
 
     console.log('✅ Multi-tenant agency auto-migration verified.');
   } catch (err) {

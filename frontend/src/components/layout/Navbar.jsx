@@ -12,14 +12,14 @@ import {
   Plane,
   AlertCircle,
   CreditCard,
-  CalendarDays
+  CalendarDays,
+  ShieldCheck,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import api from '../../services/api';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { AgencySwitcher } from './AgencySwitcher';
 
 export const Navbar = ({ onOpenMobile }) => {
   const { user, logout, updateUserProfile } = useAuth();
@@ -294,10 +294,19 @@ export const Navbar = ({ onOpenMobile }) => {
           )}
         </div>
 
-        {/* Right Side: Agency Switcher, Notifications & User Profile */}
+        {/* Right Side: Portal Badge, Notifications & User Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Super Admin Agency Switcher */}
-          <AgencySwitcher />
+          {user?.role === 'super_admin' ? (
+            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold shadow-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+              <span>Super Admin Portal</span>
+            </span>
+          ) : user?.agency?.name ? (
+            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 border border-brand-200 text-brand-900 text-xs font-bold shadow-xs">
+              <Building2 className="w-3.5 h-3.5 text-brand-600" />
+              <span>{user.agency.name}</span>
+            </span>
+          ) : null}
 
           {/* Notifications Dropdown */}
           <div className="relative" ref={notifRef}>
@@ -402,8 +411,14 @@ export const Navbar = ({ onOpenMobile }) => {
                 <div className="px-4 py-3 bg-slate-50/50">
                   <p className="text-xs font-bold text-slate-900">{user?.name}</p>
                   <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+                  {user?.agency?.name && user?.role !== 'super_admin' && (
+                    <p className="text-[10px] font-bold text-slate-700 mt-0.5 truncate flex items-center gap-1">
+                      <span>🏢</span>
+                      <span>{user.agency.name}</span>
+                    </p>
+                  )}
                   <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-brand-100 text-brand-800 capitalize">
-                    {user?.role === 'super_admin' ? 'Super Admin (Full Access)' : 'Admin (Operational)'}
+                    {user?.role === 'super_admin' ? 'Super Admin (Global)' : 'Agency Admin'}
                   </span>
                 </div>
 

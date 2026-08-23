@@ -150,6 +150,7 @@ exports.createAgency = async (req, res, next) => {
       name,
       code,
       tagline,
+      logo,
       email,
       phone,
       address,
@@ -199,6 +200,7 @@ exports.createAgency = async (req, res, next) => {
       name: name.trim(),
       code: cleanCode,
       tagline: tagline ? tagline.trim() : '',
+      logo: logo || '',
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
       address: address ? address.trim() : '',
@@ -460,7 +462,7 @@ exports.createAgencyUser = async (req, res, next) => {
     if (role !== ROLES.SUPER_ADMIN && !agencyId) {
       return res.status(400).json({
         success: false,
-        message: 'Please assign a Travel Agency for Admin and Staff users.'
+        message: 'Please select a Travel Agency for this account.'
       });
     }
 

@@ -7,7 +7,6 @@ import {
   ReceiptText,
   Users2,
   Building2,
-  Plane,
   CreditCard,
   Scale,
   WalletCards,
@@ -18,7 +17,6 @@ import {
   History,
   Settings,
   ShieldCheck,
-  Globe,
   Sparkles,
   X,
   LogOut
@@ -29,39 +27,42 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isSuperAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const isUserSuperAdmin = user?.role === 'super_admin';
-  const isUserAdmin = user?.role === 'admin' || isUserSuperAdmin;
 
-  // Super Admin Specific Management Links
+  // Dynamic Agency Details (for Agency Admin)
+  const agencyName = user?.agency?.name || 'Liberty Tours & Travels';
+  const agencyLogo = user?.agency?.logo || (agencyName.includes('Liberty') ? '/Liberty.jpg' : null);
+  const agencyTagline = user?.agency?.tagline || 'Agency ERP';
+
+  // 1. Super Admin ONLY Navigation Links
   const superAdminNav = [
     { name: 'Super Admin Hub', path: '/superadmin/dashboard', icon: ShieldCheck },
     { name: 'Travel Agencies', path: '/superadmin/agencies', icon: Building2 },
-    { name: 'Platform Users', path: '/superadmin/users', icon: UserCheck }
+    { name: 'Platform Users', path: '/superadmin/users', icon: UserCheck },
+    { name: 'Global Activity Logs', path: '/activity-logs', icon: History }
   ];
 
-  // Agency ERP Links
+  // 2. Agency Admin ONLY Navigation Links
   const agencyNav = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'New Booking', path: '/bookings/new', icon: PlaneTakeoff },
     { name: 'All Bookings', path: '/bookings', icon: BookOpenCheck },
-    { name: 'Companies', path: '/companies', icon: Building2 },
+    { name: 'Companies & Suppliers', path: '/companies', icon: Building2 },
     { name: 'Customers', path: '/customers', icon: Users2 },
     { name: 'Transactions', path: '/transactions', icon: ReceiptText },
     { name: 'Payments', path: '/payments', icon: CreditCard },
-    { name: 'Ledger', path: '/ledger', icon: Scale, adminOnly: true },
-    { name: 'Expenses', path: '/expenses', icon: WalletCards, adminOnly: true },
+    { name: 'Ledger', path: '/ledger', icon: Scale },
+    { name: 'Expenses', path: '/expenses', icon: WalletCards },
     { name: 'Upcoming Journeys', path: '/upcoming-journeys', icon: CalendarDays },
     { name: 'Calendar', path: '/calendar', icon: Calendar },
-    { name: 'Reports', path: '/reports', icon: BarChart3, adminOnly: true },
-    { name: 'Agency Users', path: '/users', icon: UserCheck, adminOnly: true },
-    { name: 'Activity Logs', path: '/activity-logs', icon: History, adminOnly: true },
-    { name: 'Settings', path: '/settings', icon: Settings, adminOnly: true }
+    { name: 'Reports', path: '/reports', icon: BarChart3 },
+    { name: 'Agency Users', path: '/users', icon: UserCheck },
+    { name: 'Activity Logs', path: '/activity-logs', icon: History },
+    { name: 'Settings', path: '/settings', icon: Settings }
   ];
-
-  const filteredAgencyNav = agencyNav.filter((item) => !item.adminOnly || isUserAdmin);
 
   const handleConfirmLogout = () => {
     setIsLogoutConfirmOpen(false);
@@ -85,23 +86,47 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header */}
-        <div className="flex items-center justify-between h-14 sm:h-16 px-4 sm:px-5 border-b border-slate-800 bg-[#071628]">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <img
-              src="/Liberty.jpg"
-              alt="Liberty Travels Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-contain bg-white p-0.5 shadow-md shrink-0 border border-slate-700/60"
-            />
-            <div>
-              <span className="text-xs sm:text-sm font-black tracking-tight text-white block uppercase">
-                Liberty Travels
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-medium text-brand-300/80 block tracking-wider uppercase">
-                Agency ERP
-              </span>
+        {/* Dynamic Brand Header */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800 bg-[#071628]">
+          {isUserSuperAdmin ? (
+            /* Super Admin Brand Header */
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-black tracking-tight text-white block uppercase truncate">
+                  SUPER ADMIN
+                </span>
+                <span className="text-[9px] font-extrabold text-amber-400 block tracking-wider uppercase truncate">
+                  PLATFORM CONTROL
+                </span>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Agency Admin Brand Header (Shows that Agency's Logo & Name) */
+            <div className="flex items-center gap-2.5 min-w-0">
+              {agencyLogo ? (
+                <img
+                  src={agencyLogo}
+                  alt={`${agencyName} Logo`}
+                  className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shadow-md shrink-0 border border-slate-700/60"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white flex items-center justify-center font-black text-xs uppercase shadow-md shrink-0">
+                  {agencyName.slice(0, 2)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <span className="text-xs font-black tracking-tight text-white block uppercase truncate" title={agencyName}>
+                  {agencyName}
+                </span>
+                <span className="text-[9px] font-bold text-brand-300/80 block tracking-wider uppercase truncate" title={agencyTagline}>
+                  {agencyTagline}
+                </span>
+              </div>
+            </div>
+          )}
 
           <button
             onClick={onCloseMobile}
@@ -111,18 +136,20 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
           </button>
         </div>
 
-        {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto px-2.5 sm:px-3 py-3 sm:py-4 space-y-3 sm:space-y-4">
-          {/* SUPER ADMIN PLATFORM SECTION (Super Admin Only) */}
-          {isUserSuperAdmin && (
-            <div className="space-y-0.5 sm:space-y-1">
-              <div className="px-2.5 sm:px-3 pb-1.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-400/90 flex items-center gap-1.5">
+        {/* Navigation List: Strict Role Isolation */}
+        <div className="flex-1 overflow-y-auto px-2.5 sm:px-3 py-3 sm:py-4 space-y-1">
+          {isUserSuperAdmin ? (
+            /* 1. SUPER ADMIN ONLY NAVIGATION */
+            <div className="space-y-1">
+              <div className="px-2.5 sm:px-3 pb-1.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-amber-400" />
-                <span>Super Admin Control</span>
+                <span>Super Admin Portal</span>
               </div>
               {superAdminNav.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/superadmin/dashboard' && location.pathname.startsWith(`${item.path}/`));
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== '/superadmin/dashboard' && location.pathname.startsWith(`${item.path}/`));
 
                 return (
                   <NavLink
@@ -141,49 +168,51 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
                 );
               })}
             </div>
-          )}
+          ) : (
+            /* 2. AGENCY ADMIN ONLY NAVIGATION */
+            <div className="space-y-1">
+              <div className="px-2.5 sm:px-3 pb-1.5 sm:pb-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400/80">
+                Agency Operations
+              </div>
+              {agencyNav.map((item) => {
+                const Icon = item.icon;
 
-          {/* AGENCY ERP MAIN OPERATIONS */}
-          <div className="space-y-0.5 sm:space-y-1">
-            <div className="px-2.5 sm:px-3 pb-1.5 sm:pb-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400/80">
-              {isUserSuperAdmin ? 'Agency Workspace' : 'Main Menu'}
+                let isActive = false;
+                if (item.path === '/bookings/new') {
+                  isActive = location.pathname === '/bookings/new';
+                } else if (item.path === '/bookings') {
+                  isActive =
+                    location.pathname === '/bookings' ||
+                    (location.pathname.startsWith('/bookings/') && location.pathname !== '/bookings/new');
+                } else if (item.path === '/dashboard') {
+                  isActive = location.pathname === '/dashboard' || location.pathname === '/';
+                } else {
+                  isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                }
+
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.path}
+                    onClick={onCloseMobile}
+                    className={`flex items-center gap-2.5 sm:gap-3 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition-all duration-150 group ${
+                      isActive
+                        ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                    <span className="truncate">{item.name}</span>
+                    {item.name === 'New Booking' && (
+                      <span className="ml-auto text-[9px] sm:text-[10px] bg-brand-500/30 text-brand-300 border border-brand-400/30 px-1.5 py-0.2 rounded-md font-bold">
+                        +
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
-            {filteredAgencyNav.map((item) => {
-              const Icon = item.icon;
-              
-              let isActive = false;
-              if (item.path === '/bookings/new') {
-                isActive = location.pathname === '/bookings/new';
-              } else if (item.path === '/bookings') {
-                isActive = location.pathname === '/bookings' || (location.pathname.startsWith('/bookings/') && location.pathname !== '/bookings/new');
-              } else if (item.path === '/dashboard') {
-                isActive = location.pathname === '/dashboard' || (!isUserSuperAdmin && location.pathname === '/');
-              } else {
-                isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-              }
-
-              return (
-                <NavLink
-                  key={item.name}
-                  to={item.path}
-                  onClick={onCloseMobile}
-                  className={`flex items-center gap-2.5 sm:gap-3 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition-all duration-150 group ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
-                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                  <span className="truncate">{item.name}</span>
-                  {item.name === 'New Booking' && (
-                    <span className="ml-auto text-[9px] sm:text-[10px] bg-brand-500/30 text-brand-300 border border-brand-400/30 px-1.5 py-0.2 rounded-md font-bold">
-                      +
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
+          )}
         </div>
 
         {/* User Card & Logout in Sidebar Footer */}
@@ -195,8 +224,8 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] sm:text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
-                <p className="text-[9px] sm:text-[10px] font-medium text-slate-400 truncate capitalize">
-                  {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 truncate uppercase">
+                  {isUserSuperAdmin ? 'Super Admin' : 'Agency Admin'}
                 </p>
               </div>
             </div>
@@ -220,7 +249,7 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
         onClose={() => setIsLogoutConfirmOpen(false)}
         onConfirm={handleConfirmLogout}
         title="Confirm Logout"
-        message="Are you sure you want to sign out of Liberty Tours & Travels ERP?"
+        message="Are you sure you want to sign out of the portal?"
         confirmText="Yes, Logout"
         cancelText="Cancel"
         type="danger"

@@ -76,11 +76,21 @@ export const DataTable = ({
                     : 'hover:bg-slate-50/80'
                 }`}
               >
-                {columns.map((col, colIdx) => (
-                  <td key={colIdx} className={`py-2.5 px-3 sm:py-3.5 sm:px-4 ${col.cellClassName || ''}`}>
-                    {col.render ? col.render(row, rowIdx) : row[col.accessor]}
-                  </td>
-                ))}
+                {columns.map((col, colIdx) => {
+                  const cellContent = col.render
+                    ? col.render(row, rowIdx)
+                    : col.cell
+                    ? col.cell(row, rowIdx)
+                    : typeof row[col.accessor] === 'object' && row[col.accessor] !== null
+                    ? row[col.accessor].name || row[col.accessor].title || ''
+                    : row[col.accessor];
+
+                  return (
+                    <td key={colIdx} className={`py-2.5 px-3 sm:py-3.5 sm:px-4 ${col.cellClassName || ''}`}>
+                      {cellContent}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

@@ -27,7 +27,7 @@ exports.getUsers = async (req, res, next) => {
 
 exports.createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role = ROLES.STAFF, agencyId, phone } = req.body;
+    const { name, email, password, role = ROLES.ADMIN, agencyId, phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -43,10 +43,10 @@ exports.createUser = async (req, res, next) => {
       });
     }
 
-    if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF].includes(role)) {
+    if (![ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Allowed roles are: super_admin, admin, staff'
+        message: 'Invalid role. Allowed roles are: super_admin, admin'
       });
     }
 

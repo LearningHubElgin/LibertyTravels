@@ -17,7 +17,8 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026');
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id)
+      .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
 
     if (!user) {
       return res.status(401).json({
@@ -87,15 +88,15 @@ const authorizeAdmin = (req, res, next) => {
 };
 
 /**
- * Staff authorization guard (Accessible to Super Admin, Admin, and Staff)
+ * Agency user authorization guard (Accessible to Super Admin and Agency Admin)
  */
 const authorizeStaff = (req, res, next) => {
-  if (req.user && (req.user.role === ROLES.SUPER_ADMIN || req.user.role === ROLES.ADMIN || req.user.role === ROLES.STAFF)) {
+  if (req.user && (req.user.role === ROLES.SUPER_ADMIN || req.user.role === ROLES.ADMIN)) {
     return next();
   }
   return res.status(403).json({
     success: false,
-    message: 'Access denied. Authorized staff only.'
+    message: 'Access denied. Administrator privileges required.'
   });
 };
 
