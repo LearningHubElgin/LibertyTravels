@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, Download, X, Compass, CheckCircle2, FileText } from 'lucide-react';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatters';
@@ -25,7 +26,88 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
   if (!isOpen || !booking) return null;
 
   const handlePrint = () => {
-    window.print();
+    const printContent = document.getElementById('printable-invoice');
+    if (!printContent) {
+      window.print();
+      return;
+    }
+
+    // Collect all active stylesheets and styles in the document
+    const styleElements = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+
+    // Create temporary hidden print iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('title', 'Print Invoice');
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title> </title>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          ${styleElements}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin-top: 15mm !important;
+              margin-bottom: 10mm !important;
+              margin-left: 12mm !important;
+              margin-right: 12mm !important;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #0f172a !important;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              box-sizing: border-box;
+            }
+            #printable-invoice {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding-top: 15px !important;
+              padding-bottom: 10px !important;
+              background: #fff !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="printable-invoice" style="padding-top: 15px;">
+            ${printContent.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 2000);
+    }, 300);
   };
 
   // Generate clean invoice number from referenceNo or sequence
@@ -40,9 +122,16 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
   const invoiceNo = getInvoiceNumber();
   const passengerNames = (booking.passengers || []).map((p) => `${p.title ? p.title + ' ' : ''}${p.firstName} ${p.lastName}`).join(', ');
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6">
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden border border-slate-200 animate-scale-up">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
+      {/* Pure Transparent Dimmed Overlay (No Blur) */}
+      <div
+        className="no-print fixed inset-0 bg-slate-950/60 transition-opacity animate-fadeIn"
+        onClick={onClose}
+      />
+
+      <div className="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6 text-center">
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden border border-slate-200 animate-scale-up text-left my-auto">
         
         {/* Sticky Action Header (hidden on print) */}
         <div className="no-print sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-slate-900 text-white border-b border-slate-800 shadow-md shrink-0">
@@ -236,5 +325,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
         </div>
       </div>
     </div>
-  );
+  </div>,
+  document.body
+);
 };

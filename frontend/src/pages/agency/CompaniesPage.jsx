@@ -70,11 +70,54 @@ export const CompaniesPage = () => {
   // Buy Tickets Form State
   const [buyTicketsForm, setBuyTicketsForm] = useState({
     ticketsCount: '',
+    unitPrice: '',
     totalPrice: '',
     purchaseDate: new Date().toISOString().split('T')[0],
     reference: '',
     notes: ''
   });
+
+  const handleTicketCountChange = (val) => {
+    const count = parseInt(val, 10);
+    const unit = parseFloat(buyTicketsForm.unitPrice);
+    let newTotal = buyTicketsForm.totalPrice;
+    if (!isNaN(count) && count > 0 && !isNaN(unit) && unit > 0) {
+      newTotal = String(Math.round(count * unit * 100) / 100);
+    }
+    setBuyTicketsForm((prev) => ({
+      ...prev,
+      ticketsCount: val,
+      totalPrice: newTotal
+    }));
+  };
+
+  const handleUnitPriceChange = (val) => {
+    const unit = parseFloat(val);
+    const count = parseInt(buyTicketsForm.ticketsCount, 10);
+    let newTotal = buyTicketsForm.totalPrice;
+    if (!isNaN(count) && count > 0 && !isNaN(unit) && unit >= 0) {
+      newTotal = String(Math.round(count * unit * 100) / 100);
+    }
+    setBuyTicketsForm((prev) => ({
+      ...prev,
+      unitPrice: val,
+      totalPrice: newTotal
+    }));
+  };
+
+  const handleTotalPriceChange = (val) => {
+    const total = parseFloat(val);
+    const count = parseInt(buyTicketsForm.ticketsCount, 10);
+    let newUnit = buyTicketsForm.unitPrice;
+    if (!isNaN(count) && count > 0 && !isNaN(total) && total >= 0) {
+      newUnit = String(Math.round((total / count) * 100) / 100);
+    }
+    setBuyTicketsForm((prev) => ({
+      ...prev,
+      totalPrice: val,
+      unitPrice: newUnit
+    }));
+  };
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -107,8 +150,10 @@ export const CompaniesPage = () => {
 
   const handleOpenBuyTickets = (c) => {
     setSelectedCompanyForBuy(c);
+    const defaultUnitPrice = c.ticketUnitPrice && c.ticketUnitPrice > 0 ? String(c.ticketUnitPrice) : '';
     setBuyTicketsForm({
       ticketsCount: '',
+      unitPrice: defaultUnitPrice,
       totalPrice: '',
       purchaseDate: new Date().toISOString().split('T')[0],
       reference: `STOCK-${c.code}-${Date.now().toString().slice(-4)}`,
@@ -677,26 +722,43 @@ export const CompaniesPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Number of Tickets to Buy *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Tickets to Buy *</label>
                 <div className="relative">
                   <Ticket className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="number"
                     min="1"
                     required
-                    placeholder="e.g. 500"
+                    placeholder="e.g. 50"
                     value={buyTicketsForm.ticketsCount}
                     onWheel={(e) => e.target.blur()}
-                    onChange={(e) => setBuyTicketsForm({ ...buyTicketsForm, ticketsCount: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
+                    onChange={(e) => handleTicketCountChange(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none text-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Total Purchase Price (₹) *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Rate (₹ / Ticket)</label>
+                <div className="relative">
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 500"
+                    value={buyTicketsForm.unitPrice}
+                    onWheel={(e) => e.target.blur()}
+                    onChange={(e) => handleUnitPriceChange(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Total Price (₹) *</label>
                 <div className="relative">
                   <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
                   <input
@@ -704,11 +766,11 @@ export const CompaniesPage = () => {
                     min="0"
                     step="0.01"
                     required
-                    placeholder="e.g. 20000"
+                    placeholder="e.g. 25000"
                     value={buyTicketsForm.totalPrice}
                     onWheel={(e) => e.target.blur()}
-                    onChange={(e) => setBuyTicketsForm({ ...buyTicketsForm, totalPrice: e.target.value })}
-                    className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none"
+                    onChange={(e) => handleTotalPriceChange(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none text-xs"
                   />
                 </div>
               </div>
@@ -718,10 +780,10 @@ export const CompaniesPage = () => {
             <div className="p-3.5 bg-slate-900 text-white rounded-xl space-y-2">
               <div className="flex items-center justify-between text-slate-300">
                 <span className="flex items-center gap-1.5 font-sans">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Approx Rate / Unit Cost:
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Price Per Ticket:
                 </span>
                 <span className="font-mono font-black text-amber-400 text-sm">
-                  ₹{buyTicketsForm.ticketsCount > 0 ? (parseFloat(buyTicketsForm.totalPrice || 0) / parseInt(buyTicketsForm.ticketsCount, 10)).toFixed(2) : '0.00'} / Ticket
+                  ₹{buyTicketsForm.unitPrice ? parseFloat(buyTicketsForm.unitPrice).toFixed(2) : (buyTicketsForm.ticketsCount > 0 && buyTicketsForm.totalPrice ? (parseFloat(buyTicketsForm.totalPrice) / parseInt(buyTicketsForm.ticketsCount, 10)).toFixed(2) : '0.00')} / Ticket
                 </span>
               </div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-slate-800">

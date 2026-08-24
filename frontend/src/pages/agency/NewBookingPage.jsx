@@ -25,13 +25,15 @@ import {
   Percent,
   Layers,
   Ticket,
-  Wallet
+  Wallet,
+  FileSpreadsheet
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { DateInput } from '../../components/common/DateInput';
 import { Modal } from '../../components/common/Modal';
+import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
 
 export const NewBookingPage = () => {
   const navigate = useNavigate();
@@ -41,6 +43,7 @@ export const NewBookingPage = () => {
   const [customers, setCustomers] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   // Quick Add Company Modal
   const [isQuickCompanyModalOpen, setIsQuickCompanyModalOpen] = useState(false);
@@ -378,6 +381,17 @@ export const NewBookingPage = () => {
         subtitle="Universal booking module for Flight, Train, Bus, Hotel, and Car reservations"
         icon={CurrentIcon}
         breadcrumbs={['Bookings', 'New Booking']}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsExcelModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Excel Sheet
+            </button>
+          </div>
+        }
       />
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 w-full min-w-0">
@@ -1199,6 +1213,16 @@ export const NewBookingPage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Excel Bulk Import Modal */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onSuccess={() => {
+          setIsExcelModalOpen(false);
+          navigate('/bookings');
+        }}
+      />
     </div>
   );
 };

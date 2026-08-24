@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export const Modal = ({
@@ -28,11 +29,11 @@ export const Modal = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
+      {/* Pure Transparent Dimmed Backdrop (No Blur) */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-slate-950/60 transition-opacity animate-fadeIn"
         onClick={onClose}
       />
 
@@ -48,7 +49,7 @@ export const Modal = ({
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1 sm:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition shrink-0"
+              className="rounded-lg p-1 sm:p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition shrink-0 cursor-pointer"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -65,6 +66,7 @@ export const Modal = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
