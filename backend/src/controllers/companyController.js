@@ -31,7 +31,7 @@ exports.getCompanies = async (req, res, next) => {
     const bookings = await Booking.find({
       companyId: { $in: companyIds }
     })
-      .select('companyId totalAmount')
+      .select('companyId totalAmount passengerCount extraGuests')
       .lean();
 
     const companyBookingsMap = {};
@@ -41,19 +41,33 @@ exports.getCompanies = async (req, res, next) => {
       companyBookingsMap[cId].push(b);
     });
 
-    const companies = companiesRaw.map(c => {
+    const companies = await Promise.all(companiesRaw.map(async (c) => {
       const data = { ...c, id: c._id };
       const cBookings = companyBookingsMap[String(c._id)] || [];
       const totalBookings = cBookings.length;
       const totalRevenue = cBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
       const totalPurchasedTickets = parseFloat(c.totalPurchasedTickets || 0);
-      const usedTickets = c.usedTickets !== undefined && c.usedTickets > 0 ? c.usedTickets : totalBookings;
+
+      // Compute exact tickets / passengers used across all active bookings for this company
+      const bookingTicketsSum = cBookings.reduce((sum, b) => {
+        const count = b.passengerCount !== undefined && b.passengerCount > 0
+          ? b.passengerCount
+          : (1 + (parseInt(b.extraGuests || 0, 10) || 0));
+        return sum + count;
+      }, 0);
+
+      const usedTickets = cBookings.length > 0 ? bookingTicketsSum : (c.usedTickets || 0);
       const availableTickets = Math.max(0, totalPurchasedTickets - usedTickets);
       const walletBalance = parseFloat(c.walletBalance || 0);
       const purchasedPrice = parseFloat(c.purchasedPrice || 0);
       const ticketUnitPrice = totalPurchasedTickets > 0 
         ? Math.round((purchasedPrice / totalPurchasedTickets) * 100) / 100 
         : parseFloat(c.ticketUnitPrice || 0);
+
+      // Keep DB Company usedTickets in perfect sync with real bookings
+      if (c.usedTickets !== usedTickets) {
+        Company.findByIdAndUpdate(c._id, { usedTickets }).catch(() => {});
+      }
 
       return {
         ...data,
@@ -66,7 +80,7 @@ exports.getCompanies = async (req, res, next) => {
         purchasedPrice,
         ticketUnitPrice
       };
-    });
+    }));
 
     return res.status(200).json({
       success: true,
@@ -115,12 +129,19 @@ exports.getCompanyDetails = async (req, res, next) => {
       if (b.status === 'confirmed') {
         confirmedCount += 1;
       }
-      totalPassengersCount += (b.passengers && b.passengers.length > 0) ? b.passengers.length : 1;
+      const bPax = b.passengerCount !== undefined && b.passengerCount > 0
+        ? b.passengerCount
+        : ((b.passengers && b.passengers.length > 0) ? b.passengers.length : (1 + (parseInt(b.extraGuests || 0, 10) || 0)));
+      totalPassengersCount += bPax;
     });
 
     const totalPurchasedTickets = parseFloat(company.totalPurchasedTickets || 0);
-    const usedTickets = company.usedTickets !== undefined && company.usedTickets > 0 ? company.usedTickets : bookings.length;
+    const usedTickets = bookings.length > 0 ? totalPassengersCount : (company.usedTickets || 0);
     const availableTickets = Math.max(0, totalPurchasedTickets - usedTickets);
+
+    if (company.usedTickets !== usedTickets) {
+      Company.findByIdAndUpdate(company._id, { usedTickets }).catch(() => {});
+    }
     const walletBalance = parseFloat(company.walletBalance || 0);
     const purchasedPrice = parseFloat(company.purchasedPrice || 0);
     const ticketUnitPrice = totalPurchasedTickets > 0 

@@ -87,6 +87,14 @@ const bookingSchema = new mongoose.Schema(
       default: '',
       trim: true
     },
+    passengerCount: {
+      type: Number,
+      default: 1
+    },
+    extraGuests: {
+      type: Number,
+      default: 0
+    },
     costPrice: {
       type: Number,
       default: 0

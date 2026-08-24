@@ -707,6 +707,14 @@ exports.deleteBooking = async (req, res, next) => {
     await Payment.deleteMany({ bookingId: id });
     await Transaction.deleteMany({ bookingId: id });
     await Passenger.deleteMany({ bookingId: id });
+
+    if (booking.companyId) {
+      const ticketsCount = booking.passengerCount || (1 + (parseInt(booking.extraGuests || 0, 10) || 0));
+      await Company.findByIdAndUpdate(booking.companyId, {
+        $inc: { usedTickets: -ticketsCount }
+      }).catch(() => {});
+    }
+
     await Booking.findByIdAndDelete(id);
 
     await logActivity(
@@ -741,10 +749,12 @@ exports.bulkImportBookings = async (req, res, next) => {
       });
     }
 
+    const updateExisting = req.body.updateExisting !== false;
     const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
     const userId = req.user ? (req.user.id || req.user._id) : null;
 
     let importedCount = 0;
+    let updatedCount = 0;
     let skippedCount = 0;
     const errors = [];
     const createdBookings = [];
@@ -893,8 +903,91 @@ exports.bulkImportBookings = async (req, res, next) => {
           });
 
           if (existingBooking) {
-            // DO NOT change previous data! Skip insertion to preserve existing booking completely.
-            skippedCount++;
+            const shouldUpdateThisRow = row.shouldUpdate !== undefined ? row.shouldUpdate : updateExisting;
+
+            if (!shouldUpdateThisRow) {
+              skippedCount++;
+              continue;
+            }
+
+            // --- Update Existing Booking with Changed / Modified Data ---
+            const bookingDate = parseExcelDate(row.bookingDate || row.date);
+            const journeyDate = parseExcelDate(row.journeyDate || row.travelDate || row.bookingDate || row.date);
+            const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
+
+            const oldTicketCount = existingBooking.passengerCount || (1 + (existingBooking.extraGuests || 0));
+            const extraPaxCount = parseInt(row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax || 0, 10) || 0;
+            const totalTickets = 1 + Math.max(0, extraPaxCount);
+            const deltaTickets = totalTickets - oldTicketCount;
+            const primaryPaxName = (row.passengerName || customerName).trim();
+
+            existingBooking.serviceType = serviceType;
+            existingBooking.bookingDate = bookingDate;
+            existingBooking.sector = sector;
+            existingBooking.description = row.description || sector;
+            existingBooking.journeyDate = journeyDate;
+            existingBooking.companyId = company._id;
+            existingBooking.flightNumber = (row.flightNumber || row.trainNumber || existingBooking.flightNumber || '').toString().trim().toUpperCase();
+            existingBooking.pnr = rawPnr;
+            existingBooking.passengerName = primaryPaxName;
+            existingBooking.passengerCount = totalTickets;
+            existingBooking.extraGuests = extraPaxCount;
+            existingBooking.customerId = customer._id;
+            existingBooking.costPrice = costPrice;
+            existingBooking.sellPrice = sellPrice;
+            existingBooking.profit = netProfit;
+            existingBooking.baseFare = sellPrice;
+            existingBooking.tax = tax;
+            existingBooking.totalAmount = totalAmount;
+            existingBooking.balanceDue = balanceDue;
+            existingBooking.paymentStatus = paymentStatus;
+            if (row.notes) existingBooking.notes = row.notes;
+
+            await existingBooking.save();
+
+            // Re-sync passenger records for this existing booking
+            await Passenger.deleteMany({ bookingId: existingBooking._id });
+            const nameParts = primaryPaxName.split(' ');
+            const p1First = nameParts[0] || primaryPaxName;
+            const p1Last = nameParts.slice(1).join(' ') || '';
+
+            const passengerRecords = [{
+              bookingId: existingBooking._id,
+              customerId: customer._id,
+              title: 'Mr',
+              firstName: p1First,
+              lastName: p1Last,
+              phone: customerPhone
+            }];
+
+            for (let g = 1; g <= extraPaxCount; g++) {
+              passengerRecords.push({
+                bookingId: existingBooking._id,
+                customerId: customer._id,
+                title: 'Mr',
+                firstName: `${p1First} (Guest ${g})`,
+                lastName: p1Last,
+                phone: customerPhone
+              });
+            }
+            await Passenger.insertMany(passengerRecords);
+
+            // Adjust company ticket quota if ticket count changed
+            if (deltaTickets !== 0 && company && company._id) {
+              await Company.findByIdAndUpdate(company._id, {
+                $inc: { usedTickets: deltaTickets }
+              });
+            }
+
+            updatedCount++;
+            createdBookings.push({
+              id: existingBooking._id,
+              referenceNo: existingBooking.referenceNo,
+              customerName: customer.name,
+              serviceType: existingBooking.serviceType,
+              totalAmount: existingBooking.totalAmount,
+              isUpdated: true
+            });
             continue;
           }
         } else {
@@ -905,7 +998,12 @@ exports.bulkImportBookings = async (req, res, next) => {
         const journeyDate = parseExcelDate(row.journeyDate || row.travelDate || row.bookingDate || row.date);
         const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
 
-        // 5. Create Booking Document
+        // 5. Compute passenger count & extra guests
+        const extraPaxCount = parseInt(row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax || 0, 10) || 0;
+        const totalTickets = 1 + Math.max(0, extraPaxCount);
+        const primaryPaxName = (row.passengerName || customerName).trim();
+
+        // Create Booking Document
         const newBooking = await Booking.create({
           referenceNo,
           agencyId: activeAgencyId,
@@ -920,7 +1018,9 @@ exports.bulkImportBookings = async (req, res, next) => {
           flightNumber: (row.flightNumber || row.trainNumber || '').toString().trim().toUpperCase(),
           pnr: (row.pnr || referenceNo).toString().trim().toUpperCase(),
           ticketNumber: (row.ticketNumber || '').toString().trim(),
-          passengerName: (row.passengerName || customerName).trim(),
+          passengerName: primaryPaxName,
+          passengerCount: totalTickets,
+          extraGuests: extraPaxCount,
           status: row.status || 'confirmed',
           paymentStatus,
           customerId: customer._id,
@@ -937,15 +1037,39 @@ exports.bulkImportBookings = async (req, res, next) => {
           createdBy: userId
         });
 
-        // 6. Create Primary Passenger
-        await Passenger.create({
+        // 6. Create Lead Passenger + Extra Guests
+        const nameParts = primaryPaxName.split(' ');
+        const p1First = nameParts[0] || primaryPaxName;
+        const p1Last = nameParts.slice(1).join(' ') || '';
+
+        const passengerRecords = [{
           bookingId: newBooking._id,
           customerId: customer._id,
           title: 'Mr',
-          firstName: customerName.split(' ')[0] || 'Passenger',
-          lastName: customerName.split(' ').slice(1).join(' ') || '',
+          firstName: p1First,
+          lastName: p1Last,
           phone: customerPhone
-        });
+        }];
+
+        for (let g = 1; g <= extraPaxCount; g++) {
+          passengerRecords.push({
+            bookingId: newBooking._id,
+            customerId: customer._id,
+            title: 'Mr',
+            firstName: `${p1First} (Guest ${g})`,
+            lastName: p1Last,
+            phone: customerPhone
+          });
+        }
+
+        await Passenger.insertMany(passengerRecords);
+
+        // Deduct from Company Quota / Available Tickets (increment usedTickets by totalTickets)
+        if (company && company._id) {
+          await Company.findByIdAndUpdate(company._id, {
+            $inc: { usedTickets: totalTickets }
+          });
+        }
 
         // 7. If initial payment exists, record Payment and Ledger Transaction
         if (initialPayment > 0) {
@@ -999,12 +1123,23 @@ exports.bulkImportBookings = async (req, res, next) => {
       req.ip
     );
 
+    let summaryMsg = `Processed ${importedCount + updatedCount} bookings successfully!`;
+    if (importedCount > 0 && updatedCount > 0) {
+      summaryMsg = `Successfully created ${importedCount} new bookings and updated ${updatedCount} existing bookings in database!`;
+    } else if (updatedCount > 0) {
+      summaryMsg = `Successfully updated ${updatedCount} existing bookings with modified data in database!`;
+    } else if (importedCount > 0) {
+      summaryMsg = `Successfully imported ${importedCount} new bookings into database!`;
+    }
+    if (skippedCount > 0) {
+      summaryMsg += ` (${skippedCount} unchanged bookings kept as-is).`;
+    }
+
     return res.status(200).json({
       success: true,
-      message: skippedCount > 0
-        ? `Imported ${importedCount} new bookings. ${skippedCount} existing bookings were skipped to preserve previous data.`
-        : `Successfully imported all ${importedCount} bookings from Excel!`,
+      message: summaryMsg,
       importedCount,
+      updatedCount,
       skippedCount,
       totalRows: bookings.length,
       errors: errors.length > 0 ? errors : undefined,
