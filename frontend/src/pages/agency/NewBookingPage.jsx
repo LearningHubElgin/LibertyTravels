@@ -96,6 +96,93 @@ export const NewBookingPage = () => {
 
   // Extra passengers / guests count
   const [extraGuests, setExtraGuests] = useState(0);
+  const totalPassengersCount = 1 + (parseInt(extraGuests, 10) || 0);
+
+  // Per-ticket rates for live multiplication
+  const [unitCost, setUnitCost] = useState('');
+  const [unitSell, setUnitSell] = useState('');
+
+  const handleUpdateExtraGuests = (newVal) => {
+    const validCount = Math.max(0, parseInt(newVal, 10) || 0);
+    const newTotalTickets = 1 + validCount;
+    setExtraGuests(validCount);
+
+    const uCost = parseFloat(unitCost);
+    if (!isNaN(uCost) && uCost > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        costPrice: Math.round(uCost * newTotalTickets * 100) / 100
+      }));
+    } else if (formData.costPrice > 0 && totalPassengersCount > 0) {
+      const impliedCost = parseFloat(formData.costPrice) / totalPassengersCount;
+      setFormData((prev) => ({
+        ...prev,
+        costPrice: Math.round(impliedCost * newTotalTickets * 100) / 100
+      }));
+      setUnitCost(String(Math.round(impliedCost * 100) / 100));
+    }
+
+    const uSell = parseFloat(unitSell);
+    if (!isNaN(uSell) && uSell > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        sellPrice: Math.round(uSell * newTotalTickets * 100) / 100
+      }));
+    } else if (formData.sellPrice > 0 && totalPassengersCount > 0) {
+      const impliedSell = parseFloat(formData.sellPrice) / totalPassengersCount;
+      setFormData((prev) => ({
+        ...prev,
+        sellPrice: Math.round(impliedSell * newTotalTickets * 100) / 100
+      }));
+      setUnitSell(String(Math.round(impliedSell * 100) / 100));
+    }
+  };
+
+  const handleUnitCostChange = (val) => {
+    setUnitCost(val);
+    const u = parseFloat(val);
+    if (!isNaN(u) && u >= 0) {
+      setFormData((prev) => ({
+        ...prev,
+        costPrice: Math.round(u * totalPassengersCount * 100) / 100
+      }));
+    } else if (val === '') {
+      setFormData((prev) => ({ ...prev, costPrice: 0 }));
+    }
+  };
+
+  const handleTotalCostChange = (val) => {
+    const total = parseFloat(val) || 0;
+    setFormData((prev) => ({ ...prev, costPrice: total }));
+    if (total > 0 && totalPassengersCount > 0) {
+      setUnitCost(String(Math.round((total / totalPassengersCount) * 100) / 100));
+    } else if (val === '' || total === 0) {
+      setUnitCost('');
+    }
+  };
+
+  const handleUnitSellChange = (val) => {
+    setUnitSell(val);
+    const u = parseFloat(val);
+    if (!isNaN(u) && u >= 0) {
+      setFormData((prev) => ({
+        ...prev,
+        sellPrice: Math.round(u * totalPassengersCount * 100) / 100
+      }));
+    } else if (val === '') {
+      setFormData((prev) => ({ ...prev, sellPrice: 0 }));
+    }
+  };
+
+  const handleTotalSellChange = (val) => {
+    const total = parseFloat(val) || 0;
+    setFormData((prev) => ({ ...prev, sellPrice: total }));
+    if (total > 0 && totalPassengersCount > 0) {
+      setUnitSell(String(Math.round((total / totalPassengersCount) * 100) / 100));
+    } else if (val === '' || total === 0) {
+      setUnitSell('');
+    }
+  };
 
   // Load Companies & Customers
   const loadMasterData = async () => {
@@ -229,9 +316,6 @@ export const NewBookingPage = () => {
   const selectedCompanyObj = useMemo(() => {
     return companies.find((c) => String(c.id || c._id) === String(formData.companyId));
   }, [companies, formData.companyId]);
-
-  // Total Pax Count (1 Primary + Extra Guests)
-  const totalPassengersCount = 1 + (parseInt(extraGuests, 10) || 0);
 
   // Quick Add Company Handler
   const handleQuickAddCompany = async (e) => {
@@ -651,7 +735,7 @@ export const NewBookingPage = () => {
                       <div className="flex items-center border border-slate-200 rounded-xl bg-white p-0.5 shadow-xs">
                         <button
                           type="button"
-                          onClick={() => setExtraGuests((prev) => Math.max(0, (parseInt(prev, 10) || 0) - 1))}
+                          onClick={() => handleUpdateExtraGuests(extraGuests - 1)}
                           disabled={extraGuests <= 0}
                           className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center disabled:opacity-30 transition text-sm cursor-pointer"
                         >
@@ -663,15 +747,12 @@ export const NewBookingPage = () => {
                           max="100"
                           value={extraGuests}
                           onWheel={(e) => e.target.blur()}
-                          onChange={(e) => {
-                            const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                            setExtraGuests(val);
-                          }}
+                          onChange={(e) => handleUpdateExtraGuests(e.target.value)}
                           className="w-10 text-center font-mono font-bold text-slate-900 text-xs focus:outline-none"
                         />
                         <button
                           type="button"
-                          onClick={() => setExtraGuests((prev) => (parseInt(prev, 10) || 0) + 1)}
+                          onClick={() => handleUpdateExtraGuests(extraGuests + 1)}
                           className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold flex items-center justify-center transition text-sm cursor-pointer"
                         >
                           +
@@ -684,7 +765,7 @@ export const NewBookingPage = () => {
                           <button
                             key={num}
                             type="button"
-                            onClick={() => setExtraGuests(num)}
+                            onClick={() => handleUpdateExtraGuests(num)}
                             className={`px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer ${
                               extraGuests === num
                                 ? 'bg-slate-900 text-white shadow-xs'
@@ -871,43 +952,140 @@ export const NewBookingPage = () => {
                 
                 {/* COST PRICE COLUMN */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Cost Price (₹) <span className="text-[10px] font-normal text-slate-400">(Buy / Vendor Rate)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={formData.costPrice || ''}
-                      onWheel={(e) => e.target.blur()}
-                      onChange={(e) => setFormData({ ...formData, costPrice: parseFloat(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Cost Price (₹) <span className="text-[10px] font-normal text-slate-400">(Buy / Vendor Rate)</span>
+                    </label>
+                    {totalPassengersCount > 1 && (
+                      <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                        × {totalPassengersCount} Tickets
+                      </span>
+                    )}
                   </div>
+
+                  {totalPassengersCount > 1 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Rate (₹ / Ticket)</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={unitCost}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => handleUnitCostChange(e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg font-mono font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Total Cost (₹)</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={formData.costPrice || ''}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => handleTotalCostChange(e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg font-mono font-bold text-slate-800 text-xs bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={formData.costPrice || ''}
+                        onWheel={(e) => e.target.blur()}
+                        onChange={(e) => handleTotalCostChange(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* SELL PRICE COLUMN */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Sell Price (₹) * <span className="text-[10px] font-normal text-slate-400">(Customer Price)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-brand-600">₹</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      required
-                      placeholder="0.00"
-                      value={formData.sellPrice || ''}
-                      onWheel={(e) => e.target.blur()}
-                      onChange={(e) => setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-3 py-2 border border-brand-300 bg-brand-50/20 rounded-xl font-mono font-black text-brand-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Sell Price (₹) * <span className="text-[10px] font-normal text-slate-400">(Customer Price)</span>
+                    </label>
+                    {totalPassengersCount > 1 && (
+                      <span className="text-[10px] font-mono font-bold text-brand-700 bg-brand-50 border border-brand-200 px-1.5 py-0.5 rounded">
+                        × {totalPassengersCount} Tickets
+                      </span>
+                    )}
                   </div>
+
+                  {totalPassengersCount > 1 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-brand-700 font-semibold mb-0.5">Rate (₹ / Ticket) *</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-brand-600 text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={unitSell}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => handleUnitSellChange(e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 border border-brand-300 rounded-lg font-mono font-black text-brand-900 text-xs bg-brand-50/10 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-brand-700 font-semibold mb-0.5">Total Sell (₹) *</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono font-bold text-brand-600 text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            required
+                            placeholder="0.00"
+                            value={formData.sellPrice || ''}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => handleTotalSellChange(e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 border border-brand-300 bg-brand-50/30 rounded-lg font-mono font-black text-brand-900 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-brand-600">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                        placeholder="0.00"
+                        value={formData.sellPrice || ''}
+                        onWheel={(e) => e.target.blur()}
+                        onChange={(e) => handleTotalSellChange(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 border border-brand-300 bg-brand-50/20 rounded-xl font-mono font-black text-brand-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      />
+                    </div>
+                  )}
+
+                  {totalPassengersCount > 1 && formData.sellPrice > 0 && (
+                    <p className="text-[10px] text-brand-600 font-semibold mt-1">
+                      💡 Total: ₹{formData.sellPrice.toLocaleString('en-IN')} ({totalPassengersCount} Tickets @ ₹{(parseFloat(unitSell) || (formData.sellPrice / totalPassengersCount)).toLocaleString('en-IN')}/tkt)
+                    </p>
+                  )}
                 </div>
 
                 {/* LIVE GROSS PROFIT BADGE */}
@@ -995,7 +1173,7 @@ export const NewBookingPage = () => {
                           <label className="text-[10px] font-bold text-slate-700">
                             GST Amount (₹) <span className="text-slate-400 font-normal">(Editable)</span>
                           </label>
-                          {customGstAmount !== '' && (
+                          {customGstAmount !== '' && parseFloat(customGstAmount) !== calculatedGst && (
                             <button
                               type="button"
                               onClick={() => setCustomGstAmount('')}
@@ -1013,12 +1191,20 @@ export const NewBookingPage = () => {
                             step="0.01"
                             placeholder={calculatedGst.toString()}
                             value={customGstAmount !== '' ? customGstAmount : (calculatedGst || '')}
-                            onChange={(e) => setCustomGstAmount(e.target.value)}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || parseFloat(val) === calculatedGst) {
+                                setCustomGstAmount('');
+                              } else {
+                                setCustomGstAmount(val);
+                              }
+                            }}
                             className="w-full pl-7 pr-3 py-1.5 border border-slate-300 rounded-lg font-mono font-black text-slate-900 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                           />
                         </div>
                         <p className="text-[9px] text-slate-400 mt-0.5">
-                          {customGstAmount !== ''
+                          {customGstAmount !== '' && parseFloat(customGstAmount) !== calculatedGst
                             ? `Custom GST amount of ₹${parseFloat(customGstAmount) || 0} applied.`
                             : `Calculated: ${gstRate}% on ₹${grossProfit.toLocaleString('en-IN')} profit = ₹${calculatedGst.toLocaleString('en-IN')}`}
                         </p>
@@ -1031,11 +1217,25 @@ export const NewBookingPage = () => {
                 <div className="p-3 rounded-xl bg-slate-900 text-white space-y-1.5 font-mono text-[11px]">
                   <div className="flex justify-between text-slate-300">
                     <span>Cost (Buy Rate):</span>
-                    <span>₹{cost.toLocaleString('en-IN')}</span>
+                    <span>
+                      ₹{cost.toLocaleString('en-IN')}{' '}
+                      {totalPassengersCount > 1 && cost > 0 && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          (₹{(parseFloat(unitCost) || (cost / totalPassengersCount)).toLocaleString('en-IN')} × {totalPassengersCount} Tkts)
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-300">
                     <span>Base Sell Price:</span>
-                    <span>₹{sell.toLocaleString('en-IN')}</span>
+                    <span>
+                      ₹{sell.toLocaleString('en-IN')}{' '}
+                      {totalPassengersCount > 1 && sell > 0 && (
+                        <span className="text-[10px] text-amber-300 font-normal">
+                          (₹{(parseFloat(unitSell) || (sell / totalPassengersCount)).toLocaleString('en-IN')} × {totalPassengersCount} Tkts)
+                        </span>
+                      )}
+                    </span>
                   </div>
                   {gstMode !== 'none' && calculatedGst > 0 && (
                     <div className="flex justify-between text-amber-300">

@@ -52,9 +52,9 @@ exports.getCustomers = async (req, res, next) => {
       const data = { ...c, id: c._id };
       const cBookings = customerBookingsMap[String(c._id)] || [];
       const totalBookings = cBookings.length;
-      const totalAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
+      const totalAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
       const paidAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
-      const outstandingAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.balanceDue || 0), 0);
+      const outstandingAmount = Math.max(0, toDecimal(totalAmount - paidAmount));
 
       return {
         ...data,
@@ -103,9 +103,9 @@ exports.getCustomerById = async (req, res, next) => {
       Passenger.find({ customerId: id }).lean()
     ]);
 
-    const totalAmount = bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || 0), 0);
+    const totalAmount = bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
     const paidAmount = bookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
-    const outstandingAmount = bookings.reduce((sum, b) => sum + parseFloat(b.balanceDue || 0), 0);
+    const outstandingAmount = Math.max(0, toDecimal(totalAmount - paidAmount));
 
     return res.status(200).json({
       success: true,

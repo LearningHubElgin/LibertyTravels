@@ -66,12 +66,33 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
   const normalizeKey = (key) => {
     const clean = key.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // 1. Service type header (e.g. FLIGHT/TRAIN/ETC, Service, Type, Mode)
+    // 1. Service type header (e.g. Services - FLIGHT/TRAIN/ETC, FLIGHT/TRAIN/ETC, Services, Service, Type, Mode)
     if (
-      ['servicetype', 'service', 'services', 'type', 'mode', 'category', 'item', 'flighttrainetc', 'flighttrain', 'flighttrainbus', 'traveltype', 'bookingtype'].includes(clean) ||
-      (clean.includes('flight') && (clean.includes('train') || clean.includes('etc') || clean.includes('type') || clean.includes('service') || clean.includes('bus'))) ||
+      [
+        'servicetype',
+        'service',
+        'services',
+        'type',
+        'mode',
+        'category',
+        'item',
+        'flighttrainetc',
+        'servicesflighttrainetc',
+        'serviceflighttrainetc',
+        'servicesflighttrain',
+        'servicesflighttrainbus',
+        'servicesflighttrainbushotel',
+        'flighttrain',
+        'flighttrainbus',
+        'traveltype',
+        'bookingtype',
+        'servicestype'
+      ].includes(clean) ||
+      (clean.includes('flight') && (clean.includes('train') || clean.includes('etc') || clean.includes('type') || clean.includes('service') || clean.includes('bus') || clean.includes('hotel'))) ||
       (clean.includes('train') && clean.includes('etc')) ||
-      (clean.includes('service') && clean.includes('type'))
+      (clean.includes('service') && (clean.includes('flight') || clean.includes('train') || clean.includes('etc') || clean.includes('bus') || clean.includes('hotel') || clean.includes('type') || clean.includes('category'))) ||
+      clean === 'services' ||
+      clean === 'service'
     ) {
       return 'serviceType';
     }
@@ -418,31 +439,31 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
   const handleDownloadTemplate = () => {
     const sampleData = [
       {
-        'FLIGHT/TRAIN/ETC': 'flight',
+        'Services - FLIGHT/TRAIN/ETC': 'flight',
         'COMPANY': 'akbar',
         'Date': '09-08-2026',
         'Reference No.': 'MYPR26893855303',
-        'Description': 'HDFC LIBERTY',
-        'Passenger Name/ pax / Guest / Narration': 'HDFC LIBERTY',
-        'extra passenger': 1,
+        'Description': 'DMK CCU 12 AUG FD',
+        'Passenger Name/ pax / Guest / Narration': 'Niladri',
+        'extra passenger': 10,
         'Coustomer Name': 'Niladri Sekhar Maji',
         'COST PRICE': 500,
         'sale price': 2000
       },
       {
-        'FLIGHT/TRAIN/ETC': 'train',
+        'Services - FLIGHT/TRAIN/ETC': 'train',
         'COMPANY': 'abcd',
         'Date': '09-08-2026',
         'Reference No.': 'MYPR26893855303_RC',
-        'Description': 'DI',
-        'Passenger Name/ pax / Guest / Narration': 'DI',
-        'extra passenger': 2,
+        'Description': 'KOL HYD 15 AUG FD',
+        'Passenger Name/ pax / Guest / Narration': 'Niladri',
+        'extra passenger': 0,
         'Coustomer Name': 'shilpa',
         'COST PRICE': 600,
         'sale price': 2000
       },
       {
-        'FLIGHT/TRAIN/ETC': 'flight',
+        'Services - FLIGHT/TRAIN/ETC': 'flight',
         'COMPANY': 'akbar',
         'Date': '10-08-2026',
         'Reference No.': 'MN7LZ1FHM3IHL3UV7106',
@@ -454,7 +475,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'sale price': 2000
       },
       {
-        'FLIGHT/TRAIN/ETC': 'bus',
+        'Services - FLIGHT/TRAIN/ETC': 'bus',
         'COMPANY': 'xyz',
         'Date': '10-08-2026',
         'Reference No.': 'MF7MAX81GEMUEF4I1941',
@@ -592,491 +613,482 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
       {/* Modal Centering Wrapper */}
       <div className="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6 text-center">
         <div className="relative transform overflow-hidden rounded-2xl sm:rounded-3xl bg-white text-left shadow-2xl transition-all w-full max-w-7xl max-h-[94vh] flex flex-col border border-slate-200 animate-scale-up my-auto">
-          
+
           {/* Modal Header */}
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#0B1E36] to-[#1E3A5F] text-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 flex items-center justify-center font-bold">
-              <FileSpreadsheet className="w-5 h-5" />
+          <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-[#0B1E36] to-[#1E3A5F] text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 flex items-center justify-center font-bold">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
+                  Import Bookings from Excel Sheet
+                </h2>
+                <p className="text-[10px] sm:text-xs text-slate-300">
+                  Bulk upload existing travel records (.xlsx, .xls, .csv) with auto-ledger creation
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
-                Import Bookings from Excel Sheet
-              </h2>
-              <p className="text-[10px] sm:text-xs text-slate-300">
-                Bulk upload existing travel records (.xlsx, .xls, .csv) with auto-ledger creation
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition shrink-0 cursor-pointer"
+                title="Download Sample Template"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">Sample Template</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClose}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Body */}
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+
+            {/* File Upload Dropzone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="p-5 sm:p-6 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 hover:bg-brand-50/70 transition cursor-pointer text-center group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-2.5 shadow-md group-hover:scale-110 transition">
+                <Upload className="w-6 h-6" />
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                {file ? file.name : 'Click to Choose or Drag & Drop Excel Sheet'}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition shrink-0 cursor-pointer"
-              title="Download Sample Template"
-            >
-              <Download className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">Sample Template</span>
-            </button>
+            {/* Parsed Rows Preview Table */}
+            {parsedRows.length > 0 && (() => {
+              const newRows = parsedRows.filter((r) => !r.isExistingBooking);
+              const modifiedRows = parsedRows.filter((r) => r.isExistingBooking && r.hasChanges);
+              const unchangedRows = parsedRows.filter((r) => r.isExistingBooking && !r.hasChanges);
 
-            <button
-              type="button"
-              onClick={handleClose}
-              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+              const displayedRows = parsedRows.filter((r) => {
+                if (filterTab === 'modified') return r.isExistingBooking && r.hasChanges;
+                if (filterTab === 'new') return !r.isExistingBooking;
+                if (filterTab === 'unchanged') return r.isExistingBooking && !r.hasChanges;
+                return true;
+              });
 
-        {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-
-          {/* File Upload Dropzone */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="p-5 sm:p-6 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 hover:bg-brand-50/70 transition cursor-pointer text-center group"
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-2.5 shadow-md group-hover:scale-110 transition">
-              <Upload className="w-6 h-6" />
-            </div>
-            <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-              {file ? file.name : 'Click to Choose or Drag & Drop Excel Sheet'}
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
-            </p>
-          </div>
-
-          {/* Parsed Rows Preview Table */}
-          {parsedRows.length > 0 && (() => {
-            const newRows = parsedRows.filter((r) => !r.isExistingBooking);
-            const modifiedRows = parsedRows.filter((r) => r.isExistingBooking && r.hasChanges);
-            const unchangedRows = parsedRows.filter((r) => r.isExistingBooking && !r.hasChanges);
-
-            const displayedRows = parsedRows.filter((r) => {
-              if (filterTab === 'modified') return r.isExistingBooking && r.hasChanges;
-              if (filterTab === 'new') return !r.isExistingBooking;
-              if (filterTab === 'unchanged') return r.isExistingBooking && !r.hasChanges;
-              return true;
-            });
-
-            return (
-              <div className="space-y-3">
-                {/* Toolbar: Filter Tabs, Stats & Mode Switcher */}
-                <div className="flex items-center justify-between flex-wrap gap-2.5 bg-slate-50/90 p-2.5 rounded-2xl border border-slate-200">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* View Filter Tabs */}
-                    <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setFilterTab('all')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          filterTab === 'all'
+              return (
+                <div className="space-y-3">
+                  {/* Toolbar: Filter Tabs, Stats & Mode Switcher */}
+                  <div className="flex items-center justify-between flex-wrap gap-2.5 bg-slate-50/90 p-2.5 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* View Filter Tabs */}
+                      <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFilterTab('all')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${filterTab === 'all'
                             ? 'bg-slate-900 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
-                      >
-                        All ({parsedRows.length})
-                      </button>
+                            }`}
+                        >
+                          All ({parsedRows.length})
+                        </button>
 
-                      {modifiedRows.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setFilterTab('modified')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                            filterTab === 'modified'
+                        {modifiedRows.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFilterTab('modified')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${filterTab === 'modified'
                               ? 'bg-indigo-600 text-white shadow-xs'
                               : 'text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200'
-                          }`}
-                        >
-                          <RefreshCw className="w-3 h-3 text-indigo-500" />
-                          <span>Modified to Update ({modifiedRows.length})</span>
-                        </button>
-                      )}
+                              }`}
+                          >
+                            <RefreshCw className="w-3 h-3 text-indigo-500" />
+                            <span>Modified to Update ({modifiedRows.length})</span>
+                          </button>
+                        )}
 
-                      {newRows.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setFilterTab('new')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                            filterTab === 'new'
+                        {newRows.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFilterTab('new')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${filterTab === 'new'
                               ? 'bg-emerald-600 text-white shadow-xs'
                               : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
-                          }`}
-                        >
-                          <span>✨ New ({newRows.length})</span>
-                        </button>
-                      )}
+                              }`}
+                          >
+                            <span>✨ New ({newRows.length})</span>
+                          </button>
+                        )}
 
-                      {unchangedRows.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setFilterTab('unchanged')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                            filterTab === 'unchanged'
+                        {unchangedRows.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFilterTab('unchanged')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${filterTab === 'unchanged'
                               ? 'bg-slate-700 text-white shadow-xs'
                               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                          }`}
-                        >
-                          In DB (Unchanged: {unchangedRows.length})
-                        </button>
-                      )}
-                    </div>
+                              }`}
+                          >
+                            In DB (Unchanged: {unchangedRows.length})
+                          </button>
+                        )}
+                      </div>
 
-                    {/* Mode Selector */}
-                    <div className="flex items-center bg-white p-0.5 rounded-xl border border-slate-200 shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => setUpdateExistingMode(true)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                          updateExistingMode
+                      {/* Mode Selector */}
+                      <div className="flex items-center bg-white p-0.5 rounded-xl border border-slate-200 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setUpdateExistingMode(true)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${updateExistingMode
                             ? 'bg-brand-600 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
-                        title="Sync & Update: Any modified data from Excel will update the existing records in the database"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${updateExistingMode ? 'text-white' : 'text-brand-600'}`} />
-                        <span>Update Mode</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setUpdateExistingMode(false)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                          !updateExistingMode
+                            }`}
+                          title="Sync & Update: Any modified data from Excel will update the existing records in the database"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${updateExistingMode ? 'text-white' : 'text-brand-600'}`} />
+                          <span>Update Mode</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUpdateExistingMode(false)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${!updateExistingMode
                             ? 'bg-slate-800 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
-                        title="Skip: Existing records in DB will remain strictly untouched"
-                      >
-                        <Layers className={`w-3 h-3 ${!updateExistingMode ? 'text-white' : 'text-slate-500'}`} />
-                        <span>Skip Mode</span>
-                      </button>
+                            }`}
+                          title="Skip: Existing records in DB will remain strictly untouched"
+                        >
+                          <Layers className={`w-3 h-3 ${!updateExistingMode ? 'text-white' : 'text-slate-500'}`} />
+                          <span>Skip Mode</span>
+                        </button>
+                      </div>
+
+                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-emerald-600" />
+                        {parsedRows.reduce((acc, curr) => acc + (curr.passengerCount || 1), 0)} Total Tickets Quota
+                      </span>
                     </div>
 
-                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-emerald-600" />
-                      {parsedRows.reduce((acc, curr) => acc + (curr.passengerCount || 1), 0)} Total Tickets Quota
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => { setFile(null); setParsedRows([]); setFilterTab('all'); }}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Clear All
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => { setFile(null); setParsedRows([]); setFilterTab('all'); }}
-                      className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Clear All
-                    </button>
-                  </div>
-                </div>
+                  {/* Extended Width Horizontally Scrollable Clean Table */}
+                  <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs max-h-[440px] overflow-y-auto bg-white">
+                    <table className="w-full text-left text-xs border-collapse min-w-[1250px]">
+                      <thead className="bg-slate-50 sticky top-0 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200 z-10">
+                        <tr>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-center">#</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Service</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Company</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Date</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap min-w-[200px]">Ref No. / PNR & Status</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Description</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Passenger / Pax</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-center min-w-[130px]">Tickets (Quota)</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap">Customer Name</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-right">Cost Price (₹)</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-right">Sale Price (₹)</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-right">Profit (₹)</th>
+                          <th className="px-3.5 py-3 whitespace-nowrap text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {displayedRows.map((r, i) => (
+                          <tr
+                            key={i}
+                            className={
+                              r.isExistingBooking
+                                ? r.hasChanges
+                                  ? 'bg-indigo-50/50 hover:bg-indigo-100/50 border-l-4 border-indigo-600 transition'
+                                  : 'bg-slate-50/30 hover:bg-slate-100/50 transition'
+                                : 'hover:bg-slate-50/80 transition'
+                            }
+                          >
+                            {/* Index */}
+                            <td className="px-3.5 py-3 font-bold text-slate-400 text-[10px] text-center whitespace-nowrap">
+                              {r._index || i + 1}
+                            </td>
 
-                {/* Extended Width Horizontally Scrollable Clean Table */}
-                <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs max-h-[440px] overflow-y-auto bg-white">
-                  <table className="w-full text-left text-xs border-collapse min-w-[1250px]">
-                    <thead className="bg-slate-50 sticky top-0 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200 z-10">
-                      <tr>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-center">#</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Service</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Company</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Date</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap min-w-[200px]">Ref No. / PNR & Status</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Description</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Passenger / Pax</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-center min-w-[130px]">Tickets (Quota)</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap">Customer Name</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-right">Cost Price (₹)</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-right">Sale Price (₹)</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-right">Profit (₹)</th>
-                        <th className="px-3.5 py-3 whitespace-nowrap text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {displayedRows.map((r, i) => (
-                        <tr
-                          key={i}
-                          className={
-                            r.isExistingBooking
-                              ? r.hasChanges
-                                ? 'bg-indigo-50/50 hover:bg-indigo-100/50 border-l-4 border-indigo-600 transition'
-                                : 'bg-slate-50/30 hover:bg-slate-100/50 transition'
-                              : 'hover:bg-slate-50/80 transition'
-                          }
-                        >
-                          {/* Index */}
-                          <td className="px-3.5 py-3 font-bold text-slate-400 text-[10px] text-center whitespace-nowrap">
-                            {r._index || i + 1}
-                          </td>
-
-                          {/* Service Type */}
-                          <td className="px-3.5 py-3 whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 w-fit">
-                                {getServiceIcon(r.serviceType)}
-                                {r.serviceType}
-                              </span>
-                              {r.diffDetails?.service && (
-                                <span className="text-[9px] text-rose-500 font-semibold line-through">
-                                  was: {r.diffDetails.service.oldVal}
+                            {/* Service Type */}
+                            <td className="px-3.5 py-3 whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 w-fit">
+                                  {getServiceIcon(r.serviceType)}
+                                  {r.serviceType}
                                 </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Company Name */}
-                          <td className="px-3.5 py-3 font-bold text-slate-800 text-xs whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <span>{r.companyName}</span>
-                              {r.diffDetails?.company && (
-                                <span className="text-[9px] text-rose-500 font-semibold line-through">
-                                  was: {r.diffDetails.company.oldVal}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Booking Date */}
-                          <td className="px-3.5 py-3 font-mono text-xs text-slate-700 font-semibold whitespace-nowrap">
-                            {formatDisplayDMY(r.bookingDate)}
-                          </td>
-
-                          {/* Reference No / PNR & Smart Status */}
-                          <td className="px-3.5 py-3 whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-mono font-black text-xs text-brand-700">
-                                {r.referenceNo || 'AUTO'}
-                              </span>
-                              {r.isExistingBooking ? (
-                                r.hasChanges ? (
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border w-fit shadow-2xs ${
-                                      updateExistingMode
-                                        ? 'bg-indigo-100 text-indigo-900 border-indigo-300'
-                                        : 'bg-amber-100 text-amber-900 border-amber-300'
-                                    }`}
-                                    title={`Changed in Excel: ${r.changedFields.join(', ')}`}
-                                  >
-                                    <RefreshCw className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
-                                    {updateExistingMode ? `Changes: ${r.changedFields.join(', ')} → Will Update DB` : 'Already in DB (Skipped)'}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
-                                    <CheckCircle2 className="w-2.5 h-2.5 text-slate-400" />
-                                    {updateExistingMode ? 'Already in DB (In Sync)' : 'Already in DB (Will Skip)'}
-                                  </span>
-                                )
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 w-fit">
-                                  ✨ New Booking
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Description */}
-                          <td className="px-3.5 py-3 text-xs text-slate-600 max-w-[180px] whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="truncate" title={r.description}>{r.description}</span>
-                              {r.diffDetails?.description && (
-                                <span className="text-[9px] text-rose-500 font-semibold line-through truncate" title={`was: ${r.diffDetails.description.oldVal}`}>
-                                  was: {r.diffDetails.description.oldVal}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Passenger Name */}
-                          <td className="px-3.5 py-3 font-semibold text-slate-800 text-xs whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <span>{r.passengerName || r.customerName}</span>
-                              {r.diffDetails?.passenger && (
-                                <span className="text-[9px] text-rose-500 font-semibold line-through">
-                                  was: {r.diffDetails.passenger.oldVal}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Tickets Quota & Extra Pax */}
-                          <td className="px-3.5 py-3 whitespace-nowrap text-center">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-bold text-xs border ${
-                                r.diffDetails?.tickets
-                                  ? 'bg-indigo-100 text-indigo-900 border-indigo-300 shadow-2xs'
-                                  : 'bg-brand-50 text-brand-800 border-brand-200'
-                              }`}>
-                                <Users className="w-3.5 h-3.5 text-brand-600" />
-                                {r.passengerCount} {r.passengerCount === 1 ? 'Ticket' : 'Tickets'}
-                              </span>
-                              {r.diffDetails?.tickets ? (
-                                <span className="text-[9px] text-rose-600 font-bold line-through">
-                                  was: {r.diffDetails.tickets.oldVal} Tickets
-                                </span>
-                              ) : r.extraGuests > 0 ? (
-                                <div className="text-[10px] text-amber-700 font-bold mt-0.5">
-                                  1 Lead + {r.extraGuests} Extra
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-slate-400 mt-0.5">
-                                  Single Pax
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Customer Name with Live Diff Highlight */}
-                          <td className="px-3.5 py-3 whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`font-bold ${r.diffDetails?.customer ? 'text-indigo-900' : 'text-slate-900'}`}>
-                                  {r.customerName}
-                                </span>
-                                {r.diffDetails?.customer ? (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
-                                    <RefreshCw className="w-2 h-2 text-indigo-600" /> Changed
-                                  </span>
-                                ) : r.isExistingCustomer ? (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    <CheckCircle2 className="w-2.5 h-2.5" /> {r.customerCode || 'Matched'}
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                    + New Client
+                                {r.diffDetails?.service && (
+                                  <span className="text-[9px] text-rose-500 font-semibold line-through">
+                                    was: {r.diffDetails.service.oldVal}
                                   </span>
                                 )}
                               </div>
-                              {r.diffDetails?.customer && (
-                                <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 w-fit line-through">
-                                  was: {r.diffDetails.customer.oldVal}
+                            </td>
+
+                            {/* Company Name */}
+                            <td className="px-3.5 py-3 font-bold text-slate-800 text-xs whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span>{r.companyName}</span>
+                                {r.diffDetails?.company && (
+                                  <span className="text-[9px] text-rose-500 font-semibold line-through">
+                                    was: {r.diffDetails.company.oldVal}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Booking Date */}
+                            <td className="px-3.5 py-3 font-mono text-xs text-slate-700 font-semibold whitespace-nowrap">
+                              {formatDisplayDMY(r.bookingDate)}
+                            </td>
+
+                            {/* Reference No / PNR & Smart Status */}
+                            <td className="px-3.5 py-3 whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-mono font-black text-xs text-brand-700">
+                                  {r.referenceNo || 'AUTO'}
                                 </span>
-                              )}
-                              {r.customerPhone && r.customerPhone !== '+91 9800000000' && (
-                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">{r.customerPhone}</div>
-                              )}
-                            </div>
-                          </td>
+                                {r.isExistingBooking ? (
+                                  r.hasChanges ? (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border w-fit shadow-2xs ${updateExistingMode
+                                        ? 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                                        : 'bg-amber-100 text-amber-900 border-amber-300'
+                                        }`}
+                                      title={`Changed in Excel: ${r.changedFields.join(', ')}`}
+                                    >
+                                      <RefreshCw className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
+                                      {updateExistingMode ? `Changes: ${r.changedFields.join(', ')} → Will Update DB` : 'Already in DB (Skipped)'}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-slate-400" />
+                                      {updateExistingMode ? 'Already in DB (In Sync)' : 'Already in DB (Will Skip)'}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 w-fit">
+                                    ✨ New Booking
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Cost Price */}
-                          <td className="px-3.5 py-3 font-mono text-right text-slate-600 font-bold whitespace-nowrap">
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span>₹{r.costPrice.toLocaleString('en-IN')}</span>
-                              {r.diffDetails?.costPrice && (
-                                <span className="text-[9px] text-rose-500 font-mono line-through">
-                                  ₹{r.diffDetails.costPrice.oldVal.toLocaleString('en-IN')}
+                            {/* Description */}
+                            <td className="px-3.5 py-3 text-xs text-slate-600 max-w-[180px] whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="truncate" title={r.description}>{r.description}</span>
+                                {r.diffDetails?.description && (
+                                  <span className="text-[9px] text-rose-500 font-semibold line-through truncate" title={`was: ${r.diffDetails.description.oldVal}`}>
+                                    was: {r.diffDetails.description.oldVal}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Passenger Name */}
+                            <td className="px-3.5 py-3 font-semibold text-slate-800 text-xs whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <span>{r.passengerName || r.customerName}</span>
+                                {r.diffDetails?.passenger && (
+                                  <span className="text-[9px] text-rose-500 font-semibold line-through">
+                                    was: {r.diffDetails.passenger.oldVal}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Tickets Quota & Extra Pax */}
+                            <td className="px-3.5 py-3 whitespace-nowrap text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg font-bold text-xs border ${r.diffDetails?.tickets
+                                  ? 'bg-indigo-100 text-indigo-900 border-indigo-300 shadow-2xs'
+                                  : 'bg-brand-50 text-brand-800 border-brand-200'
+                                  }`}>
+                                  <Users className="w-3.5 h-3.5 text-brand-600" />
+                                  {r.passengerCount} {r.passengerCount === 1 ? 'Ticket' : 'Tickets'}
                                 </span>
-                              )}
-                            </div>
-                          </td>
+                                {r.diffDetails?.tickets ? (
+                                  <span className="text-[9px] text-rose-600 font-bold line-through">
+                                    was: {r.diffDetails.tickets.oldVal} Tickets
+                                  </span>
+                                ) : r.extraGuests > 0 ? (
+                                  <div className="text-[10px] text-amber-700 font-bold mt-0.5">
+                                    1 Lead + {r.extraGuests} Extra
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-slate-400 mt-0.5">
+                                    Single Pax
+                                  </div>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Sale Price */}
-                          <td className="px-3.5 py-3 font-mono font-black text-right text-slate-900 whitespace-nowrap">
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span>₹{r.sellPrice.toLocaleString('en-IN')}</span>
-                              {r.diffDetails?.sellPrice && (
-                                <span className="text-[9px] text-rose-500 font-mono line-through">
-                                  ₹{r.diffDetails.sellPrice.oldVal.toLocaleString('en-IN')}
-                                </span>
-                              )}
-                            </div>
-                          </td>
+                            {/* Customer Name with Live Diff Highlight */}
+                            <td className="px-3.5 py-3 whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`font-bold ${r.diffDetails?.customer ? 'text-indigo-900' : 'text-slate-900'}`}>
+                                    {r.customerName}
+                                  </span>
+                                  {r.diffDetails?.customer ? (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                      <RefreshCw className="w-2 h-2 text-indigo-600" /> Changed
+                                    </span>
+                                  ) : r.isExistingCustomer ? (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      <CheckCircle2 className="w-2.5 h-2.5" /> {r.customerCode || 'Matched'}
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                      + New Client
+                                    </span>
+                                  )}
+                                </div>
+                                {r.diffDetails?.customer && (
+                                  <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 w-fit line-through">
+                                    was: {r.diffDetails.customer.oldVal}
+                                  </span>
+                                )}
+                                {r.customerPhone && r.customerPhone !== '+91 9800000000' && (
+                                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">{r.customerPhone}</div>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Real-time Profit */}
-                          <td className="px-3.5 py-3 font-mono font-black text-right text-emerald-600 whitespace-nowrap">
-                            +₹{r.profit.toLocaleString('en-IN')}
-                          </td>
+                            {/* Cost Price */}
+                            <td className="px-3.5 py-3 font-mono text-right text-slate-600 font-bold whitespace-nowrap">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span>₹{r.costPrice.toLocaleString('en-IN')}</span>
+                                {r.diffDetails?.costPrice && (
+                                  <span className="text-[9px] text-rose-500 font-mono line-through">
+                                    ₹{r.diffDetails.costPrice.oldVal.toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Action Buttons */}
-                          <td className="px-3.5 py-3 text-center whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRow(r._index ? r._index - 1 : i)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Remove row from import"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            {/* Sale Price */}
+                            <td className="px-3.5 py-3 font-mono font-black text-right text-slate-900 whitespace-nowrap">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span>₹{r.sellPrice.toLocaleString('en-IN')}</span>
+                                {r.diffDetails?.sellPrice && (
+                                  <span className="text-[9px] text-rose-500 font-mono line-through">
+                                    ₹{r.diffDetails.sellPrice.oldVal.toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Real-time Profit */}
+                            <td className="px-3.5 py-3 font-mono font-black text-right text-emerald-600 whitespace-nowrap">
+                              +₹{r.profit.toLocaleString('en-IN')}
+                            </td>
+
+                            {/* Action Buttons */}
+                            <td className="px-3.5 py-3 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRow(r._index ? r._index - 1 : i)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                title="Remove row from import"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
-        </div>
+              );
+            })()}
+          </div>
 
-        {/* Modal Footer */}
-        <div className="px-5 py-4 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition cursor-pointer"
-          >
-            Cancel
-          </button>
+          {/* Modal Footer */}
+          <div className="px-5 py-4 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition cursor-pointer"
+            >
+              Cancel
+            </button>
 
-          {(() => {
-            const newCount = parsedRows.filter((r) => !r.isExistingBooking).length;
-            const modifiedCount = parsedRows.filter((r) => r.isExistingBooking && r.hasChanges).length;
-            const unchangedCount = parsedRows.filter((r) => r.isExistingBooking && !r.hasChanges).length;
-            const hasActionableItems = newCount > 0 || (updateExistingMode && modifiedCount > 0);
+            {(() => {
+              const newCount = parsedRows.filter((r) => !r.isExistingBooking).length;
+              const modifiedCount = parsedRows.filter((r) => r.isExistingBooking && r.hasChanges).length;
+              const unchangedCount = parsedRows.filter((r) => r.isExistingBooking && !r.hasChanges).length;
+              const hasActionableItems = newCount > 0 || (updateExistingMode && modifiedCount > 0);
 
-            return (
-              <button
-                type="button"
-                onClick={handleUploadSubmit}
-                disabled={isUploading || parsedRows.length === 0 || !hasActionableItems}
-                className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition ${
-                  !hasActionableItems || isUploading
+              return (
+                <button
+                  type="button"
+                  onClick={handleUploadSubmit}
+                  disabled={isUploading || parsedRows.length === 0 || !hasActionableItems}
+                  className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition ${!hasActionableItems || isUploading
                     ? 'bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed opacity-90 shadow-none'
                     : 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer'
-                }`}
-              >
-                {isUploading ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Processing Bookings...</span>
-                  </>
-                ) : !hasActionableItems ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-slate-400" />
-                    <span>All {parsedRows.length} Bookings in DB (In Sync – No Changes to Save)</span>
-                  </>
-                ) : updateExistingMode ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>
-                      {modifiedCount > 0 && newCount > 0
-                        ? `Save & Update (${newCount} New + ${modifiedCount} Modified in DB)`
-                        : modifiedCount > 0
-                        ? `Update ${modifiedCount} Modified Booking${modifiedCount > 1 ? 's' : ''} in Database (${unchangedCount} Kept As-Is)`
-                        : `Save All ${newCount} New Bookings (${unchangedCount} In DB Kept As-Is)`}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>
-                      Save {newCount} New Bookings (Skip {parsedRows.length - newCount} Existing)
-                    </span>
-                  </>
-                )}
-              </button>
-            );
-          })()}
+                    }`}
+                >
+                  {isUploading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Processing Bookings...</span>
+                    </>
+                  ) : !hasActionableItems ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                      <span>All {parsedRows.length} Bookings in DB (In Sync – No Changes to Save)</span>
+                    </>
+                  ) : updateExistingMode ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>
+                        {modifiedCount > 0 && newCount > 0
+                          ? `Save & Update (${newCount} New + ${modifiedCount} Modified in DB)`
+                          : modifiedCount > 0
+                            ? `Update ${modifiedCount} Modified Booking${modifiedCount > 1 ? 's' : ''} in Database (${unchangedCount} Kept As-Is)`
+                            : `Save All ${newCount} New Bookings (${unchangedCount} In DB Kept As-Is)`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>
+                        Save {newCount} New Bookings (Skip {parsedRows.length - newCount} Existing)
+                      </span>
+                    </>
+                  )}
+                </button>
+              );
+            })()}
+          </div>
         </div>
       </div>
-    </div>
-  </div>,
-  document.body
-);
+    </div>,
+    document.body
+  );
 };

@@ -284,6 +284,18 @@ exports.createBooking = async (req, res, next) => {
       primaryPassengerName = 'Passenger';
     }
 
+    // Compute passenger counts
+    let finalPassengerCount = 1;
+    let finalExtraGuests = 0;
+    if (passengers && Array.isArray(passengers) && passengers.length > 0) {
+      finalPassengerCount = passengers.length;
+      finalExtraGuests = Math.max(0, passengers.length - 1);
+    } else {
+      const extra = parseInt(req.body.extraPassengers || req.body.extraGuests || 0, 10) || 0;
+      finalExtraGuests = Math.max(0, extra);
+      finalPassengerCount = 1 + finalExtraGuests;
+    }
+
     const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
 
     const booking = await Booking.create({
@@ -301,6 +313,8 @@ exports.createBooking = async (req, res, next) => {
       pnr: (pnr || referenceNo).trim().toUpperCase(),
       ticketNumber: ticketNumber ? ticketNumber.trim() : '',
       passengerName: primaryPassengerName,
+      passengerCount: finalPassengerCount,
+      extraGuests: finalExtraGuests,
       status,
       paymentStatus,
       customerId,
@@ -465,6 +479,7 @@ exports.updateBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    if (req.body.bookingDate) booking.bookingDate = req.body.bookingDate;
     if (serviceType) booking.serviceType = serviceType;
     if (bookingType) booking.bookingType = bookingType;
     if (sector) booking.sector = sector.trim().toUpperCase();
@@ -482,20 +497,21 @@ exports.updateBooking = async (req, res, next) => {
     if (status) booking.status = status;
     if (notes !== undefined) booking.notes = notes ? notes.trim() : '';
     if (commission !== undefined) booking.commission = toDecimal(commission);
+    if (tax !== undefined) booking.tax = toDecimal(tax);
 
     if (costPrice !== undefined) booking.costPrice = toDecimal(costPrice);
     if (sellPrice !== undefined) {
       booking.sellPrice = toDecimal(sellPrice);
-      booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0));
       booking.totalAmount = booking.sellPrice;
+      booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0) - (booking.tax || 0));
       booking.balanceDue = toDecimal(Math.max(0, booking.totalAmount - (booking.amountReceived || 0)));
       booking.paymentStatus = booking.balanceDue <= 0 ? PAYMENT_STATUS.PAID : (booking.amountReceived > 0 ? PAYMENT_STATUS.PARTIALLY_PAID : PAYMENT_STATUS.UNPAID);
     }
 
-    if (baseFare !== undefined || tax !== undefined || serviceCharge !== undefined || otherCharges !== undefined || discount !== undefined) {
+    if (baseFare !== undefined || serviceCharge !== undefined || otherCharges !== undefined || discount !== undefined) {
       const financials = calculateBookingFinancials({
         baseFare: baseFare !== undefined ? baseFare : (booking.sellPrice || booking.baseFare),
-        tax: tax !== undefined ? tax : booking.tax,
+        tax: booking.tax || 0,
         serviceCharge: serviceCharge !== undefined ? serviceCharge : booking.serviceCharge,
         otherCharges: otherCharges !== undefined ? otherCharges : booking.otherCharges,
         discount: discount !== undefined ? discount : booking.discount,
@@ -503,22 +519,21 @@ exports.updateBooking = async (req, res, next) => {
       });
 
       booking.baseFare = financials.baseFare;
-      booking.tax = financials.tax;
       booking.serviceCharge = financials.serviceCharge;
       booking.otherCharges = financials.otherCharges;
       booking.discount = financials.discount;
       if (sellPrice === undefined) {
         booking.totalAmount = financials.totalAmount;
         booking.sellPrice = financials.totalAmount;
-        booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0));
+        booking.profit = toDecimal(booking.sellPrice - (booking.costPrice || 0) - (booking.tax || 0));
       }
       booking.balanceDue = financials.balanceDue;
       booking.paymentStatus = financials.paymentStatus;
     }
 
-    await booking.save();
-
     if (passengers && Array.isArray(passengers) && passengers.length > 0) {
+      booking.passengerCount = passengers.length;
+      booking.extraGuests = Math.max(0, passengers.length - 1);
       await Passenger.deleteMany({ bookingId: id });
       const newPassengers = passengers.map(p => ({
         bookingId: id,
@@ -533,7 +548,13 @@ exports.updateBooking = async (req, res, next) => {
         phone: p.phone ? p.phone.trim() : ''
       }));
       await Passenger.insertMany(newPassengers);
+    } else if (req.body.extraGuests !== undefined) {
+      const extra = parseInt(req.body.extraGuests || 0, 10) || 0;
+      booking.extraGuests = extra;
+      booking.passengerCount = 1 + extra;
     }
+
+    await booking.save();
 
     await logActivity(
       req.user ? (req.user.id || req.user._id) : null,
@@ -826,7 +847,16 @@ exports.bulkImportBookings = async (req, res, next) => {
         const customerName = (row.customerName || row.name || row.passengerName || 'Valued Guest').trim();
         const customerPhone = (row.customerPhone || row.phone || row.mobile || '').toString().trim();
         const customerEmail = (row.customerEmail || row.email || '').toString().toLowerCase().trim();
-        const serviceType = normalizeServiceType(row.serviceType || row.service || row.type);
+        const serviceType = normalizeServiceType(
+          row.serviceType ||
+          row.service ||
+          row.services ||
+          row.type ||
+          row['Services - FLIGHT/TRAIN/ETC'] ||
+          row['FLIGHT/TRAIN/ETC'] ||
+          row['Services'] ||
+          row['Service']
+        );
 
         // 1. Find existing customer by ID, Name (case-insensitive), or Phone within agency
         let customer = null;

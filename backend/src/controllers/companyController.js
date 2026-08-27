@@ -31,6 +31,7 @@ exports.getCompanies = async (req, res, next) => {
     const bookings = await Booking.find({
       companyId: { $in: companyIds }
     })
+      .populate('passengers', '_id')
       .select('companyId totalAmount passengerCount extraGuests')
       .lean();
 
@@ -50,13 +51,18 @@ exports.getCompanies = async (req, res, next) => {
 
       // Compute exact tickets / passengers used across all active bookings for this company
       const bookingTicketsSum = cBookings.reduce((sum, b) => {
-        const count = b.passengerCount !== undefined && b.passengerCount > 0
-          ? b.passengerCount
-          : (1 + (parseInt(b.extraGuests || 0, 10) || 0));
+        const paxFromDoc = (b.passengers && Array.isArray(b.passengers) && b.passengers.length > 0)
+          ? b.passengers.length
+          : null;
+        const count = paxFromDoc !== null
+          ? paxFromDoc
+          : (b.passengerCount !== undefined && b.passengerCount > 0
+            ? b.passengerCount
+            : (1 + (parseInt(b.extraGuests || 0, 10) || 0)));
         return sum + count;
       }, 0);
 
-      const usedTickets = cBookings.length > 0 ? bookingTicketsSum : (c.usedTickets || 0);
+      const usedTickets = bookingTicketsSum;
       const availableTickets = Math.max(0, totalPurchasedTickets - usedTickets);
       const walletBalance = parseFloat(c.walletBalance || 0);
       const purchasedPrice = parseFloat(c.purchasedPrice || 0);
@@ -129,14 +135,19 @@ exports.getCompanyDetails = async (req, res, next) => {
       if (b.status === 'confirmed') {
         confirmedCount += 1;
       }
-      const bPax = b.passengerCount !== undefined && b.passengerCount > 0
-        ? b.passengerCount
-        : ((b.passengers && b.passengers.length > 0) ? b.passengers.length : (1 + (parseInt(b.extraGuests || 0, 10) || 0)));
+      const paxFromDoc = (b.passengers && Array.isArray(b.passengers) && b.passengers.length > 0)
+        ? b.passengers.length
+        : null;
+      const bPax = paxFromDoc !== null
+        ? paxFromDoc
+        : (b.passengerCount !== undefined && b.passengerCount > 0
+          ? b.passengerCount
+          : (1 + (parseInt(b.extraGuests || 0, 10) || 0)));
       totalPassengersCount += bPax;
     });
 
     const totalPurchasedTickets = parseFloat(company.totalPurchasedTickets || 0);
-    const usedTickets = bookings.length > 0 ? totalPassengersCount : (company.usedTickets || 0);
+    const usedTickets = totalPassengersCount;
     const availableTickets = Math.max(0, totalPurchasedTickets - usedTickets);
 
     if (company.usedTickets !== usedTickets) {

@@ -6,6 +6,7 @@ import {
   Search,
   Filter,
   Eye,
+  Edit,
   CreditCard,
   Printer,
   XCircle,
@@ -29,6 +30,7 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Modal } from '../../components/common/Modal';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
+import { EditBookingModal } from '../../components/booking/EditBookingModal';
 import { formatDate } from '../../utils/formatters';
 
 export const AllBookingsPage = () => {
@@ -40,8 +42,9 @@ export const AllBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
-  // Excel Bulk Import Modal
+  // Modals
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [selectedBookingForEdit, setSelectedBookingForEdit] = useState(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -392,6 +395,17 @@ export const AllBookingsPage = () => {
             <Eye className="w-4 h-4" />
           </button>
 
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedBookingForEdit(row);
+            }}
+            title="Edit Booking Details"
+            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+
           {parseFloat(row.balanceDue || 0) > 0 && row.status !== 'cancelled' && (
             <button
               onClick={(e) => {
@@ -726,6 +740,16 @@ export const AllBookingsPage = () => {
         onClose={() => setIsExcelModalOpen(false)}
         onSuccess={fetchBookings}
       />
+
+      {/* Edit Booking Modal */}
+      {selectedBookingForEdit && (
+        <EditBookingModal
+          isOpen={!!selectedBookingForEdit}
+          onClose={() => setSelectedBookingForEdit(null)}
+          booking={selectedBookingForEdit}
+          onSuccess={fetchBookings}
+        />
+      )}
     </div>
   );
 };

@@ -30,6 +30,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
+import { EditBookingModal } from '../../components/booking/EditBookingModal';
 import { useToast } from '../../context/ToastContext';
 import { formatDate, formatDateTime } from '../../utils/formatters';
 
@@ -43,6 +44,7 @@ export const BookingDetailsPage = () => {
 
   // Modals
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -178,6 +180,13 @@ export const BookingDetailsPage = () => {
         </button>
 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
+          >
+            <Edit className="w-3.5 h-3.5" /> Edit Booking
+          </button>
+
           {parseFloat(booking.balanceDue || 0) > 0 && booking.status !== 'cancelled' && (
             <button
               onClick={() => setIsPaymentModalOpen(true)}
@@ -197,7 +206,7 @@ export const BookingDetailsPage = () => {
           {booking.status === 'confirmed' && (
             <button
               onClick={() => handleStatusChange('completed')}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
             >
               <CheckCircle className="w-3.5 h-3.5" /> Complete
             </button>
@@ -591,14 +600,15 @@ export const BookingDetailsPage = () => {
         </form>
       </Modal>
 
-      {/* Cancel Confirmation */}
-      <ConfirmDialog
-        isOpen={isCancelConfirmOpen}
-        onClose={() => setIsCancelConfirmOpen(false)}
-        onConfirm={() => handleStatusChange('cancelled')}
-        title="Cancel Booking"
-        message="Are you sure you want to cancel this booking? This will update the status to Cancelled in the ledger and database."
-        type="warning"
+      {/* Edit Booking Modal */}
+      <EditBookingModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        booking={booking}
+        onSuccess={(updated) => {
+          setBooking(updated);
+          fetchBooking();
+        }}
       />
     </div>
   );
