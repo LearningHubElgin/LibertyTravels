@@ -86,6 +86,7 @@ export const AgencyFormPage = () => {
       setLoading(true);
       const res = await api.get(`/superadmin/agencies/${id}`);
       if (res.data?.success) {
+        const a = res.data.data;
         const primaryAdmin = a.adminUser || (a.users && a.users.find(u => u.role === 'admin')) || a.users?.[0];
         setFormData({
           name: a.name || '',
