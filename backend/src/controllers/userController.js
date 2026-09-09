@@ -137,6 +137,14 @@ exports.updateUser = async (req, res, next) => {
       user.status = status;
     }
 
+    if (req.body.password || req.body.newPassword) {
+      const pass = (req.body.password || req.body.newPassword).trim();
+      if (pass.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+      }
+      user.password = pass;
+    }
+
     await user.save();
 
     await logActivity(
@@ -206,35 +214,67 @@ exports.toggleUserStatus = async (req, res, next) => {
 exports.resetUserPassword = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long'
-      });
-    }
+    const { newPassword, password, email, loginId, name } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    user.password = newPassword;
+    const targetEmail = email || loginId;
+    let emailChanged = false;
+    if (targetEmail && targetEmail.toLowerCase().trim() !== user.email) {
+      const cleanEmail = targetEmail.toLowerCase().trim();
+      const existing = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } });
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: 'A user with this Login ID / Email already exists'
+        });
+      }
+      user.email = cleanEmail;
+      emailChanged = true;
+    }
+
+    if (name && name.trim()) {
+      user.name = name.trim();
+    }
+
+    const passToSet = newPassword || password;
+    let passChanged = false;
+    if (passToSet && passToSet.trim().length > 0) {
+      if (passToSet.trim().length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 6 characters long'
+        });
+      }
+      user.password = passToSet.trim();
+      passChanged = true;
+    }
+
+    if (!emailChanged && !passChanged && !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'No changes provided. Please enter a new Login ID or Password.'
+      });
+    }
+
     await user.save();
 
     await logActivity(
       req.user.id || req.user._id,
-      'Reset User Password',
+      'Reset User Password / Credentials',
       'User Management',
       user._id,
-      `Password reset for user ${user.name} by ${req.user.name}.`,
+      `Credentials updated for user ${user.name} (${user.email}) by ${req.user.name}.`,
       req.ip
     );
 
     return res.status(200).json({
       success: true,
-      message: `Password reset successfully for ${user.name}`
+      message: `Credentials updated successfully for ${user.name}`,
+      user: user.toJSON()
     });
   } catch (error) {
     next(error);

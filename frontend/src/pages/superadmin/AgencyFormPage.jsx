@@ -86,7 +86,7 @@ export const AgencyFormPage = () => {
       setLoading(true);
       const res = await api.get(`/superadmin/agencies/${id}`);
       if (res.data?.success) {
-        const a = res.data.data;
+        const primaryAdmin = a.adminUser || (a.users && a.users.find(u => u.role === 'admin')) || a.users?.[0];
         setFormData({
           name: a.name || '',
           code: a.code || '',
@@ -103,10 +103,10 @@ export const AgencyFormPage = () => {
           status: a.status || 'active',
           plan: a.plan || 'professional',
           notes: a.notes || '',
-          adminName: a.contactPerson?.name || '',
-          adminEmail: a.contactPerson?.email || '',
+          adminName: primaryAdmin?.name || a.contactPerson?.name || '',
+          adminEmail: primaryAdmin?.email || a.contactPerson?.email || a.email || '',
           adminPassword: '',
-          adminPhone: a.contactPerson?.phone || '',
+          adminPhone: primaryAdmin?.phone || a.contactPerson?.phone || a.phone || '',
           contactPerson: {
             name: a.contactPerson?.name || '',
             phone: a.contactPerson?.phone || '',
@@ -183,6 +183,14 @@ export const AgencyFormPage = () => {
     }
     if (!formData.phone.trim()) {
       toastError('Please enter the official Agency Phone.');
+      return;
+    }
+    if (!isEditMode && (!formData.adminPassword || formData.adminPassword.trim().length < 6)) {
+      toastError('Initial admin password must be at least 6 characters.');
+      return;
+    }
+    if (isEditMode && formData.adminPassword && formData.adminPassword.trim().length > 0 && formData.adminPassword.trim().length < 6) {
+      toastError('Admin password must be at least 6 characters.');
       return;
     }
 
@@ -419,7 +427,7 @@ export const AgencyFormPage = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 2: Admin Account (Create Mode) OR Representative (Edit Mode)      */}
+        {/* SECTION 2: Admin Account Credentials & Primary Representative            */}
         {/* ========================================================================= */}
         <div className="bg-white rounded-2xl border-2 border-amber-200/90 shadow-sm overflow-hidden transition hover:shadow-md">
           <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent px-4 sm:px-6 py-3.5 border-b border-amber-100 flex items-center justify-between">
@@ -430,97 +438,36 @@ export const AgencyFormPage = () => {
               <div>
                 <h2 className="text-xs sm:text-sm font-black text-amber-950 flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-amber-600" />
-                  <span>{isEditMode ? 'Primary Contact Person / Representative' : 'Initial Agency Admin Account'}</span>
+                  <span>{isEditMode ? 'Agency Administrator Account & Representative' : 'Initial Agency Admin Account'}</span>
                 </h2>
                 <p className="text-[10px] sm:text-xs text-slate-500">
                   {isEditMode
-                    ? 'Key executive contact person for management & escalations'
+                    ? 'Portal login credentials (Login ID & Password) and executive representative contact'
                     : 'Primary administrator credentials to log into this travel agency workspace'}
                 </p>
               </div>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md hidden sm:inline-block">
-              {isEditMode ? 'Representative' : 'Admin Login'}
+              {isEditMode ? 'Admin Credentials & Contact' : 'Admin Login'}
             </span>
           </div>
 
-          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            {isEditMode ? (
-              <>
-                <div>
-                  <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.contactPerson.name}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contactPerson: { ...formData.contactPerson, name: e.target.value }
-                      })
-                    }
-                    placeholder="e.g. Rajesh Sharma"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
-                  />
+          <div className="p-4 sm:p-6 space-y-6">
+            {/* Administrator Login Credentials Card */}
+            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-700" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-amber-950">
+                    Administrator Login Credentials
+                  </h3>
                 </div>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded">
+                  ERP Portal Login Access
+                </span>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Designation / Position
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.contactPerson.designation}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contactPerson: { ...formData.contactPerson, designation: e.target.value }
-                      })
-                    }
-                    placeholder="e.g. Managing Director / Operations Head"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-semibold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Direct Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.contactPerson.email}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contactPerson: { ...formData.contactPerson, email: e.target.value }
-                      })
-                    }
-                    placeholder="rajesh@agency.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Direct Phone
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.contactPerson.phone}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contactPerson: { ...formData.contactPerson, phone: e.target.value }
-                      })
-                    }
-                    placeholder="+91 98111 22334"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
                     Admin Full Name
@@ -530,43 +477,54 @@ export const AgencyFormPage = () => {
                     value={formData.adminName}
                     onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
                     placeholder="e.g. Rajesh Sharma"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Admin Login Email <span className="text-rose-500">*</span>
+                    Login ID / Email Address <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="email"
-                    value={formData.adminEmail || formData.email}
+                    type="text"
+                    required
+                    value={formData.adminEmail}
                     onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
                     placeholder="admin@agency.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    This email/ID is used by the Agency Admin to sign into the ERP portal.
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
-                    Initial Password (Min 6 Chars) <span className="text-rose-500">*</span>
+                    {isEditMode ? 'Change Password (Min 6 Chars)' : 'Initial Password (Min 6 Chars)'}{' '}
+                    {!isEditMode && <span className="text-rose-500">*</span>}
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.adminPassword}
                       onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
-                      placeholder="agency123"
-                      className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-mono font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                      placeholder={isEditMode ? 'Enter new password to change (leave blank to keep current)' : 'agency123'}
+                      className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-xs font-mono font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                      title={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {isEditMode
+                      ? 'Click eye button to view password. Leave blank to keep existing password unchanged.'
+                      : 'Initial password given to the Agency Admin. Click eye icon to view.'}
+                  </p>
                 </div>
 
                 <div>
@@ -575,13 +533,98 @@ export const AgencyFormPage = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.adminPhone || formData.phone}
+                    value={formData.adminPhone}
                     onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value })}
                     placeholder="+91 98111 22334"
-                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
                   />
                 </div>
-              </>
+              </div>
+            </div>
+
+            {/* Representative Details in Edit Mode */}
+            {isEditMode && (
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <UserCheck className="w-4 h-4 text-slate-500" />
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Primary Representative / Escalation Contact Person
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.contactPerson?.name || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactPerson: { ...formData.contactPerson, name: e.target.value }
+                        })
+                      }
+                      placeholder="e.g. Rajesh Sharma"
+                      className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
+                      Designation / Position
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.contactPerson?.designation || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactPerson: { ...formData.contactPerson, designation: e.target.value }
+                        })
+                      }
+                      placeholder="e.g. Managing Director / Operations Head"
+                      className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-semibold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
+                      Direct Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.contactPerson?.email || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactPerson: { ...formData.contactPerson, email: e.target.value }
+                        })
+                      }
+                      placeholder="rajesh@agency.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-1.5">
+                      Direct Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.contactPerson?.phone || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactPerson: { ...formData.contactPerson, phone: e.target.value }
+                        })
+                      }
+                      placeholder="+91 98111 22334"
+                      className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 text-xs font-bold focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 transition"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

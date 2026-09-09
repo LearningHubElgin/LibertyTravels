@@ -120,10 +120,19 @@ exports.getAgencyDetails = async (req, res, next) => {
     const totalCollected = bookings.reduce((sum, b) => sum + (parseFloat(b.amountReceived) || 0), 0);
     const totalReceivables = bookings.reduce((sum, b) => sum + (parseFloat(b.balanceDue) || 0), 0);
 
+    const adminUser = users.find(u => u.role === ROLES.ADMIN) || users[0] || null;
+
     res.status(200).json({
       success: true,
       data: {
         ...agency,
+        adminUser: adminUser ? {
+          id: adminUser._id,
+          name: adminUser.name,
+          email: adminUser.email,
+          phone: adminUser.phone,
+          status: adminUser.status
+        } : null,
         stats: {
           totalBookings: totalBookingsCount,
           totalCustomers: totalCustomersCount,
@@ -288,7 +297,11 @@ exports.updateAgency = async (req, res, next) => {
       plan,
       contactPerson,
       invoiceSettings,
-      notes
+      notes,
+      adminName,
+      adminEmail,
+      adminPassword,
+      adminPhone
     } = req.body;
 
     const agency = await Agency.findById(id);
@@ -329,6 +342,61 @@ exports.updateAgency = async (req, res, next) => {
     if (notes !== undefined) agency.notes = notes;
 
     await agency.save();
+
+    // Update or create Agency Admin user credentials
+    if (adminEmail || adminPassword) {
+      let adminUser = await User.findOne({ agencyId: id, role: ROLES.ADMIN });
+      if (!adminUser) {
+        adminUser = await User.findOne({ agencyId: id });
+      }
+
+      if (adminUser) {
+        if (adminName) adminUser.name = adminName.trim();
+        if (adminPhone) adminUser.phone = adminPhone.trim();
+
+        if (adminEmail && adminEmail.trim().toLowerCase() !== adminUser.email) {
+          const cleanAdminEmail = adminEmail.trim().toLowerCase();
+          const duplicate = await User.findOne({ email: cleanAdminEmail, _id: { $ne: adminUser._id } });
+          if (duplicate) {
+            return res.status(400).json({
+              success: false,
+              message: `User with login ID / email "${cleanAdminEmail}" already exists in the platform.`
+            });
+          }
+          adminUser.email = cleanAdminEmail;
+        }
+
+        if (adminPassword && adminPassword.trim().length > 0) {
+          if (adminPassword.trim().length < 6) {
+            return res.status(400).json({
+              success: false,
+              message: 'Admin password must be at least 6 characters long.'
+            });
+          }
+          adminUser.password = adminPassword.trim();
+        }
+
+        await adminUser.save();
+      } else if (adminEmail) {
+        const cleanAdminEmail = adminEmail.trim().toLowerCase();
+        const duplicate = await User.findOne({ email: cleanAdminEmail });
+        if (duplicate) {
+          return res.status(400).json({
+            success: false,
+            message: `User with login ID / email "${cleanAdminEmail}" already exists in the platform.`
+          });
+        }
+        await User.create({
+          name: adminName ? adminName.trim() : `${agency.name} Admin`,
+          email: cleanAdminEmail,
+          password: adminPassword && adminPassword.trim().length >= 6 ? adminPassword.trim() : 'agency123',
+          role: ROLES.ADMIN,
+          agencyId: agency._id,
+          phone: adminPhone ? adminPhone.trim() : (agency.phone || ''),
+          status: USER_STATUS.ACTIVE
+        });
+      }
+    }
 
     res.status(200).json({
       success: true,

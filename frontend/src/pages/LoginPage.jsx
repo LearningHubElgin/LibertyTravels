@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, Compass, ShieldCheck, UserCheck, ArrowRight, Building2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Compass, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -37,11 +37,6 @@ export const LoginPage = () => {
     }
   };
 
-  const handleQuickLogin = (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setErrorMsg('');
-  };
 
   return (
     <div className="min-h-screen bg-[#071628] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -132,37 +127,6 @@ export const LoginPage = () => {
             </button>
           </form>
 
-          {/* Quick Fill Demo Credential Helpers */}
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">
-              Quick Login Demo Portals
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {/* <button
-                type="button"
-                onClick={() => handleQuickLogin('superadmin', 'password')}
-                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
-              >
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-0.5">
-                  <ShieldCheck className="w-4 h-4 shrink-0" /> Super Admin
-                </div>
-                <p className="text-[10px] text-slate-300 font-mono">superadmin</p>
-                <span className="text-[9px] text-amber-400 group-hover:underline">Click to Fill &rarr;</span>
-              </button> */}
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@libertytravel.com', 'admin123')}
-                className="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-left transition group"
-              >
-                <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs mb-0.5">
-                  <Building2 className="w-4 h-4 shrink-0" /> Agency Admin
-                </div>
-                <p className="text-[10px] text-slate-300 font-mono truncate">admin@libertytravel.com</p>
-                <span className="text-[9px] text-sky-400 group-hover:underline">Click to Fill &rarr;</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

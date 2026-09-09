@@ -9,7 +9,10 @@ import {
   XCircle,
   KeyRound,
   UserCheck,
-  User
+  User,
+  Eye,
+  EyeOff,
+  Mail
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -33,6 +36,9 @@ export const SuperAdminUsersPage = () => {
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -95,21 +101,42 @@ export const SuperAdminUsersPage = () => {
     }
   };
 
+  const openCredentialsModal = (user) => {
+    setSelectedUser(user);
+    setEditEmail(user.email || '');
+    setNewPassword('');
+    setShowPassword(false);
+    setIsResetPasswordModalOpen(true);
+  };
+
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
+    if (!editEmail.trim()) {
+      toastError('Login ID / Email cannot be empty');
+      return;
+    }
+    if (newPassword.trim() && newPassword.trim().length < 6) {
+      toastError('New password must be at least 6 characters long');
+      return;
+    }
     try {
       setSubmitting(true);
       const uId = selectedUser._id || selectedUser.id;
-      const res = await api.post(`/users/${uId}/reset-password`, { newPassword });
+      const payload = {
+        email: editEmail.trim(),
+        ...(newPassword.trim() ? { newPassword: newPassword.trim() } : {})
+      };
+      const res = await api.post(`/users/${uId}/reset-password`, payload);
       if (res.data?.success) {
-        toastSuccess('Password reset successfully!');
+        toastSuccess(res.data.message || 'Login credentials updated successfully!');
         setIsResetPasswordModalOpen(false);
         setNewPassword('');
         setSelectedUser(null);
+        fetchUsers();
       }
     } catch (err) {
-      toastError(err.response?.data?.message || 'Failed to reset password');
+      toastError(err.response?.data?.message || 'Failed to update credentials');
     } finally {
       setSubmitting(false);
     }
@@ -207,12 +234,9 @@ export const SuperAdminUsersPage = () => {
       render: (row) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => {
-              setSelectedUser(row);
-              setIsResetPasswordModalOpen(true);
-            }}
+            onClick={() => openCredentialsModal(row)}
             className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-            title="Reset Password"
+            title="Edit Login ID & Password"
           >
             <KeyRound className="w-3.5 h-3.5" />
           </button>
@@ -394,15 +418,25 @@ export const SuperAdminUsersPage = () => {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Initial Password *</label>
-            <input
-              type="text"
-              required
-              minLength={6}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Min 6 chars"
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-semibold"
-            />
+            <div className="relative">
+              <input
+                type={showCreatePassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Min 6 chars"
+                className="w-full pl-3 pr-10 py-2 rounded-xl border border-slate-200 text-xs font-mono font-semibold"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCreatePassword(!showCreatePassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                title={showCreatePassword ? 'Hide password' : 'Show password'}
+              >
+                {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
@@ -424,7 +458,7 @@ export const SuperAdminUsersPage = () => {
         </form>
       </Modal>
 
-      {/* MODAL: Reset Password */}
+      {/* MODAL: Update Credentials (Login ID & Password) */}
       {selectedUser && (
         <Modal
           isOpen={isResetPasswordModalOpen}
@@ -432,40 +466,74 @@ export const SuperAdminUsersPage = () => {
             setIsResetPasswordModalOpen(false);
             setSelectedUser(null);
           }}
-          title={`Reset Password: ${selectedUser.name}`}
+          title={`Edit Credentials: ${selectedUser.name}`}
           size="sm"
         >
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">New Password * (Min 6 chars)</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-semibold"
-              />
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Login ID / Email Address <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="admin@libertytravel.com"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Username or email used to log into the ERP.
+              </p>
             </div>
 
-            <div className="pt-3 flex items-center justify-end gap-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                New Password (Min 6 chars)
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full pl-3 pr-10 py-2 rounded-xl border border-slate-200 text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Click the eye icon to view password. Leave blank if only changing Login ID.
+              </p>
+            </div>
+
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => {
                   setIsResetPasswordModalOpen(false);
                   setSelectedUser(null);
                 }}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold"
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-4 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-bold"
+                className="px-4 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow transition disabled:opacity-50"
               >
-                {submitting ? 'Saving...' : 'Reset Password'}
+                {submitting ? 'Saving...' : 'Save Credentials'}
               </button>
             </div>
           </form>
