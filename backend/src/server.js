@@ -1,4 +1,5 @@
 require('dotenv').config();
+// Reload configuration from .env
 const app = require('./app');
 const { connectDB } = require('./config/db');
 const { autoMigrateAgencies } = require('./database/autoMigrateAgencies');

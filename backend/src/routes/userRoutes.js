@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { authenticate, authorizeSuperAdmin } = require('../middleware/auth');
+const { authenticate, authorizeAdmin } = require('../middleware/auth');
 
-// All User management routes require Super Admin privileges
-router.use(authenticate, authorizeSuperAdmin);
+// User management routes accessible to Super Admin and Agency Admin
+router.use(authenticate, authorizeAdmin);
 
 router.get('/', userController.getUsers);
 router.post('/', userController.createUser);
