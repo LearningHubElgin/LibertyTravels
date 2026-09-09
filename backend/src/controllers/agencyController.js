@@ -169,6 +169,8 @@ exports.createAgency = async (req, res, next) => {
       gstNumber,
       panNumber,
       plan,
+      contactPerson,
+      invoiceSettings,
       adminName,
       adminEmail,
       adminPassword,
