@@ -18,12 +18,14 @@ import {
   Clock,
   Settings,
   Calendar,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export const AgencyDetailPage = () => {
   const { id } = useParams();
@@ -36,6 +38,7 @@ export const AgencyDetailPage = () => {
 
   // Add Admin User Modal
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [submittingUser, setSubmittingUser] = useState(false);
   const [userFormData, setUserFormData] = useState({
     name: '',
@@ -60,6 +63,18 @@ export const AgencyDetailPage = () => {
       toastError(err.response?.data?.message || 'Failed to fetch agency details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAgency = async () => {
+    try {
+      const res = await api.delete(`/superadmin/agencies/${id}`);
+      if (res.data?.success) {
+        toastSuccess('Agency deleted successfully');
+        navigate('/superadmin/agencies');
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to delete agency');
     }
   };
 
@@ -155,6 +170,17 @@ export const AgencyDetailPage = () => {
             <Edit2 className="w-3.5 h-3.5 text-amber-600" />
             <span>Edit Agency</span>
           </button>
+
+          {agency.code?.toUpperCase() !== 'LIBERTY' && (
+            <button
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs shadow-2xs transition active:scale-95"
+              title="Delete Agency"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsAddUserModalOpen(true)}
@@ -456,6 +482,17 @@ export const AgencyDetailPage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* CONFIRM: Delete Agency */}
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteAgency}
+        title={`Delete "${agency?.name}"?`}
+        message={`Are you sure you want to permanently delete "${agency?.name}" (${agency?.code})? This will remove the agency, its linked staff users, and all associated workspace records. This action cannot be undone.`}
+        confirmText="Delete Agency"
+        type="danger"
+      />
     </div>
   );
 };

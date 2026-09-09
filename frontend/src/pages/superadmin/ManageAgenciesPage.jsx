@@ -41,6 +41,7 @@ export const ManageAgenciesPage = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -191,7 +192,7 @@ export const ManageAgenciesPage = () => {
     if (!selectedAgency) return;
     try {
       const aId = selectedAgency._id || selectedAgency.id;
-      const res = await api.delete(`/superadmin/agencies/${aId}`);
+      const res = await api.patch(`/superadmin/agencies/${aId}/status`);
       if (res.data?.success) {
         toastSuccess(res.data.message || 'Status updated successfully');
         setIsStatusConfirmOpen(false);
@@ -200,6 +201,25 @@ export const ManageAgenciesPage = () => {
       }
     } catch (err) {
       toastError(err.response?.data?.message || 'Failed to update agency status');
+    }
+  };
+
+  const handleDeleteAgency = async () => {
+    if (!selectedAgency) return;
+    try {
+      setSubmitting(true);
+      const aId = selectedAgency._id || selectedAgency.id;
+      const res = await api.delete(`/superadmin/agencies/${aId}`);
+      if (res.data?.success) {
+        toastSuccess(res.data.message || 'Travel Agency deleted successfully');
+        setIsDeleteConfirmOpen(false);
+        setSelectedAgency(null);
+        fetchAgencies();
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to delete travel agency');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -329,7 +349,7 @@ export const ManageAgenciesPage = () => {
               }}
               className={`p-1.5 rounded-lg transition ${
                 row.status === 'active'
-                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-600'
+                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-600'
                   : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
               }`}
               title={row.status === 'active' ? 'Deactivate Agency' : 'Activate Agency'}
@@ -340,6 +360,18 @@ export const ManageAgenciesPage = () => {
                 <CheckCircle2 className="w-4 h-4" />
               )}
             </button>
+            {row.code?.toUpperCase() !== 'LIBERTY' && (
+              <button
+                onClick={() => {
+                  setSelectedAgency(row);
+                  setIsDeleteConfirmOpen(true);
+                }}
+                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition border border-rose-200/60"
+                title="Permanently Delete Agency"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       }
@@ -791,6 +823,21 @@ export const ManageAgenciesPage = () => {
         }.`}
         confirmText={selectedAgency?.status === 'active' ? 'Deactivate Agency' : 'Activate Agency'}
         confirmVariant={selectedAgency?.status === 'active' ? 'danger' : 'primary'}
+      />
+
+      {/* CONFIRM: Delete Agency */}
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          setIsDeleteConfirmOpen(false);
+          setSelectedAgency(null);
+        }}
+        onConfirm={handleDeleteAgency}
+        title={`Delete "${selectedAgency?.name}"?`}
+        message={`Are you sure you want to permanently delete "${selectedAgency?.name}" (${selectedAgency?.code})? This will remove the agency, its linked users, and all associated workspace records. This action cannot be undone.`}
+        confirmText="Delete Agency"
+        type="danger"
+        loading={submitting}
       />
     </div>
   );

@@ -62,6 +62,45 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
     return 'flight';
   };
 
+  // Helper: parse Passenger Name & extra passengers count from "Passenger Name/ pax / Guest / Narration"
+  // Format examples: "Niladri +1" (total 2), "Niladri + 2" (total 3), "Niladri (+2)", "Niladri" (total 1)
+  const parsePassengerNarration = (rawVal, fallbackExtra = 0) => {
+    if (!rawVal && rawVal !== 0) {
+      const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+      return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra, rawString: '' };
+    }
+
+    const str = String(rawVal).trim();
+    if (!str) {
+      const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+      return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra, rawString: '' };
+    }
+
+    // Match "+1", "+ 1", "+2", "+ 2", "+ 10", "+1 pax", "+2 guests", "(+2)", etc.
+    const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
+    const match = str.match(plusRegex);
+
+    if (match) {
+      const extraCount = Math.max(0, parseInt(match[1], 10) || 0);
+      let clean = str.replace(plusRegex, '').replace(/[\s,(/-]+$/, '').trim();
+      if (!clean) clean = str;
+      return {
+        cleanName: clean,
+        extraPassengers: extraCount,
+        passengerCount: 1 + extraCount,
+        rawString: str
+      };
+    }
+
+    const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+    return {
+      cleanName: str,
+      extraPassengers: extra,
+      passengerCount: 1 + extra,
+      rawString: str
+    };
+  };
+
   // Helper: map arbitrary header names to standardized keys
   const normalizeKey = (key) => {
     const clean = key.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -267,7 +306,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
           });
 
           const rawCustName = (mapped.customerName || `Customer ${idx + 1}`).toString().trim();
-          const rawPaxName = (mapped.passengerName || rawCustName).toString().trim();
+          const rawPaxInput = (mapped.passengerName || rawCustName).toString().trim();
           const rawCustPhone = (mapped.customerPhone || '').toString().trim();
 
           // Auto-match against existing saved agency customers
@@ -315,9 +354,12 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
           const parsedBookingDate = parseExcelDate(mapped.bookingDate || mapped.date);
           const parsedJourneyDate = parseExcelDate(mapped.journeyDate || mapped.travelDate || mapped.bookingDate || mapped.date);
 
-          // Extra passenger and total tickets quota count
-          const extraPaxCount = parseInt(mapped.extraPassengers || mapped.extraGuests || mapped.extraPassenger || mapped.extraPax || 0, 10) || 0;
-          const totalTickets = 1 + Math.max(0, extraPaxCount);
+          // Extra passenger and total tickets quota count auto-extracted from "Passenger Name/ pax / Guest / Narration" (e.g. "Niladri +1" -> 2 tickets)
+          const paxParse = parsePassengerNarration(rawPaxInput, mapped.extraPassengers || mapped.extraGuests);
+          const primaryPaxName = paxParse.cleanName || rawCustName;
+          const extraPaxCount = paxParse.extraPassengers;
+          const totalTickets = paxParse.passengerCount;
+          const rawPaxNarration = paxParse.rawString;
 
           // Detect all field data changes compared to existing database record
           let hasChanges = false;
@@ -360,9 +402,9 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
             }
 
             // 5. Passenger Name change
-            if (rawPaxName && existingPaxName && rawPaxName.toLowerCase().trim() !== existingPaxName.toLowerCase().trim()) {
+            if (primaryPaxName && existingPaxName && primaryPaxName.toLowerCase().trim() !== existingPaxName.toLowerCase().trim()) {
               changedFields.push('Passenger Name');
-              diffDetails.passenger = { oldVal: existingPaxName, newVal: rawPaxName };
+              diffDetails.passenger = { oldVal: existingPaxName, newVal: primaryPaxName };
             }
 
             // 6. Description change
@@ -398,7 +440,8 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
             diffDetails,
             shouldUpdate: true,
             customerName: finalCustName,
-            passengerName: rawPaxName,
+            passengerName: primaryPaxName,
+            rawPassengerNarration: rawPaxNarration,
             extraPassengers: extraPaxCount,
             extraGuests: extraPaxCount,
             passengerCount: totalTickets,
@@ -444,8 +487,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Date': '09-08-2026',
         'Reference No.': 'MYPR26893855303',
         'Description': 'DMK CCU 12 AUG FD',
-        'Passenger Name/ pax / Guest / Narration': 'Niladri',
-        'extra passenger': 10,
+        'Passenger Name/ pax / Guest / Narration': 'Niladri + 1',
         'Coustomer Name': 'Niladri Sekhar Maji',
         'COST PRICE': 500,
         'sale price': 2000
@@ -456,8 +498,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Date': '09-08-2026',
         'Reference No.': 'MYPR26893855303_RC',
         'Description': 'KOL HYD 15 AUG FD',
-        'Passenger Name/ pax / Guest / Narration': 'Niladri',
-        'extra passenger': 0,
+        'Passenger Name/ pax / Guest / Narration': 'shilpa',
         'Coustomer Name': 'shilpa',
         'COST PRICE': 600,
         'sale price': 2000
@@ -468,8 +509,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Date': '10-08-2026',
         'Reference No.': 'MN7LZ1FHM3IHL3UV7106',
         'Description': 'DMK CCU 12 AUG FD',
-        'Passenger Name/ pax / Guest / Narration': 'Vikas kumar Gupta',
-        'extra passenger': 25,
+        'Passenger Name/ pax / Guest / Narration': 'Vikas kumar Gupta + 2',
         'Coustomer Name': 'Niladri Sekhar Maji',
         'COST PRICE': 800,
         'sale price': 2000
@@ -480,8 +520,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Date': '10-08-2026',
         'Reference No.': 'MF7MAX81GEMUEF4I1941',
         'Description': 'CCU BOM 11 BOM 6E',
-        'Passenger Name/ pax / Guest / Narration': 'MOHAMMED SIDDIK SHAIKH',
-        'extra passenger': 47,
+        'Passenger Name/ pax / Guest / Narration': 'MOHAMMED SIDDIK SHAIKH + 5',
         'Coustomer Name': 'SID 2022',
         'COST PRICE': 1000,
         'sale price': 2000
@@ -519,6 +558,13 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         row.passengerCount = count;
         row.extraPassengers = Math.max(0, count - 1);
         row.extraGuests = Math.max(0, count - 1);
+      } else if (field === 'passengerName') {
+        const paxParse = parsePassengerNarration(value, row.extraPassengers);
+        row.passengerName = paxParse.cleanName;
+        row.rawPassengerNarration = paxParse.rawString;
+        row.extraPassengers = paxParse.extraPassengers;
+        row.extraGuests = paxParse.extraPassengers;
+        row.passengerCount = paxParse.passengerCount;
       } else {
         row[field] = value;
       }
@@ -675,6 +721,14 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
               <p className="text-[11px] text-slate-400 mt-1">
                 Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
               </p>
+            </div>
+
+            {/* Smart Column Instructions Alert */}
+            <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-950 flex items-start gap-2.5">
+              <span className="text-base leading-none mt-0.5">💡</span>
+              <div className="leading-relaxed">
+                <strong>Passenger & Quota Auto-Detection:</strong> In your <strong>Passenger Name/ pax / Guest / Narration</strong> column, you can write names like <code className="bg-amber-100/80 px-1 py-0.2 rounded font-bold text-amber-900">Niladri +1</code> (total 2 tickets), <code className="bg-amber-100/80 px-1 py-0.2 rounded font-bold text-amber-900">Niladri + 2</code> (total 3 tickets), or <code className="bg-amber-100/80 px-1 py-0.2 rounded font-bold text-amber-900">shilpa</code> (total 1 ticket). A separate &quot;extra passenger&quot; column is <strong>not required</strong>!
+              </div>
             </div>
 
             {/* Parsed Rows Preview Table */}
@@ -910,7 +964,16 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
                             {/* Passenger Name */}
                             <td className="px-3.5 py-3 font-semibold text-slate-800 text-xs whitespace-nowrap">
                               <div className="flex flex-col gap-0.5">
-                                <span>{r.passengerName || r.customerName}</span>
+                                <span className="font-bold text-slate-900">{r.passengerName || r.customerName}</span>
+                                {r.extraGuests > 0 ? (
+                                  <span className="text-[10px] font-bold text-brand-700 bg-brand-50 border border-brand-200 px-1.5 py-0.2 rounded w-fit">
+                                    +{r.extraGuests} Pax (Total {r.passengerCount})
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">
+                                    1 Passenger
+                                  </span>
+                                )}
                                 {r.diffDetails?.passenger && (
                                   <span className="text-[9px] text-rose-500 font-semibold line-through">
                                     was: {r.diffDetails.passenger.oldVal}

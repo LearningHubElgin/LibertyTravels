@@ -411,7 +411,39 @@ exports.updateAgency = async (req, res, next) => {
 };
 
 /**
- * Super Admin: Deactivate or Delete Travel Agency
+ * Super Admin: Toggle Active/Inactive Status of Travel Agency
+ */
+exports.toggleAgencyStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const agency = await Agency.findById(id);
+
+    if (!agency) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel agency not found.'
+      });
+    }
+
+    // Toggle status between active and inactive
+    agency.status = agency.status === 'active' ? 'inactive' : 'active';
+    await agency.save();
+
+    // Also update users of this agency
+    await User.updateMany({ agencyId: id }, { status: agency.status === 'active' ? 'active' : 'inactive' });
+
+    res.status(200).json({
+      success: true,
+      message: `Agency "${agency.name}" has been set to ${agency.status}.`,
+      data: agency
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Super Admin: Permanently Delete Travel Agency & Associated Records
  */
 exports.deleteAgency = async (req, res, next) => {
   try {
@@ -425,17 +457,35 @@ exports.deleteAgency = async (req, res, next) => {
       });
     }
 
-    // Toggle status to inactive rather than destructive cascade
-    agency.status = agency.status === 'active' ? 'inactive' : 'active';
-    await agency.save();
+    if (agency.code && agency.code.trim().toUpperCase() === 'LIBERTY') {
+      return res.status(400).json({
+        success: false,
+        message: 'Master platform agency (LIBERTY) cannot be deleted.'
+      });
+    }
 
-    // Also update users of this agency
-    await User.updateMany({ agencyId: id }, { status: agency.status === 'active' ? 'active' : 'inactive' });
+    // Cascade delete linked users, bookings, customers, companies, etc.
+    await Promise.all([
+      User.deleteMany({ agencyId: id, role: { $ne: ROLES.SUPER_ADMIN } }),
+      Booking.deleteMany({ agencyId: id }),
+      Customer.deleteMany({ agencyId: id }),
+      Company.deleteMany({ agencyId: id }),
+      Agency.findByIdAndDelete(id)
+    ]);
+
+    // Log Activity
+    await ActivityLog.create({
+      userId: req.user._id,
+      agencyId: id,
+      action: 'DELETE_AGENCY',
+      module: 'SUPER_ADMIN',
+      details: `Permanently deleted travel agency "${agency.name}" (${agency.code})`,
+      ipAddress: req.ip || '127.0.0.1'
+    });
 
     res.status(200).json({
       success: true,
-      message: `Agency "${agency.name}" has been set to ${agency.status}.`,
-      data: agency
+      message: `Agency "${agency.name}" and all associated data have been permanently deleted.`
     });
   } catch (error) {
     next(error);

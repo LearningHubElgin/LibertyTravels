@@ -841,6 +841,29 @@ exports.bulkImportBookings = async (req, res, next) => {
       return str;
     };
 
+    // Helper: auto-extract passenger name & extra count from "Passenger Name/ pax / Guest / Narration" (e.g. "Niladri +1" -> 2 pax)
+    const parsePassengerNarration = (rawVal, fallbackExtra = 0) => {
+      if (!rawVal && rawVal !== 0) {
+        const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+        return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra };
+      }
+      const str = String(rawVal).trim();
+      if (!str) {
+        const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+        return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra };
+      }
+      const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
+      const match = str.match(plusRegex);
+      if (match) {
+        const extraCount = Math.max(0, parseInt(match[1], 10) || 0);
+        let clean = str.replace(plusRegex, '').replace(/[\s,(/-]+$/, '').trim();
+        if (!clean) clean = str;
+        return { cleanName: clean, extraPassengers: extraCount, passengerCount: 1 + extraCount };
+      }
+      const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
+      return { cleanName: str, extraPassengers: extra, passengerCount: 1 + extra };
+    };
+
     for (let i = 0; i < bookings.length; i++) {
       const row = bookings[i];
       try {
@@ -946,10 +969,12 @@ exports.bulkImportBookings = async (req, res, next) => {
             const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
 
             const oldTicketCount = existingBooking.passengerCount || (1 + (existingBooking.extraGuests || 0));
-            const extraPaxCount = parseInt(row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax || 0, 10) || 0;
-            const totalTickets = 1 + Math.max(0, extraPaxCount);
+            const rawPaxInput = row.passengerName || row['Passenger Name/ pax / Guest / Narration'] || customerName;
+            const paxParse = parsePassengerNarration(rawPaxInput, row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax);
+            const primaryPaxName = (paxParse.cleanName || customerName).trim();
+            const extraPaxCount = paxParse.extraPassengers;
+            const totalTickets = paxParse.passengerCount;
             const deltaTickets = totalTickets - oldTicketCount;
-            const primaryPaxName = (row.passengerName || customerName).trim();
 
             existingBooking.serviceType = serviceType;
             existingBooking.bookingDate = bookingDate;
@@ -1028,10 +1053,12 @@ exports.bulkImportBookings = async (req, res, next) => {
         const journeyDate = parseExcelDate(row.journeyDate || row.travelDate || row.bookingDate || row.date);
         const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
 
-        // 5. Compute passenger count & extra guests
-        const extraPaxCount = parseInt(row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax || 0, 10) || 0;
-        const totalTickets = 1 + Math.max(0, extraPaxCount);
-        const primaryPaxName = (row.passengerName || customerName).trim();
+        // 5. Compute passenger count & extra guests auto-extracted from Passenger Name/ pax / Guest / Narration (e.g. "Niladri +1" -> 2 tickets)
+        const rawPaxInput = row.passengerName || row['Passenger Name/ pax / Guest / Narration'] || customerName;
+        const paxParse = parsePassengerNarration(rawPaxInput, row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax);
+        const primaryPaxName = (paxParse.cleanName || customerName).trim();
+        const extraPaxCount = paxParse.extraPassengers;
+        const totalTickets = paxParse.passengerCount;
 
         // Create Booking Document
         const newBooking = await Booking.create({

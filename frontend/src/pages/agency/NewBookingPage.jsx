@@ -138,6 +138,31 @@ export const NewBookingPage = () => {
     }
   };
 
+  const handlePassengerNameInputChange = (val) => {
+    // Check if user entered +N format (e.g. "Rahul Sharma +1" or "Rahul Sharma + 2")
+    const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
+    const match = val.match(plusRegex);
+    if (match) {
+      const extraCount = Math.max(0, parseInt(match[1], 10) || 0);
+      handleUpdateExtraGuests(extraCount);
+    }
+    setFormData((prev) => ({ ...prev, passengerName: val }));
+  };
+
+  const handlePassengerNameInputBlur = () => {
+    const val = formData.passengerName;
+    const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
+    const match = val.match(plusRegex);
+    if (match) {
+      const extraCount = Math.max(0, parseInt(match[1], 10) || 0);
+      let clean = val.replace(plusRegex, '').replace(/[\s,(/-]+$/, '').trim();
+      if (clean) {
+        setFormData((prev) => ({ ...prev, passengerName: clean }));
+        handleUpdateExtraGuests(extraCount);
+      }
+    }
+  };
+
   const handleUnitCostChange = (val) => {
     setUnitCost(val);
     const u = parseFloat(val);
@@ -704,17 +729,23 @@ export const NewBookingPage = () => {
                 <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50/70 rounded-xl border border-slate-200">
                   {/* Lead Passenger */}
                   <div>
-                    <label className="block font-bold text-slate-800 mb-1 text-xs">
-                      Passenger Name (Lead) *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-800 text-xs">
+                        Passenger Name (Lead) *
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        Supports: &quot;Name +1&quot;, &quot;Name + 2&quot;
+                      </span>
+                    </div>
                     <div className="relative">
                       <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Rahul Sharma"
+                        placeholder="e.g. Rahul Sharma or Rahul Sharma +1"
                         value={formData.passengerName}
-                        onChange={(e) => setFormData({ ...formData, passengerName: e.target.value })}
+                        onChange={(e) => handlePassengerNameInputChange(e.target.value)}
+                        onBlur={handlePassengerNameInputBlur}
                         className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none font-semibold text-slate-900 text-xs"
                       />
                     </div>

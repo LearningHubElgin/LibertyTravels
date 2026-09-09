@@ -27,6 +27,7 @@ import {
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export const AgencyFormPage = () => {
   const { id } = useParams();
@@ -36,6 +37,7 @@ export const AgencyFormPage = () => {
 
   const [loading, setLoading] = useState(isEditMode);
   const [submitting, setSubmitting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -219,6 +221,21 @@ export const AgencyFormPage = () => {
     }
   };
 
+  const handleDeleteAgency = async () => {
+    try {
+      setSubmitting(true);
+      const res = await api.delete(`/superadmin/agencies/${id}`);
+      if (res.data?.success) {
+        toastSuccess('Travel Agency deleted successfully');
+        navigate('/superadmin/agencies');
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to delete travel agency');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -258,6 +275,17 @@ export const AgencyFormPage = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {isEditMode && formData.code?.toUpperCase() !== 'LIBERTY' && (
+            <button
+              type="button"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs border border-rose-500/30 transition inline-flex items-center gap-1.5"
+              title="Delete Agency"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Delete Agency</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => navigate('/superadmin/agencies')}
@@ -961,13 +989,25 @@ export const AgencyFormPage = () => {
 
         {/* 3. High-Contrast Sticky Bottom Action Bar */}
         <div className="sticky bottom-16 lg:bottom-4 z-30 bg-white/95 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 shadow-xl flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/superadmin/agencies')}
-            className="px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black transition active:scale-95 shadow-2xs"
-          >
-            Cancel & Back
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/superadmin/agencies')}
+              className="px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black transition active:scale-95 shadow-2xs"
+            >
+              Cancel & Back
+            </button>
+            {isEditMode && formData.code?.toUpperCase() !== 'LIBERTY' && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                className="px-4 py-2.5 rounded-xl border-2 border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-black transition active:scale-95 shadow-2xs inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>Delete Agency</span>
+              </button>
+            )}
+          </div>
 
           <button
             type="submit"
@@ -987,6 +1027,18 @@ export const AgencyFormPage = () => {
           </button>
         </div>
       </form>
+
+      {/* CONFIRM: Delete Agency */}
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteAgency}
+        title={`Delete "${formData.name || 'Agency'}"?`}
+        message={`Are you sure you want to permanently delete "${formData.name}" (${formData.code})? This will permanently remove the agency, its linked users, and all associated workspace records. This action cannot be undone.`}
+        confirmText="Delete Agency"
+        type="danger"
+        loading={submitting}
+      />
     </div>
   );
 };

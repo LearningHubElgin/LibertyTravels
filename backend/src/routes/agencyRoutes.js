@@ -18,6 +18,8 @@ router.get('/', agencyController.getAgencies);
 router.get('/:id', agencyController.getAgencyDetails);
 router.post('/', agencyController.createAgency);
 router.put('/:id', agencyController.updateAgency);
+router.patch('/:id/status', agencyController.toggleAgencyStatus);
+router.put('/:id/status', agencyController.toggleAgencyStatus);
 router.delete('/:id', agencyController.deleteAgency);
 
 module.exports = router;
