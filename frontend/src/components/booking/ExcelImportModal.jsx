@@ -34,6 +34,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
   const [filterTab, setFilterTab] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load existing customers and bookings on open for live auto-matching and duplicate detection
   useEffect(() => {
@@ -255,8 +256,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
     return str;
   };
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files?.[0];
+  const processUploadedFile = (selected) => {
     if (!selected) return;
 
     const fileExt = selected.name.split('.').pop()?.toLowerCase();
@@ -267,6 +267,37 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
 
     setFile(selected);
     parseExcelFile(selected);
+  };
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files?.[0];
+    processUploadedFile(selected);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set false if we're leaving the dropzone container itself
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0];
+      processUploadedFile(droppedFile);
+    }
   };
 
   const parseExcelFile = (fileObj) => {
@@ -631,6 +662,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
     setParsedRows([]);
     setIsProcessing(false);
     setIsUploading(false);
+    setIsDragging(false);
     onClose();
   };
 
@@ -703,7 +735,15 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
             {/* File Upload Dropzone */}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="p-5 sm:p-6 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 hover:bg-brand-50/70 transition cursor-pointer text-center group"
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`p-5 sm:p-6 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer text-center group ${
+                isDragging
+                  ? 'border-brand-500 bg-brand-100/90 ring-4 ring-brand-500/25 scale-[1.01] shadow-lg'
+                  : 'border-brand-300 bg-brand-50/40 hover:bg-brand-50/70'
+              }`}
             >
               <input
                 ref={fileInputRef}
@@ -712,14 +752,26 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-2.5 shadow-md group-hover:scale-110 transition">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-md transition-all duration-200 ${
+                  isDragging
+                    ? 'bg-amber-500 text-slate-950 scale-110 animate-bounce shadow-amber-500/30'
+                    : 'bg-brand-600 text-white group-hover:scale-110'
+                }`}
+              >
                 <Upload className="w-6 h-6" />
               </div>
               <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-                {file ? file.name : 'Click to Choose or Drag & Drop Excel Sheet'}
+                {isDragging
+                  ? '📂 Drop your spreadsheet here to import!'
+                  : file
+                  ? file.name
+                  : 'Click to Choose or Drag & Drop Excel Sheet'}
               </h3>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets
+              <p className="text-[11px] text-slate-500 mt-1">
+                {isDragging
+                  ? 'Release to automatically parse bookings & customer ledgers'
+                  : 'Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv) spreadsheets'}
               </p>
             </div>
 

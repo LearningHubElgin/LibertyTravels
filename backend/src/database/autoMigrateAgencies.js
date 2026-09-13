@@ -4,7 +4,7 @@ const { ROLES, USER_STATUS, AGENCY_STATUS, AGENCY_PLANS } = require('../config/c
 const autoMigrateAgencies = async () => {
   try {
     // 1. Ensure master Liberty Tours & Travels agency exists
-    let masterAgency = await Agency.findOne({ code: 'LIBERTY' });
+    let masterAgency = await Agency.findOne({ $or: [{ code: 'LIBERTY' }, { email: 'contact@libertytravel.com' }] });
     if (!masterAgency) {
       masterAgency = await Agency.create({
         name: 'Liberty Tours & Travels',
