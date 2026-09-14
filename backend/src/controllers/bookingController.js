@@ -226,7 +226,9 @@ exports.createBooking = async (req, res, next) => {
       }
     } else {
       const customerCode = await generateCustomerCode();
+      const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
       customerObj = await Customer.create({
+        agencyId: activeAgencyId,
         customerCode,
         name: customerName.trim(),
         phone: customerPhone.trim(),
