@@ -555,8 +555,20 @@ exports.updateBooking = async (req, res, next) => {
       booking.extraGuests = extra;
       booking.passengerCount = 1 + extra;
     }
-
     await booking.save();
+
+    // Fix for Glitch 1: Update the ledger transaction to reflect the new totalAmount
+    if (sellPrice !== undefined || baseFare !== undefined || serviceCharge !== undefined || otherCharges !== undefined || discount !== undefined) {
+      await Transaction.updateOne(
+        { bookingId: booking._id, type: TRANSACTION_TYPES.BOOKING },
+        { 
+          $set: { 
+            debit: booking.totalAmount,
+            balance: booking.totalAmount
+          }
+        }
+      );
+    }
 
     await logActivity(
       req.user ? (req.user.id || req.user._id) : null,
