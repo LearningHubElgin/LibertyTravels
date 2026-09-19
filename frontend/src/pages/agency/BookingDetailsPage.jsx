@@ -466,10 +466,16 @@ export const BookingDetailsPage = () => {
               </div>
 
               {parseFloat(booking.tax || 0) > 0 && (
-                <div className="flex justify-between text-[11px] text-slate-500 pt-1">
-                  <span>Taxes & Fees:</span>
-                  <span className="font-mono">{formatCurrency(booking.tax)}</span>
-                </div>
+                <>
+                  <div className="flex justify-between text-[11px] text-slate-500 pt-1">
+                    <span>CGST (9%):</span>
+                    <span className="font-mono">{formatCurrency(parseFloat(booking.tax) / 2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500 pt-1">
+                    <span>SGST (9%):</span>
+                    <span className="font-mono">{formatCurrency(parseFloat(booking.tax) / 2)}</span>
+                  </div>
+                </>
               )}
               {parseFloat(booking.discount || 0) > 0 && (
                 <div className="flex justify-between text-emerald-700 text-[11px]">

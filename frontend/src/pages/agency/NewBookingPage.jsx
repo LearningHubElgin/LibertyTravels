@@ -1269,10 +1269,16 @@ export const NewBookingPage = () => {
                     </span>
                   </div>
                   {gstMode !== 'none' && calculatedGst > 0 && (
-                    <div className="flex justify-between text-amber-300">
-                      <span>GST Tax (Margin):</span>
-                      <span>₹{calculatedGst.toLocaleString('en-IN')}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between text-amber-300">
+                        <span>CGST ({gstRate/2}%):</span>
+                        <span>₹{(calculatedGst / 2).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-300">
+                        <span>SGST ({gstRate/2}%):</span>
+                        <span>₹{(calculatedGst / 2).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
                   )}
                   <div className="flex justify-between text-emerald-400 font-bold border-t border-slate-800 pt-1">
                     <span>Net Profit (Take-Home):</span>
