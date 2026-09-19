@@ -260,8 +260,12 @@ export const InvoiceModal = ({ isOpen, onClose, booking }) => {
                     <td className="py-2.5 px-4 text-right font-mono font-semibold">₹{parseFloat(booking.baseFare || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-4 text-slate-600">Applicable Taxes & Surcharges</td>
-                    <td className="py-2 px-4 text-right font-mono">₹{parseFloat(booking.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-4 text-slate-600">CGST (9%)</td>
+                    <td className="py-2 px-4 text-right font-mono">₹{(parseFloat(booking.tax || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-4 text-slate-600">SGST (9%)</td>
+                    <td className="py-2 px-4 text-right font-mono">₹{(parseFloat(booking.tax || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-4 text-slate-600">Agency Service Charge / Facilitation Fee</td>
