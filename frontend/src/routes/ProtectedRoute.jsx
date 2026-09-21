@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
-export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = false }) => {
-  const { isAuthenticated, loading, isSuperAdmin } = useAuth();
+export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = false, customerOnly = false }) => {
+  const { isAuthenticated, loading, isSuperAdmin, isCustomer } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,14 +19,25 @@ export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Regular admin cannot access superadmin portal
-  if (superAdminOnly && !isSuperAdmin) {
+  // Customers can only access the customer portal
+  if (isCustomer && !customerOnly) {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+  
+  // Non-customers cannot access the customer portal
+  if (!isCustomer && customerOnly) {
+    if (isSuperAdmin) return <Navigate to="/superadmin/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Super admin cannot access agency ERP workspace (Super admin is company/platform side only)
-  if (agencyOnly && isSuperAdmin) {
+  // Super admins cannot access the agency ERP workspace
+  if (isSuperAdmin && agencyOnly) {
     return <Navigate to="/superadmin/dashboard" replace />;
+  }
+
+  // Regular admins cannot access the superadmin portal
+  if (!isSuperAdmin && !isCustomer && superAdminOnly) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

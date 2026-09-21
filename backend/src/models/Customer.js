@@ -44,6 +44,11 @@ const customerSchema = new mongoose.Schema(
       uppercase: true,
       default: ''
     },
+    nationality: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     notes: {
       type: String,
       default: ''

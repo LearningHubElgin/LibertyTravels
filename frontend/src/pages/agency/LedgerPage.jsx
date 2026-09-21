@@ -29,6 +29,11 @@ export const LedgerPage = () => {
   // General Ledger
   const [generalLedger, setGeneralLedger] = useState(null);
 
+  // Companies
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [companyLedger, setCompanyLedger] = useState(null);
+
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -50,7 +55,24 @@ export const LedgerPage = () => {
         console.error(e);
       }
     };
+    
+    const fetchCompanyList = async () => {
+      try {
+        const res = await api.get('/companies?limit=100');
+        if (res.data.success) {
+          const list = res.data.companies || [];
+          setCompanies(list);
+          if (list.length > 0) {
+            setSelectedCompanyId(list[0].id || list[0]._id);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     fetchCustomerList();
+    fetchCompanyList();
   }, []);
 
   const fetchCustomerLedger = async () => {
@@ -91,13 +113,41 @@ export const LedgerPage = () => {
     }
   };
 
+  const fetchCompanyLedger = async () => {
+    if (!selectedCompanyId) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/companies/${selectedCompanyId}`);
+      if (res.data.success) {
+        let transactions = res.data.company?.transactions || [];
+        // Filter by date if provided
+        if (startDate) {
+          transactions = transactions.filter(t => new Date(t.date) >= new Date(startDate));
+        }
+        if (endDate) {
+          transactions = transactions.filter(t => new Date(t.date) <= new Date(endDate));
+        }
+        setCompanyLedger({
+          company: res.data.company,
+          entries: transactions
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'customer') {
       fetchCustomerLedger();
-    } else {
+    } else if (activeTab === 'general') {
       fetchGeneralLedger();
+    } else if (activeTab === 'company') {
+      fetchCompanyLedger();
     }
-  }, [activeTab, selectedCustomerId, startDate, endDate, txnType]);
+  }, [activeTab, selectedCustomerId, selectedCompanyId, startDate, endDate, txnType]);
 
   const formatCurrency = (val) => `₹${parseFloat(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
@@ -135,6 +185,17 @@ export const LedgerPage = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('company')}
+          className={`pb-3 sm:pb-4 transition border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'company'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Company Ledger Statement
+        </button>
+
+        <button
           onClick={() => setActiveTab('general')}
           className={`pb-3 sm:pb-4 transition border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'general'
@@ -142,7 +203,7 @@ export const LedgerPage = () => {
               : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
-          <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Agency General Ledger
+          <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Agency General Ledger
         </button>
       </div>
 
@@ -271,6 +332,124 @@ export const LedgerPage = () => {
                     <tr>
                       <td colSpan="6" className="py-8 text-center font-sans text-slate-400">
                         No financial activity recorded for this customer in the selected date period.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Company Ledger Tab Content */}
+      {activeTab === 'company' && (
+        <div className="space-y-4 sm:space-y-6 bg-white p-3.5 sm:p-6 rounded-b-xl sm:rounded-b-2xl border border-slate-200 shadow-xs -mt-4 sm:-mt-6 w-full min-w-0">
+          {/* Company Selection & Date Filter Bar */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-slate-100 w-full min-w-0">
+            <div className="w-full md:w-80">
+              <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 mb-1">Select Company Account</label>
+              <select
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+              >
+                {companies.map((c) => (
+                  <option key={c.id || c._id} value={c.id || c._id}>
+                    {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-2 py-1 text-[10px] sm:text-xs border border-slate-200 rounded-lg bg-slate-50"
+                  title="From Date"
+                />
+                <span className="text-slate-400 text-xs">-</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-2 py-1 text-[10px] sm:text-xs border border-slate-200 rounded-lg bg-slate-50"
+                  title="To Date"
+                />
+              </div>
+
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1"
+                >
+                  Clear Dates
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Account Summary Banner */}
+          {companyLedger?.company && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+              <div className="p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-slate-900 text-white shadow-md min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 truncate">Current Wallet Balance</p>
+                <p className="text-xs sm:text-lg font-black font-mono text-brand-300 mt-0.5 sm:mt-1 truncate">
+                  {formatCurrency(companyLedger.company.walletBalance)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Company Ledger Table */}
+          {loading ? (
+            <LoadingSpinner size="md" text="Loading company ledger..." />
+          ) : (
+            <div className="overflow-x-auto border border-slate-200 rounded-xl font-mono text-xs shadow-xs">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600 font-sans font-bold border-b border-slate-200">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Reference</th>
+                    <th className="py-3 px-4 font-sans">Type</th>
+                    <th className="py-3 px-4 font-sans">Notes</th>
+                    <th className="py-3 px-4 text-right">Amount (₹)</th>
+                    <th className="py-3 px-4 text-right">Running Balance (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {companyLedger?.entries && companyLedger.entries.length > 0 ? (
+                    companyLedger.entries.map((item, idx) => (
+                      <tr key={item._id || idx} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 text-slate-500">{formatDate(item.date)}</td>
+                        <td className="py-3 px-4 font-bold text-brand-700">{item.reference || '-'}</td>
+                        <td className="py-3 px-4 font-sans capitalize">
+                          {item.type === 'deposit' ? (
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Deposit</span>
+                          ) : (
+                            <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full">Deduction</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 font-sans max-w-sm">{item.notes || '-'}</td>
+                        <td className={`py-3 px-4 text-right font-bold ${item.type === 'deposit' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {item.type === 'deposit' ? '+' : '-'}{formatCurrency(item.amount)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-slate-900 text-sm">
+                          {formatCurrency(item.balanceAfter)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center font-sans text-slate-400">
+                        No financial activity recorded for this company in the selected date period.
                       </td>
                     </tr>
                   )}
