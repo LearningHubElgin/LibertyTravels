@@ -83,6 +83,11 @@ exports.getCustomers = async (req, res, next) => {
 exports.getCustomerById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (req.user && req.user.role === 'customer' && String(req.user.id || req.user._id) !== id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const customer = await Customer.findById(id).lean();
 
     if (!customer) {
@@ -211,6 +216,46 @@ exports.updateCustomer = async (req, res, next) => {
   }
 };
 
+exports.updateCustomerProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.user && req.user.role === 'customer' && String(req.user.id || req.user._id) !== id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const { email, address, passportNumber, nationality } = req.body;
+    const customer = await Customer.findById(id);
+
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    if (email !== undefined) customer.email = email ? email.toLowerCase().trim() : '';
+    if (address !== undefined) customer.address = address ? address.trim() : '';
+    if (passportNumber !== undefined) customer.passportNumber = passportNumber ? passportNumber.trim().toUpperCase() : '';
+    if (nationality !== undefined) customer.nationality = nationality ? nationality.trim() : customer.nationality;
+
+    await customer.save();
+
+    await logActivity(
+      req.user.id || req.user._id,
+      'Update Profile',
+      'Customer',
+      customer._id,
+      `Customer ${customer.name} updated their profile.`,
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      customer: customer.toJSON()
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteCustomer = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -255,6 +300,11 @@ exports.deleteCustomer = async (req, res, next) => {
 exports.getCustomerLedger = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (req.user && req.user.role === 'customer' && String(req.user.id || req.user._id) !== id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const customer = await Customer.findById(id).lean();
 
     if (!customer) {

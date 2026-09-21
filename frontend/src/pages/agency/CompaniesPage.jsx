@@ -47,8 +47,8 @@ export const CompaniesPage = () => {
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isBuyTicketsModalOpen, setIsBuyTicketsModalOpen] = useState(false);
-  const [selectedCompanyForBuy, setSelectedCompanyForBuy] = useState(null);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [selectedCompanyForDeposit, setSelectedCompanyForDeposit] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -67,57 +67,13 @@ export const CompaniesPage = () => {
     purchasedPrice: 0
   });
 
-  // Buy Tickets Form State
-  const [buyTicketsForm, setBuyTicketsForm] = useState({
-    ticketsCount: '',
-    unitPrice: '',
-    totalPrice: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
+  // Deposit Form State
+  const [depositForm, setDepositForm] = useState({
+    amount: '',
     reference: '',
-    notes: ''
+    notes: '',
+    date: new Date().toISOString().split('T')[0]
   });
-
-  const handleTicketCountChange = (val) => {
-    const count = parseInt(val, 10);
-    const unit = parseFloat(buyTicketsForm.unitPrice);
-    let newTotal = buyTicketsForm.totalPrice;
-    if (!isNaN(count) && count > 0 && !isNaN(unit) && unit > 0) {
-      newTotal = String(Math.round(count * unit * 100) / 100);
-    }
-    setBuyTicketsForm((prev) => ({
-      ...prev,
-      ticketsCount: val,
-      totalPrice: newTotal
-    }));
-  };
-
-  const handleUnitPriceChange = (val) => {
-    const unit = parseFloat(val);
-    const count = parseInt(buyTicketsForm.ticketsCount, 10);
-    let newTotal = buyTicketsForm.totalPrice;
-    if (!isNaN(count) && count > 0 && !isNaN(unit) && unit >= 0) {
-      newTotal = String(Math.round(count * unit * 100) / 100);
-    }
-    setBuyTicketsForm((prev) => ({
-      ...prev,
-      unitPrice: val,
-      totalPrice: newTotal
-    }));
-  };
-
-  const handleTotalPriceChange = (val) => {
-    const total = parseFloat(val);
-    const count = parseInt(buyTicketsForm.ticketsCount, 10);
-    let newUnit = buyTicketsForm.unitPrice;
-    if (!isNaN(count) && count > 0 && !isNaN(total) && total >= 0) {
-      newUnit = String(Math.round((total / count) * 100) / 100);
-    }
-    setBuyTicketsForm((prev) => ({
-      ...prev,
-      totalPrice: val,
-      unitPrice: newUnit
-    }));
-  };
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -148,43 +104,36 @@ export const CompaniesPage = () => {
     fetchCompanies();
   };
 
-  const handleOpenBuyTickets = (c) => {
-    setSelectedCompanyForBuy(c);
-    const defaultUnitPrice = c.ticketUnitPrice && c.ticketUnitPrice > 0 ? String(c.ticketUnitPrice) : '';
-    setBuyTicketsForm({
-      ticketsCount: '',
-      unitPrice: defaultUnitPrice,
-      totalPrice: '',
-      purchaseDate: new Date().toISOString().split('T')[0],
-      reference: `STOCK-${c.code}-${Date.now().toString().slice(-4)}`,
-      notes: ''
+  const handleOpenDeposit = (c) => {
+    setSelectedCompanyForDeposit(c);
+    setDepositForm({
+      amount: '',
+      reference: `DEP-${c.code}-${Date.now().toString().slice(-4)}`,
+      notes: '',
+      date: new Date().toISOString().split('T')[0]
     });
-    setIsBuyTicketsModalOpen(true);
+    setIsDepositModalOpen(true);
   };
 
-  const handleSaveBuyTickets = async (e) => {
+  const handleSaveDeposit = async (e) => {
     e.preventDefault();
-    const count = parseInt(buyTicketsForm.ticketsCount, 10);
-    const price = parseFloat(buyTicketsForm.totalPrice);
+    const amount = parseFloat(depositForm.amount);
 
-    if (!count || count <= 0) {
-      return toastError('Please enter a valid ticket count (greater than 0).');
-    }
-    if (isNaN(price) || price < 0) {
-      return toastError('Please enter a valid total purchase price.');
+    if (isNaN(amount) || amount <= 0) {
+      return toastError('Please enter a valid deposit amount (greater than 0).');
     }
 
     setActionLoading(true);
     try {
-      const id = selectedCompanyForBuy.id || selectedCompanyForBuy._id;
-      const res = await api.post(`/companies/${id}/buy-tickets`, buyTicketsForm);
+      const id = selectedCompanyForDeposit.id || selectedCompanyForDeposit._id;
+      const res = await api.post(`/companies/${id}/deposit`, depositForm);
       if (res.data.success) {
-        success(`Successfully purchased ${count} tickets for ${selectedCompanyForBuy.name}!`);
-        setIsBuyTicketsModalOpen(false);
+        success(`Successfully deposited ₹${amount} to ${selectedCompanyForDeposit.name}'s wallet!`);
+        setIsDepositModalOpen(false);
         fetchCompanies();
       }
     } catch (err) {
-      toastError(err.response?.data?.message || 'Failed to buy tickets.');
+      toastError(err.response?.data?.message || 'Failed to deposit funds.');
     } finally {
       setActionLoading(false);
     }
@@ -323,58 +272,7 @@ export const CompaniesPage = () => {
         </div>
       )
     },
-    {
-      header: 'Purchased Stock & Cost',
-      render: (row) => {
-        const totalStock = row.totalPurchasedTickets || 0;
-        const totalSpent = row.purchasedPrice || 0;
-        const unitRate = row.ticketUnitPrice || 0;
-        return (
-          <div>
-            {totalStock > 0 ? (
-              <>
-                <p className="font-bold text-slate-900 font-mono text-xs">
-                  {totalStock.toLocaleString('en-IN')} Tickets
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  ₹{totalSpent.toLocaleString('en-IN')} (₹{unitRate}/tkt)
-                </p>
-              </>
-            ) : (
-              <span className="text-slate-400 text-[11px] font-medium">— No Stock —</span>
-            )}
-          </div>
-        );
-      }
-    },
-    {
-      header: 'Available Tickets (Quota)',
-      render: (row) => {
-        const avail = row.availableTickets ?? 0;
-        const hasStock = (row.totalPurchasedTickets || 0) > 0;
-        return (
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
-                avail > 0
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : hasStock
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                  : 'bg-slate-100 text-slate-500'
-              }`}
-            >
-              <Ticket className="w-3 h-3" />
-              {avail.toLocaleString('en-IN')} Avail
-            </span>
-            {(row.usedTickets || 0) > 0 && (
-              <span className="text-[10px] text-slate-400 font-mono">
-                ({row.usedTickets} used)
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
+
     {
       header: 'Wallet / Balance (₹)',
       render: (row) => (
@@ -411,13 +309,13 @@ export const CompaniesPage = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleOpenBuyTickets(row);
+              handleOpenDeposit(row);
             }}
-            title="Buy Tickets / Top-up Stock"
+            title="Deposit Funds"
             className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition active:scale-95"
           >
-            <Ticket className="w-3.5 h-3.5" />
-            <span>Buy Tickets</span>
+            <Wallet className="w-3.5 h-3.5" />
+            <span>Deposit Funds</span>
           </button>
           <button
             onClick={(e) => {
@@ -694,138 +592,74 @@ export const CompaniesPage = () => {
         </form>
       </Modal>
 
-      {/* Buy Bulk Tickets / Top-up Inventory Modal */}
+      {/* Deposit Funds Modal */}
       <Modal
-        isOpen={isBuyTicketsModalOpen}
-        onClose={() => setIsBuyTicketsModalOpen(false)}
-        title={selectedCompanyForBuy ? `Buy Tickets / Top-up Stock - ${selectedCompanyForBuy.name}` : 'Buy Tickets'}
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+        title={selectedCompanyForDeposit ? `Deposit Funds - ${selectedCompanyForDeposit.name}` : 'Deposit Funds'}
         size="md"
       >
-        {selectedCompanyForBuy && (
-          <form onSubmit={handleSaveBuyTickets} className="space-y-4 text-xs">
+        {selectedCompanyForDeposit && (
+          <form onSubmit={handleSaveDeposit} className="space-y-4 text-xs">
             {/* Header info badge */}
             <div className="p-3 bg-brand-50/70 rounded-xl border border-brand-100 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center font-mono uppercase">
-                  {selectedCompanyForBuy.code?.slice(0, 3)}
+                  {selectedCompanyForDeposit.code?.slice(0, 3)}
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{selectedCompanyForBuy.name}</h4>
-                  <p className="text-[10px] text-slate-500 capitalize">{selectedCompanyForBuy.type} Provider • {selectedCompanyForBuy.country}</p>
+                  <h4 className="font-bold text-slate-900 text-sm">{selectedCompanyForDeposit.name}</h4>
+                  <p className="text-[10px] text-slate-500 capitalize">{selectedCompanyForDeposit.type} Provider • {selectedCompanyForDeposit.country}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Current Stock</p>
+                <p className="text-[10px] text-slate-400 uppercase font-bold">Current Balance</p>
                 <p className="font-mono font-black text-brand-700 text-sm">
-                  {selectedCompanyForBuy.availableTickets ?? 0} Tickets
+                  ₹{(selectedCompanyForDeposit.walletBalance || 0).toLocaleString('en-IN')}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tickets to Buy *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Deposit Amount (₹) *</label>
                 <div className="relative">
-                  <Ticket className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
                   <input
                     type="number"
                     min="1"
-                    required
-                    placeholder="e.g. 50"
-                    value={buyTicketsForm.ticketsCount}
-                    onWheel={(e) => e.target.blur()}
-                    onChange={(e) => handleTicketCountChange(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Rate (₹ / Ticket)</label>
-                <div className="relative">
-                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 500"
-                    value={buyTicketsForm.unitPrice}
-                    onWheel={(e) => e.target.blur()}
-                    onChange={(e) => handleUnitPriceChange(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Total Price (₹) *</label>
-                <div className="relative">
-                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
-                  <input
-                    type="number"
-                    min="0"
                     step="0.01"
                     required
-                    placeholder="e.g. 25000"
-                    value={buyTicketsForm.totalPrice}
+                    placeholder="e.g. 50000"
+                    value={depositForm.amount}
                     onWheel={(e) => e.target.blur()}
-                    onChange={(e) => handleTotalPriceChange(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none text-xs"
+                    onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none text-sm"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Live Calculation Preview Card */}
-            <div className="p-3.5 bg-slate-900 text-white rounded-xl space-y-2">
-              <div className="flex items-center justify-between text-slate-300">
-                <span className="flex items-center gap-1.5 font-sans">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Price Per Ticket:
-                </span>
-                <span className="font-mono font-black text-amber-400 text-sm">
-                  ₹{buyTicketsForm.unitPrice ? parseFloat(buyTicketsForm.unitPrice).toFixed(2) : (buyTicketsForm.ticketsCount > 0 && buyTicketsForm.totalPrice ? (parseFloat(buyTicketsForm.totalPrice) / parseInt(buyTicketsForm.ticketsCount, 10)).toFixed(2) : '0.00')} / Ticket
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-slate-800">
-                <span className="font-sans">New Total Ticket Stock:</span>
-                <span className="font-mono text-white font-bold">
-                  {(selectedCompanyForBuy.totalPurchasedTickets || 0) + (parseInt(buyTicketsForm.ticketsCount, 10) || 0)} Tickets
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-sans">New Available Quota:</span>
-                <span className="font-mono text-emerald-400 font-bold">
-                  {(selectedCompanyForBuy.availableTickets || 0) + (parseInt(buyTicketsForm.ticketsCount, 10) || 0)} Tickets
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-sans">New Deposit / Wallet Balance:</span>
-                <span className="font-mono text-teal-300 font-bold">
-                  ₹{((selectedCompanyForBuy.walletBalance || 0) + (parseFloat(buyTicketsForm.totalPrice) || 0)).toLocaleString('en-IN')}
-                </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Purchase Date</label>
+                <label className="block font-semibold text-slate-700 mb-1">Deposit Date</label>
                 <input
                   type="date"
                   required
-                  value={buyTicketsForm.purchaseDate}
-                  onChange={(e) => setBuyTicketsForm({ ...buyTicketsForm, purchaseDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  value={depositForm.date}
+                  onChange={(e) => setDepositForm({ ...depositForm, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Invoice / Reference No</label>
+                <label className="block font-semibold text-slate-700 mb-1">Reference No</label>
                 <input
                   type="text"
-                  placeholder="e.g. INV-IND-500 or PO-2026"
-                  value={buyTicketsForm.reference}
-                  onChange={(e) => setBuyTicketsForm({ ...buyTicketsForm, reference: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  placeholder="e.g. TRF-12345"
+                  value={depositForm.reference}
+                  onChange={(e) => setDepositForm({ ...depositForm, reference: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
             </div>
@@ -834,17 +668,17 @@ export const CompaniesPage = () => {
               <label className="block font-semibold text-slate-700 mb-1">Notes / Description (Optional)</label>
               <input
                 type="text"
-                placeholder="e.g. 500 Promo tickets bought on special corporate quota"
-                value={buyTicketsForm.notes}
-                onChange={(e) => setBuyTicketsForm({ ...buyTicketsForm, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                placeholder="e.g. Bank transfer for wallet top-up"
+                value={depositForm.notes}
+                onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => setIsBuyTicketsModalOpen(false)}
+                onClick={() => setIsDepositModalOpen(false)}
                 className="px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 font-semibold"
               >
                 Cancel
@@ -854,8 +688,8 @@ export const CompaniesPage = () => {
                 disabled={actionLoading}
                 className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 transition disabled:opacity-50 active:scale-95"
               >
-                <Ticket className="w-4 h-4" />
-                {actionLoading ? 'Processing...' : 'Confirm & Add Tickets'}
+                <Wallet className="w-4 h-4" />
+                {actionLoading ? 'Processing...' : 'Confirm Deposit'}
               </button>
             </div>
           </form>

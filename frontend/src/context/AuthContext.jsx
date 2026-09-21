@@ -59,6 +59,22 @@ export const AuthProvider = ({ children }) => {
     throw new Error(res.data.message || 'Login failed');
   };
 
+  const customerLogin = async (customerCode, password) => {
+    localStorage.removeItem('liberty_active_agency');
+    delete api.defaults.headers.common['x-agency-id'];
+
+    const res = await api.post('/auth/customer-login', { customerCode, password });
+    if (res.data.success) {
+      const { user: userData, accessToken } = res.data;
+      setUser(userData);
+      setToken(accessToken);
+      localStorage.setItem('liberty_user', JSON.stringify(userData));
+      localStorage.setItem('liberty_token', accessToken);
+      return res.data;
+    }
+    throw new Error(res.data.message || 'Customer login failed');
+  };
+
   const logout = async () => {
     try {
       if (token) {
@@ -94,11 +110,13 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         login,
+        customerLogin,
         logout,
         updateUserProfile,
         isAuthenticated: !!token && !!user,
         isSuperAdmin,
-        isAdmin
+        isAdmin,
+        isCustomer: user?.role === 'customer'
       }}
     >
       {children}

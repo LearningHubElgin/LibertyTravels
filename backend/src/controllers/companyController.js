@@ -159,12 +159,12 @@ exports.getCompanyDetails = async (req, res, next) => {
       ? Math.round((purchasedPrice / totalPurchasedTickets) * 100) / 100 
       : parseFloat(company.ticketUnitPrice || 0);
 
-    const purchases = (company.purchases || []).map(p => ({
-      ...p,
-      id: p._id
+    const transactions = (company.transactions || []).map(t => ({
+      ...t,
+      id: t._id
     })).sort((a, b) => {
-      const dateA = new Date(a.purchaseDate || a.createdAt || 0);
-      const dateB = new Date(b.purchaseDate || b.createdAt || 0);
+      const dateA = new Date(a.date || a.createdAt || 0);
+      const dateB = new Date(b.date || b.createdAt || 0);
       return dateB - dateA;
     });
 
@@ -194,7 +194,7 @@ exports.getCompanyDetails = async (req, res, next) => {
         walletBalance,
         purchasedPrice,
         ticketUnitPrice,
-        purchases
+        transactions
       },
       bookings: bookings.map(b => ({
         ...b,
@@ -342,35 +342,24 @@ exports.updateCompany = async (req, res, next) => {
 };
 
 /**
- * Buy bulk tickets / Top-up inventory quota & wallet deposit for a company
+ * Deposit funds to a company's wallet ledger
  */
-exports.buyTickets = async (req, res, next) => {
+exports.depositFunds = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
-      ticketsCount = 0,
-      totalPrice = 0,
-      depositAmount,
-      purchaseDate = new Date().toISOString().split('T')[0],
+      amount = 0,
+      date = new Date().toISOString().split('T')[0],
       reference = '',
       notes = ''
     } = req.body;
 
-    const count = parseInt(ticketsCount, 10);
-    const price = parseFloat(totalPrice);
-    const deposit = depositAmount !== undefined ? parseFloat(depositAmount) : price;
+    const depositAmount = parseFloat(amount);
 
-    if (!count || count <= 0) {
+    if (isNaN(depositAmount) || depositAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide a valid number of tickets (greater than 0).'
-      });
-    }
-
-    if (isNaN(price) || price < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Total purchase price cannot be negative.'
+        message: 'Deposit amount must be greater than zero.'
       });
     }
 
@@ -382,23 +371,20 @@ exports.buyTickets = async (req, res, next) => {
       });
     }
 
-    const unitPrice = count > 0 ? Math.round((price / count) * 100) / 100 : 0;
+    const balanceBefore = parseFloat(company.walletBalance || 0);
+    const balanceAfter = balanceBefore + depositAmount;
 
-    company.totalPurchasedTickets = (company.totalPurchasedTickets || 0) + count;
-    company.purchasedPrice = (company.purchasedPrice || 0) + price;
-    company.walletBalance = (company.walletBalance || 0) + deposit;
-    company.ticketUnitPrice = company.totalPurchasedTickets > 0
-      ? Math.round((company.purchasedPrice / company.totalPurchasedTickets) * 100) / 100
-      : unitPrice;
+    company.walletBalance = balanceAfter;
 
-    if (!company.purchases) company.purchases = [];
-    company.purchases.push({
-      ticketsCount: count,
-      totalPrice: price,
-      unitPrice,
-      purchaseDate,
+    if (!company.transactions) company.transactions = [];
+    company.transactions.push({
+      type: 'deposit',
+      amount: depositAmount,
+      balanceBefore,
+      balanceAfter,
       reference: reference.trim().toUpperCase(),
       notes: notes.trim(),
+      date,
       createdAt: new Date()
     });
 
@@ -406,25 +392,17 @@ exports.buyTickets = async (req, res, next) => {
 
     await logActivity(
       req.user.id || req.user._id,
-      'Buy Tickets / Top-up Stock',
+      'Deposit Funds',
       'Company',
       company._id,
-      `Purchased ${count} tickets for ₹${price} (Unit: ₹${unitPrice}) for company ${company.name} (${company.code}).`,
+      `Deposited ₹${depositAmount} to company ${company.name} (${company.code}).`,
       req.ip
     );
 
-    const bookingCount = await Booking.countDocuments({ companyId: id });
-    const used = company.usedTickets > 0 ? company.usedTickets : bookingCount;
-    const availableTickets = Math.max(0, company.totalPurchasedTickets - used);
-
     return res.status(200).json({
       success: true,
-      message: `Successfully purchased ${count} tickets for ${company.name}!`,
-      company: {
-        ...company.toJSON(),
-        availableTickets,
-        usedTickets: used
-      }
+      message: `Successfully deposited ₹${depositAmount} to ${company.name}'s wallet.`,
+      company: company.toJSON()
     });
   } catch (error) {
     next(error);

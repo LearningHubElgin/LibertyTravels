@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { User, Customer } = require('../models');
 const { ROLES, USER_STATUS } = require('../config/constants');
 
 const authenticate = async (req, res, next) => {
@@ -17,8 +17,18 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026');
-    const user = await User.findById(decoded.id)
-      .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+    let user;
+
+    if (decoded.role === 'customer') {
+      user = await Customer.findById(decoded.id).populate('agencyId', 'name code logo tagline address city country phone email');
+      if (user) {
+        user = user.toObject(); // Convert to plain object so we can add the role
+        user.role = 'customer';
+      }
+    } else {
+      user = await User.findById(decoded.id)
+        .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+    }
 
     if (!user) {
       return res.status(401).json({

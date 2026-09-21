@@ -414,9 +414,29 @@ exports.createBooking = async (req, res, next) => {
 
     if (chosenCompanyId) {
       const ticketsUsedCount = passengerRecords.length || 1;
-      await Company.findByIdAndUpdate(chosenCompanyId, {
-        $inc: { usedTickets: ticketsUsedCount }
-      });
+      const company = await Company.findById(chosenCompanyId);
+      if (company) {
+        const deductionAmount = cPrice || 0;
+        const balanceBefore = parseFloat(company.walletBalance || 0);
+        const balanceAfter = balanceBefore - deductionAmount;
+        
+        company.usedTickets = (company.usedTickets || 0) + ticketsUsedCount;
+        company.walletBalance = balanceAfter;
+        
+        if (!company.transactions) company.transactions = [];
+        company.transactions.push({
+          type: 'deduction',
+          amount: deductionAmount,
+          balanceBefore,
+          balanceAfter,
+          reference: booking.referenceNo,
+          notes: `Booking for ${primaryPassengerName}`,
+          date: bookingDate,
+          createdAt: new Date()
+        });
+        
+        await company.save();
+      }
     }
 
     await Notification.create({

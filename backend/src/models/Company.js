@@ -75,14 +75,15 @@ const companySchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-    purchases: [
+    transactions: [
       {
-        ticketsCount: { type: Number, default: 0 },
-        totalPrice: { type: Number, default: 0 },
-        unitPrice: { type: Number, default: 0 },
-        purchaseDate: { type: String, default: () => new Date().toISOString().split('T')[0] },
+        type: { type: String, enum: ['deposit', 'deduction'], required: true },
+        amount: { type: Number, required: true },
+        balanceBefore: { type: Number, default: 0 },
+        balanceAfter: { type: Number, default: 0 },
         reference: { type: String, default: '' },
         notes: { type: String, default: '' },
+        date: { type: String, default: () => new Date().toISOString().split('T')[0] },
         createdAt: { type: Date, default: Date.now }
       }
     ]
