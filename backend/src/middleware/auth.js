@@ -18,13 +18,9 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026');
     let user;
-
     if (decoded.role === 'customer') {
-      user = await Customer.findById(decoded.id).populate('agencyId', 'name code logo tagline address city country phone email');
-      if (user) {
-        user = user.toObject(); // Convert to plain object so we can add the role
-        user.role = 'customer';
-      }
+      user = await Customer.findById(decoded.id)
+        .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
     } else {
       user = await User.findById(decoded.id)
         .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
@@ -36,6 +32,9 @@ const authenticate = async (req, res, next) => {
         message: 'User belonging to this token no longer exists.'
       });
     }
+
+    user.role = decoded.role; // Ensure role is available on the request user object even for customers
+
 
     if (user.status !== USER_STATUS.ACTIVE) {
       return res.status(403).json({
@@ -110,9 +109,23 @@ const authorizeStaff = (req, res, next) => {
   });
 };
 
+/**
+ * Customer authorization guard
+ */
+const authorizeCustomer = (req, res, next) => {
+  if (req.user && req.user.role === 'customer') {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Customer privileges required.'
+  });
+};
+
 module.exports = {
   authenticate,
   authorizeSuperAdmin,
   authorizeAdmin,
-  authorizeStaff
+  authorizeStaff,
+  authorizeCustomer
 };

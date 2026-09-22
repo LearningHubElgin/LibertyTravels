@@ -433,13 +433,15 @@ export const LedgerPage = () => {
                         <td className="py-3 px-4 font-sans capitalize">
                           {item.type === 'deposit' ? (
                             <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Deposit</span>
+                          ) : item.type === 'reward' ? (
+                            <span className="text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded-full">Reward</span>
                           ) : (
                             <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full">Deduction</span>
                           )}
                         </td>
                         <td className="py-3 px-4 font-sans max-w-sm">{item.notes || '-'}</td>
-                        <td className={`py-3 px-4 text-right font-bold ${item.type === 'deposit' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {item.type === 'deposit' ? '+' : '-'}{formatCurrency(item.amount)}
+                        <td className={`py-3 px-4 text-right font-bold ${item.type === 'deposit' || item.type === 'reward' ? (item.type === 'reward' ? 'text-purple-600' : 'text-emerald-600') : 'text-rose-600'}`}>
+                          {item.type === 'deposit' || item.type === 'reward' ? '+' : '-'}{formatCurrency(item.amount)}
                         </td>
                         <td className="py-3 px-4 text-right font-black text-slate-900 text-sm">
                           {formatCurrency(item.balanceAfter)}

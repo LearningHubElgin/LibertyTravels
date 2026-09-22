@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { User, Customer } = require('../models');
 const { logActivity } = require('../middleware/activityLogger');
 const { USER_STATUS } = require('../config/constants');
-const { Customer } = require('../models');
 
 const signToken = (user) => {
   return jwt.sign(
@@ -23,9 +22,21 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() })
+    let user = await User.findOne({ email: email.toLowerCase().trim() })
       .select('+password')
       .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+
+    let isCustomer = false;
+
+    if (!user) {
+      user = await Customer.findOne({ customerCode: email.trim() })
+        .select('+password')
+        .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+      
+      if (user) {
+        isCustomer = true;
+      }
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -37,7 +48,7 @@ exports.login = async (req, res, next) => {
     if (user.status !== USER_STATUS.ACTIVE) {
       return res.status(403).json({
         success: false,
-        message: 'Account is deactivated. Please contact Super Admin.'
+        message: 'Account is deactivated. Please contact support.'
       });
     }
 
@@ -49,9 +60,11 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    if (!isCustomer) {
+      // Update last login
+      user.lastLogin = new Date();
+      await user.save();
+    }
 
     const accessToken = signToken(user);
 
@@ -61,7 +74,7 @@ exports.login = async (req, res, next) => {
       'User Login',
       'Auth',
       user._id,
-      `User ${user.name} (${user.role}) logged into the ERP system.`,
+      `User ${user.name} (${isCustomer ? 'customer' : user.role}) logged into the ERP system.`,
       req.ip
     );
 
@@ -73,11 +86,11 @@ exports.login = async (req, res, next) => {
         id: user.id || user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: isCustomer ? 'customer' : user.role,
         agencyId: user.agencyId?._id || user.agencyId || null,
         agency: user.agencyId && typeof user.agencyId === 'object' ? user.agencyId : null,
         status: user.status,
-        lastLogin: user.lastLogin
+        lastLogin: isCustomer ? null : user.lastLogin
       }
     });
   } catch (error) {
@@ -87,7 +100,14 @@ exports.login = async (req, res, next) => {
 
 exports.getMe = async (req, res, next) => {
   try {
-    const user = req.user;
+    let user;
+    if (req.user.role === 'customer') {
+      user = await Customer.findById(req.user.id || req.user._id)
+        .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+    } else {
+      user = await User.findById(req.user.id || req.user._id)
+        .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+    }
 
     return res.status(200).json({
       success: true,
@@ -95,13 +115,11 @@ exports.getMe = async (req, res, next) => {
         id: user.id || user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: req.user.role,
         agencyId: user.agencyId?._id || user.agencyId || null,
         agency: user.agencyId && typeof user.agencyId === 'object' ? user.agencyId : null,
         status: user.status,
-        lastLogin: user.lastLogin,
-        customerCode: user.customerCode,
-        phone: user.phone
+        lastLogin: user.lastLogin || null
       }
     });
   } catch (error) {
@@ -218,90 +236,6 @@ exports.logout = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Logged out successfully'
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.customerLogin = async (req, res, next) => {
-  try {
-    const { customerCode, password } = req.body;
-
-    if (!customerCode || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide both Customer ID and password'
-      });
-    }
-
-    const customer = await Customer.findOne({ customerCode: customerCode.trim() })
-      .populate('agencyId', 'name code logo tagline address city country phone email');
-
-    if (!customer) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid Customer ID or password'
-      });
-    }
-
-    if (customer.status !== 'active') {
-      return res.status(403).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
-    }
-
-    // Password is the phone number
-    // Clean both phone numbers by removing non-digits
-    const cleanDbPhone = (customer.phone || '').replace(/\D/g, '');
-    const cleanInputPhone = password.trim().replace(/\D/g, '');
-    
-    if (cleanDbPhone !== cleanInputPhone && !cleanDbPhone.endsWith(cleanInputPhone)) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid Customer ID or phone number'
-      });
-    }
-
-    // Create a user-like object to sign the token
-    const tokenPayload = {
-      id: customer.id || customer._id,
-      email: customer.email || '',
-      role: 'customer'
-    };
-
-    const accessToken = jwt.sign(
-      tokenPayload,
-      process.env.JWT_SECRET || 'liberty_travel_erp_super_secret_jwt_key_2026',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
-    );
-
-    // Log activity
-    await logActivity(
-      customer._id,
-      'Customer Login',
-      'Auth',
-      customer._id,
-      `Customer ${customer.name} logged into the portal.`,
-      req.ip
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      accessToken,
-      user: {
-        id: customer.id || customer._id,
-        name: customer.name,
-        email: customer.email,
-        role: 'customer',
-        agencyId: customer.agencyId?._id || customer.agencyId || null,
-        agency: customer.agencyId && typeof customer.agencyId === 'object' ? customer.agencyId : null,
-        status: customer.status,
-        customerCode: customer.customerCode,
-        phone: customer.phone
-      }
     });
   } catch (error) {
     next(error);

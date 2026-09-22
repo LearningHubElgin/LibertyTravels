@@ -22,10 +22,10 @@ import {
   Ticket,
   Wallet,
   Coins,
-  PackagePlus,
   Sparkles,
   ArrowRight,
-  Eye
+  Eye,
+  Gift
 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -48,7 +48,9 @@ export const CompaniesPage = () => {
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [selectedCompanyForDeposit, setSelectedCompanyForDeposit] = useState(null);
+  const [selectedCompanyForReward, setSelectedCompanyForReward] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -69,6 +71,14 @@ export const CompaniesPage = () => {
 
   // Deposit Form State
   const [depositForm, setDepositForm] = useState({
+    amount: '',
+    reference: '',
+    notes: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  // Reward Form State
+  const [rewardForm, setRewardForm] = useState({
     amount: '',
     reference: '',
     notes: '',
@@ -134,6 +144,41 @@ export const CompaniesPage = () => {
       }
     } catch (err) {
       toastError(err.response?.data?.message || 'Failed to deposit funds.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenReward = (c) => {
+    setSelectedCompanyForReward(c);
+    setRewardForm({
+      amount: '',
+      reference: `RWD-${c.code}-${Date.now().toString().slice(-4)}`,
+      notes: 'Received reward/cashback',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setIsRewardModalOpen(true);
+  };
+
+  const handleSaveReward = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(rewardForm.amount);
+
+    if (isNaN(amount) || amount <= 0) {
+      return toastError('Please enter a valid reward amount (greater than 0).');
+    }
+
+    setActionLoading(true);
+    try {
+      const id = selectedCompanyForReward.id || selectedCompanyForReward._id;
+      const res = await api.post(`/companies/${id}/reward`, rewardForm);
+      if (res.data.success) {
+        success(`Successfully received reward of ₹${amount} from ${selectedCompanyForReward.name}!`);
+        setIsRewardModalOpen(false);
+        fetchCompanies();
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to receive reward.');
     } finally {
       setActionLoading(false);
     }
@@ -316,6 +361,17 @@ export const CompaniesPage = () => {
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Deposit Funds</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenReward(row);
+            }}
+            title="Receive Reward"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition active:scale-95"
+          >
+            <Gift className="w-3.5 h-3.5" />
+            <span>Reward</span>
           </button>
           <button
             onClick={(e) => {
@@ -690,6 +746,110 @@ export const CompaniesPage = () => {
               >
                 <Wallet className="w-4 h-4" />
                 {actionLoading ? 'Processing...' : 'Confirm Deposit'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Receive Reward Modal */}
+      <Modal
+        isOpen={isRewardModalOpen}
+        onClose={() => setIsRewardModalOpen(false)}
+        title={selectedCompanyForReward ? `Receive Reward - ${selectedCompanyForReward.name}` : 'Receive Reward'}
+        size="md"
+      >
+        {selectedCompanyForReward && (
+          <form onSubmit={handleSaveReward} className="space-y-4 text-xs">
+            {/* Header info badge */}
+            <div className="p-3 bg-brand-50/70 rounded-xl border border-brand-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center font-mono uppercase">
+                  {selectedCompanyForReward.code?.slice(0, 3)}
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{selectedCompanyForReward.name}</h4>
+                  <p className="text-[10px] text-slate-500 capitalize">{selectedCompanyForReward.type} Provider • {selectedCompanyForReward.country}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">Current Balance</p>
+                <p className="font-mono font-black text-brand-700 text-sm">
+                  ₹{(selectedCompanyForReward.walletBalance || 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Reward Amount (₹) *</label>
+                <div className="relative">
+                  <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 1500"
+                    value={rewardForm.amount}
+                    onWheel={(e) => e.target.blur()}
+                    onChange={(e) => setRewardForm({ ...rewardForm, amount: e.target.value })}
+                    className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={rewardForm.date}
+                  onChange={(e) => setRewardForm({ ...rewardForm, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Reference No</label>
+                <input
+                  type="text"
+                  placeholder="e.g. RWD-12345"
+                  value={rewardForm.reference}
+                  onChange={(e) => setRewardForm({ ...rewardForm, reference: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Notes / Description</label>
+              <input
+                type="text"
+                placeholder="e.g. Festival cashback"
+                value={rewardForm.notes}
+                onChange={(e) => setRewardForm({ ...rewardForm, notes: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsRewardModalOpen(false)}
+                className="px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="inline-flex items-center gap-1.5 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md shadow-purple-600/20 transition disabled:opacity-50 active:scale-95"
+              >
+                <Gift className="w-4 h-4" />
+                {actionLoading ? 'Processing...' : 'Confirm Reward'}
               </button>
             </div>
           </form>

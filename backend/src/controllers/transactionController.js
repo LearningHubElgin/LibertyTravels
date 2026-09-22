@@ -82,7 +82,8 @@ exports.createTransaction = async (req, res, next) => {
       type = TRANSACTION_TYPES.ADJUSTMENT,
       debit = 0,
       credit = 0,
-      paymentMethod
+      paymentMethod,
+      upiMethod
     } = req.body;
 
     if (!description) {
@@ -114,6 +115,7 @@ exports.createTransaction = async (req, res, next) => {
       credit: cAmount,
       balance: toDecimal(dAmount - cAmount),
       paymentMethod: paymentMethod || null,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 

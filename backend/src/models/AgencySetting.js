@@ -35,6 +35,18 @@ const agencySettingSchema = new mongoose.Schema(
       type: String,
       default: 'AAACL1234F'
     },
+    cashOpeningBalance: {
+      type: Number,
+      default: 0
+    },
+    bankOpeningBalance: {
+      type: Number,
+      default: 0
+    },
+    upiMethods: {
+      type: [String],
+      default: ['Paytm', 'Google Pay', 'PhonePe', 'PayPal', 'Amazon Pay']
+    },
     invoicePrefix: {
       type: String,
       default: 'LTT-INV'

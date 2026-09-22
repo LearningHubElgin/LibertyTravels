@@ -63,7 +63,7 @@ exports.getPayments = async (req, res, next) => {
 
 exports.createPayment = async (req, res, next) => {
   try {
-    const { bookingId, amount, paymentDate = new Date().toISOString().split('T')[0], paymentMethod = 'cash', reference, notes } = req.body;
+    const { bookingId, amount, paymentDate = new Date().toISOString().split('T')[0], paymentMethod = 'cash', upiMethod, reference, notes } = req.body;
 
     if (!bookingId || !amount) {
       return res.status(400).json({
@@ -101,6 +101,7 @@ exports.createPayment = async (req, res, next) => {
       amount: payAmount,
       paymentDate,
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       reference: payRef,
       notes: notes || `Payment for booking ${booking.referenceNo}`,
       receivedBy: req.user ? (req.user.id || req.user._id) : null
@@ -125,6 +126,7 @@ exports.createPayment = async (req, res, next) => {
       credit: payAmount,
       balance: newBalanceDue,
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 

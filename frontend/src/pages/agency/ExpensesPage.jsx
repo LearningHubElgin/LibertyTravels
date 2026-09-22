@@ -62,6 +62,7 @@ export const ExpensesPage = () => {
   const { success, error: toastError } = useToast();
 
   const [expenses, setExpenses] = useState([]);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +86,8 @@ export const ExpensesPage = () => {
     category: 'Office Rent',
     description: '',
     amount: '',
-    paymentMethod: 'bank_transfer',
+    paymentMethod: 'cash',
+    upiMethod: '',
     paidTo: '',
     reference: '',
     notes: ''
@@ -114,6 +116,13 @@ export const ExpensesPage = () => {
       if (summaryRes.data.success) {
         setSummary(summaryRes.data);
       }
+      
+      if (upiMethods.length === 0) {
+        const settingsRes = await api.get('/settings');
+        if (settingsRes.data.success) {
+          setUpiMethods(settingsRes.data.settings?.upiMethods || []);
+        }
+      }
     } catch (e) {
       console.error('Failed to load expenses:', e);
     } finally {
@@ -138,7 +147,8 @@ export const ExpensesPage = () => {
       category: 'Office Rent',
       description: '',
       amount: '',
-      paymentMethod: 'bank_transfer',
+      paymentMethod: 'cash',
+      upiMethod: '',
       paidTo: '',
       reference: '',
       notes: ''
@@ -154,6 +164,7 @@ export const ExpensesPage = () => {
       description: exp.description,
       amount: exp.amount,
       paymentMethod: exp.paymentMethod,
+      upiMethod: exp.upiMethod || '',
       paidTo: exp.paidTo,
       reference: exp.reference || '',
       notes: exp.notes || ''
@@ -246,7 +257,7 @@ export const ExpensesPage = () => {
       header: 'Payment Method',
       render: (row) => (
         <span className="font-mono text-[11px] text-slate-600 uppercase">
-          {row.paymentMethod?.replace('_', ' ')}
+          {row.paymentMethod} {row.upiMethod ? `(${row.upiMethod})` : ''}
         </span>
       )
     },
@@ -499,23 +510,42 @@ export const ExpensesPage = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className={expenseForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
               <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
               <select
                 value={expenseForm.paymentMethod}
-                onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
+                onChange={(e) => {
+                  setExpenseForm({
+                    ...expenseForm,
+                    paymentMethod: e.target.value,
+                    upiMethod: e.target.value !== 'upi' ? '' : expenseForm.upiMethod
+                  });
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
               >
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="upi">UPI</option>
-                <option value="card">Credit / Debit Card</option>
                 <option value="cash">Cash</option>
-                <option value="cheque">Cheque</option>
-                <option value="other">Other</option>
+                <option value="upi">UPI</option>
               </select>
             </div>
 
-            <div>
+            {expenseForm.paymentMethod === 'upi' && (
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                <select
+                  required
+                  value={expenseForm.upiMethod}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, upiMethod: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                >
+                  <option value="">Select UPI App</option>
+                  {upiMethods.map((m, i) => (
+                    <option key={i} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className={expenseForm.paymentMethod === 'upi' ? 'col-span-2' : ''}>
               <label className="block font-semibold text-slate-700 mb-1">Invoice / Receipt Reference</label>
               <input
                 type="text"

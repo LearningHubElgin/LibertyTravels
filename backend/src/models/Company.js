@@ -77,7 +77,7 @@ const companySchema = new mongoose.Schema(
     },
     transactions: [
       {
-        type: { type: String, enum: ['deposit', 'deduction'], required: true },
+        type: { type: String, enum: ['deposit', 'deduction', 'reward'], required: true },
         amount: { type: Number, required: true },
         balanceBefore: { type: Number, default: 0 },
         balanceAfter: { type: Number, default: 0 },

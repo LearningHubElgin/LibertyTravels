@@ -30,10 +30,19 @@ const expenseSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other'],
+      enum: ['cash', 'upi', 'bank_transfer', 'credit_card', 'cheque', 'other'],
       default: 'cash'
     },
+    upiMethod: {
+      type: String,
+      default: null
+    },
     paidTo: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    referenceNo: {
       type: String,
       required: true,
       trim: true

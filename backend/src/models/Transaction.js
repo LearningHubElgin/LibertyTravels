@@ -47,6 +47,10 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    upiMethod: {
+      type: String,
+      default: null
+    },
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Booking',

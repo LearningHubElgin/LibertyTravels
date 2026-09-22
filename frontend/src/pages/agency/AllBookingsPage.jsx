@@ -30,7 +30,6 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Modal } from '../../components/common/Modal';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
-import { EditBookingModal } from '../../components/booking/EditBookingModal';
 import { formatDate } from '../../utils/formatters';
 
 export const AllBookingsPage = () => {
@@ -39,12 +38,12 @@ export const AllBookingsPage = () => {
 
   const [bookings, setBookings] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
   // Modals
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-  const [selectedBookingForEdit, setSelectedBookingForEdit] = useState(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -67,6 +66,7 @@ export const AllBookingsPage = () => {
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'cash',
+    upiMethod: '',
     reference: '',
     notes: ''
   });
@@ -100,15 +100,19 @@ export const AllBookingsPage = () => {
   }, [pagination.page, pagination.limit, status, paymentStatus, serviceType, companyId, startDate, endDate]);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
+    const fetchCompaniesAndSettings = async () => {
       try {
-        const res = await api.get('/companies');
-        if (res.data.success) setCompanies(res.data.companies || []);
+        const [compRes, settingsRes] = await Promise.all([
+          api.get('/companies'),
+          api.get('/settings')
+        ]);
+        if (compRes.data.success) setCompanies(compRes.data.companies || []);
+        if (settingsRes.data.success) setUpiMethods(settingsRes.data.settings?.upiMethods || []);
       } catch (e) {
         console.error(e);
       }
     };
-    fetchCompanies();
+    fetchCompaniesAndSettings();
   }, []);
 
   const handleSearchSubmit = (e) => {
@@ -123,6 +127,7 @@ export const AllBookingsPage = () => {
       amount: booking.balanceDue,
       paymentDate: new Date().toISOString().split('T')[0],
       paymentMethod: 'cash',
+      upiMethod: '',
       reference: '',
       notes: `Payment for booking ${booking.referenceNo}`
     });
@@ -398,7 +403,7 @@ export const AllBookingsPage = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedBookingForEdit(row);
+              navigate('/bookings/new', { state: { editMode: true, editData: row } });
             }}
             title="Edit Booking Details"
             className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
@@ -668,22 +673,43 @@ export const AllBookingsPage = () => {
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
                 />
               </div>
+            </div>
 
-              <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className={paymentForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
                 <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
                 <select
                   value={paymentForm.paymentMethod}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
+                  onChange={(e) => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      paymentMethod: e.target.value,
+                      upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
                 >
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer / NEFT</option>
-                  <option value="card">Credit / Debit Card</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
+
+              {paymentForm.paymentMethod === 'upi' && (
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                  <select
+                    required
+                    value={paymentForm.upiMethod}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                  >
+                    <option value="">Select UPI App</option>
+                    {upiMethods.map((m, i) => (
+                      <option key={i} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div>
@@ -741,15 +767,7 @@ export const AllBookingsPage = () => {
         onSuccess={fetchBookings}
       />
 
-      {/* Edit Booking Modal */}
-      {selectedBookingForEdit && (
-        <EditBookingModal
-          isOpen={!!selectedBookingForEdit}
-          onClose={() => setSelectedBookingForEdit(null)}
-          booking={selectedBookingForEdit}
-          onSuccess={fetchBookings}
-        />
-      )}
+
     </div>
   );
 };

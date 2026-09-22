@@ -200,6 +200,7 @@ exports.createBooking = async (req, res, next) => {
 
       initialPayment = 0,
       paymentMethod = 'cash',
+      upiMethod,
       paymentReference,
       paymentNotes,
       notes = '',
@@ -379,6 +380,7 @@ exports.createBooking = async (req, res, next) => {
       credit: 0.00,
       balance: effectiveTotal,
       paymentMethod: null,
+      upiMethod: null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 
@@ -391,6 +393,7 @@ exports.createBooking = async (req, res, next) => {
         amount: initPay,
         paymentDate: bookingDate,
         paymentMethod,
+        upiMethod: paymentMethod === 'upi' ? upiMethod : null,
         reference: payRef,
         notes: paymentNotes || `Initial payment received for ${booking.referenceNo}`,
         receivedBy: req.user ? (req.user.id || req.user._id) : null
@@ -408,6 +411,7 @@ exports.createBooking = async (req, res, next) => {
         credit: initPay,
         balance: toDecimal(effectiveTotal - initPay),
         paymentMethod,
+        upiMethod: paymentMethod === 'upi' ? upiMethod : null,
         createdBy: req.user ? (req.user.id || req.user._id) : null
       });
     }
@@ -658,7 +662,7 @@ exports.updateBookingStatus = async (req, res, next) => {
 exports.addPaymentToBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { amount, paymentDate = new Date().toISOString().split('T')[0], paymentMethod = 'cash', reference, notes } = req.body;
+    const { amount, paymentDate = new Date().toISOString().split('T')[0], paymentMethod = 'cash', upiMethod, reference, notes } = req.body;
 
     const payAmount = toDecimal(amount);
     if (payAmount <= 0) {
@@ -689,6 +693,7 @@ exports.addPaymentToBooking = async (req, res, next) => {
       amount: payAmount,
       paymentDate,
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       reference: payRef,
       notes: notes || `Payment for booking ${booking.referenceNo}`,
       receivedBy: req.user ? (req.user.id || req.user._id) : null
@@ -715,6 +720,7 @@ exports.addPaymentToBooking = async (req, res, next) => {
       credit: payAmount,
       balance: newBalanceDue,
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 

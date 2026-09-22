@@ -409,6 +409,74 @@ exports.depositFunds = async (req, res, next) => {
   }
 };
 
+/**
+ * Receive reward / cashback from a company
+ */
+exports.receiveReward = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      amount = 0,
+      date = new Date().toISOString().split('T')[0],
+      reference = '',
+      notes = ''
+    } = req.body;
+
+    const rewardAmount = parseFloat(amount);
+
+    if (isNaN(rewardAmount) || rewardAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reward amount must be greater than zero.'
+      });
+    }
+
+    const company = await Company.findById(id);
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: 'Company not found'
+      });
+    }
+
+    const balanceBefore = parseFloat(company.walletBalance || 0);
+    const balanceAfter = balanceBefore + rewardAmount;
+
+    company.walletBalance = balanceAfter;
+
+    if (!company.transactions) company.transactions = [];
+    company.transactions.push({
+      type: 'reward',
+      amount: rewardAmount,
+      balanceBefore,
+      balanceAfter,
+      reference: reference.trim().toUpperCase(),
+      notes: notes.trim(),
+      date,
+      createdAt: new Date()
+    });
+
+    await company.save();
+
+    await logActivity(
+      req.user.id || req.user._id,
+      'Receive Reward',
+      'Company',
+      company._id,
+      `Received reward of ₹${rewardAmount} from company ${company.name} (${company.code}).`,
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully received reward of ₹${rewardAmount} from ${company.name}.`,
+      company: company.toJSON()
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteCompany = async (req, res, next) => {
   try {
     const { id } = req.params;

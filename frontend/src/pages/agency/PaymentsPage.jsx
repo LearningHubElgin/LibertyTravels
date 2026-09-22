@@ -19,6 +19,7 @@ export const PaymentsPage = () => {
   const { success, error: toastError } = useToast();
 
   const [payments, setPayments] = useState([]);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
@@ -36,6 +37,7 @@ export const PaymentsPage = () => {
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'cash',
+    upiMethod: '',
     reference: '',
     notes: ''
   });
@@ -54,6 +56,14 @@ export const PaymentsPage = () => {
       if (res.data.success) {
         setPayments(res.data.payments || []);
         setPagination(res.data.pagination);
+      }
+      
+      // Also fetch upi methods if not already fetched
+      if (upiMethods.length === 0) {
+        const settingsRes = await api.get('/settings');
+        if (settingsRes.data.success) {
+          setUpiMethods(settingsRes.data.settings?.upiMethods || []);
+        }
       }
     } catch (e) {
       console.error('Failed to load payments:', e);
@@ -86,6 +96,7 @@ export const PaymentsPage = () => {
             amount: pending[0].balanceDue,
             paymentDate: new Date().toISOString().split('T')[0],
             paymentMethod: 'cash',
+            upiMethod: '',
             reference: '',
             notes: ''
           });
@@ -177,7 +188,7 @@ export const PaymentsPage = () => {
       header: 'Method',
       render: (row) => (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase font-mono">
-          {row.paymentMethod}
+          {row.paymentMethod} {row.upiMethod ? `(${row.upiMethod})` : ''}
         </span>
       )
     },
@@ -227,10 +238,6 @@ export const PaymentsPage = () => {
             <option value="">All Payment Methods</option>
             <option value="cash">Cash</option>
             <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="card">Card</option>
-            <option value="cheque">Cheque</option>
-            <option value="other">Other</option>
           </select>
 
           <input
@@ -343,17 +350,36 @@ export const PaymentsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
                 <select
                   value={paymentForm.paymentMethod}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
+                  onChange={(e) => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      paymentMethod: e.target.value,
+                      upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
                 >
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer / NEFT</option>
-                  <option value="card">Credit / Debit Card</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
+
+              {paymentForm.paymentMethod === 'upi' && (
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                  <select
+                    required
+                    value={paymentForm.upiMethod}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                  >
+                    <option value="">Select UPI App</option>
+                    {upiMethods.map((m, i) => (
+                      <option key={i} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div>
