@@ -18,6 +18,7 @@ const userRoutes = require('./userRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const activityLogRoutes = require('./activityLogRoutes');
 const settingRoutes = require('./settingRoutes');
+const customerPortalRoutes = require('./customerPortalRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -38,6 +39,7 @@ router.use('/users', userRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/activity-logs', activityLogRoutes);
 router.use('/settings', settingRoutes);
+router.use('/customer-portal', customerPortalRoutes);
 
 module.exports = router;
 

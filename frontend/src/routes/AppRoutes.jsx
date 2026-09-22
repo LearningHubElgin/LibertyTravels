@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 
 // Lazy-loaded route components for high-speed initial bundle delivery
+const LandingPage = lazy(() => import('../pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const LoginPage = lazy(() => import('../pages/LoginPage').then(m => ({ default: m.LoginPage })));
 
 // Super Admin Pages
@@ -35,24 +36,28 @@ const UsersPage = lazy(() => import('../pages/agency/UsersPage').then(m => ({ de
 const ActivityLogsPage = lazy(() => import('../pages/agency/ActivityLogsPage').then(m => ({ default: m.ActivityLogsPage })));
 const SettingsPage = lazy(() => import('../pages/agency/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
+// Customer Portal Pages
+const CustomerLoginPage = lazy(() => import('../pages/customer/CustomerLoginPage').then(m => ({ default: m.CustomerLoginPage })));
+const CustomerDashboardPage = lazy(() => import('../pages/customer/CustomerDashboardPage').then(m => ({ default: m.CustomerDashboardPage })));
+
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-50">
     <LoadingSpinner size="lg" text="Loading Liberty ERP..." />
   </div>
 );
 
-// Dynamic Role-Based Index Redirection
-const IndexRedirect = () => {
-  const { user } = useAuth();
-  if (user?.role === 'super_admin') {
-    return <Navigate to="/superadmin/dashboard" replace />;
-  }
-  return <Navigate to="/dashboard" replace />;
-};
-
 export const AppRoutes = () => {
   return (
     <Routes>
+      {/* Root Landing Page */}
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <LandingPage />
+          </Suspense>
+        }
+      />
       {/* Public Auth Route */}
       <Route
         path="/login"
@@ -60,6 +65,28 @@ export const AppRoutes = () => {
           <Suspense fallback={<PageLoader />}>
             <LoginPage />
           </Suspense>
+        }
+      />
+
+      {/* Customer Portal Auth Route */}
+      <Route
+        path="/customer-portal/login"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <CustomerLoginPage />
+          </Suspense>
+        }
+      />
+
+      {/* Customer Portal Protected Routes */}
+      <Route
+        path="/customer-portal/dashboard"
+        element={
+          <ProtectedRoute customerOnly>
+            <Suspense fallback={<PageLoader />}>
+              <CustomerDashboardPage />
+            </Suspense>
+          </ProtectedRoute>
         }
       />
 
@@ -71,9 +98,6 @@ export const AppRoutes = () => {
           </ProtectedRoute>
         }
       >
-        {/* Dynamic Entry based on User Role */}
-        <Route path="/" element={<IndexRedirect />} />
-
         {/* ---------------------------------------------------- */}
         {/* 1. SUPER ADMIN CONTROL PORTAL                        */}
         {/* ---------------------------------------------------- */}
@@ -159,7 +183,7 @@ export const AppRoutes = () => {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<IndexRedirect />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

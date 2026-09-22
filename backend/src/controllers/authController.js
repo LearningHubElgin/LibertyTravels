@@ -98,6 +98,64 @@ exports.login = async (req, res, next) => {
   }
 };
 
+exports.customerLogin = async (req, res, next) => {
+  try {
+    const { customerCode, phone } = req.body;
+
+    if (!customerCode || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both Customer ID and Phone Number'
+      });
+    }
+
+    const user = await Customer.findOne({ customerCode: customerCode.trim(), phone: phone.trim() })
+      .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Customer ID or Phone Number'
+      });
+    }
+
+    if (user.status !== USER_STATUS.ACTIVE) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated. Please contact support.'
+      });
+    }
+
+    const accessToken = signToken({ ...user.toObject(), role: 'customer' });
+
+    await logActivity(
+      user._id,
+      'Customer Portal Login',
+      'Auth',
+      user._id,
+      `Customer ${user.name} logged into the Customer Portal.`,
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      accessToken,
+      user: {
+        id: user.id || user._id,
+        name: user.name,
+        email: user.email,
+        role: 'customer',
+        agencyId: user.agencyId?._id || user.agencyId || null,
+        agency: user.agencyId && typeof user.agencyId === 'object' ? user.agencyId : null,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getMe = async (req, res, next) => {
   try {
     let user;

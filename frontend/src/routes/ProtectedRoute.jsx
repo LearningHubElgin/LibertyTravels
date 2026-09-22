@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
-export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = false }) => {
-  const { isAuthenticated, loading, isSuperAdmin } = useAuth();
+export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = false, customerOnly = false }) => {
+  const { isAuthenticated, loading, isSuperAdmin, isCustomer } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -16,7 +16,21 @@ export const ProtectedRoute = ({ children, superAdminOnly = false, agencyOnly = 
   }
 
   if (!isAuthenticated) {
+    // If it's a customer route, redirect to customer login
+    if (customerOnly) {
+      return <Navigate to="/customer-portal/login" state={{ from: location }} replace />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Customer only routes
+  if (customerOnly && !isCustomer) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Agency/SuperAdmin cannot access customer routes unless handled above, but just in case:
+  if (!customerOnly && isCustomer) {
+    return <Navigate to="/customer-portal/dashboard" replace />;
   }
 
   // Regular admin cannot access superadmin portal

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Compass, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -127,6 +127,15 @@ export const LoginPage = () => {
             </button>
           </form>
 
+        </div>
+        
+        <div className="mt-6 text-center">
+          <p className="text-xs text-slate-400">
+            Are you a customer?{' '}
+            <Link to="/customer-portal/login" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
+              Access Customer Portal
+            </Link>
+          </p>
         </div>
       </div>
     </div>
