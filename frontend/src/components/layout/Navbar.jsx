@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../common/Modal';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import LibertyLogo from '../../assets/Liberty.jpg';
 
 export const Navbar = ({ onOpenMobile }) => {
   const { user, logout, updateUserProfile } = useAuth();
@@ -392,8 +393,8 @@ export const Navbar = ({ onOpenMobile }) => {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition border border-transparent hover:border-slate-200"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#0B1E36] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              <div className="w-8 h-8 rounded-lg bg-white overflow-hidden flex items-center justify-center shadow-xs border border-slate-200 p-0.5">
+                <img src={LibertyLogo} alt="Profile Logo" className="w-full h-full object-contain rounded-md" />
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[120px]">
