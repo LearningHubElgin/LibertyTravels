@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Building, Compass, ArrowRight, User } from 'lucide-react';
+import { Building, ArrowRight, User } from 'lucide-react';
+import LibertyLogo from '../assets/Liberty.jpg';
 
 export const LandingPage = () => {
   const { isAuthenticated, user } = useAuth();
@@ -26,8 +27,8 @@ export const LandingPage = () => {
 
       {/* Header / Logo */}
       <div className="text-center mb-16 z-10 mt-[-5vh]">
-        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-brand-600 via-sky-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-brand-500/20 border border-white/20 mb-6">
-          <Compass className="w-10 h-10 stroke-[2.25]" />
+        <div className="mx-auto w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white flex items-center justify-center shadow-xl shadow-brand-500/20 border border-white/20 mb-6 overflow-hidden p-1">
+          <img src={LibertyLogo} alt="Liberty Tours & Travels Logo" className="w-full h-full object-contain rounded-2xl" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-4">
           Liberty Tours & Travels

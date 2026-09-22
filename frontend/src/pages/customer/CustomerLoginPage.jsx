@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogIn, User, Phone, Loader2, Plane, ArrowRight } from 'lucide-react';
+import { LogIn, User, Phone, Loader2, Plane, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export const CustomerLoginPage = () => {
   const navigate = useNavigate();
@@ -43,6 +43,15 @@ export const CustomerLoginPage = () => {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-600/10 blur-[100px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-teal-500/10 blur-[100px]"></div>
       </div>
+
+      {/* Back Button */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold transition-colors z-20"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Home
+      </Link>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 text-center">
         <div className="flex justify-center mb-4">

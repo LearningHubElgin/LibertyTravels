@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, Compass, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Compass, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -43,6 +43,15 @@ export const LoginPage = () => {
       {/* Subtle Background Glows */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Back Button */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold transition-colors z-20"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Home
+      </Link>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
         <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-brand-600 via-sky-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-brand-500/20 border border-white/20 mb-3">

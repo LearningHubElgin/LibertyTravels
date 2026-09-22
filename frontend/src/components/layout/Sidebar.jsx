@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import LibertyLogo from '../../assets/Liberty.jpg';
 
 export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
   const location = useLocation();
@@ -219,8 +220,8 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
         <div className="p-2.5 sm:p-3 border-t border-slate-800 bg-[#071628]">
           <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-800/60 border border-slate-700/50">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px] sm:text-xs border border-brand-500/30 shrink-0">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-white flex items-center justify-center border border-slate-700/50 shrink-0 overflow-hidden p-[2px]">
+                <img src={LibertyLogo} alt="Profile Logo" className="w-full h-full object-contain rounded-[4px]" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] sm:text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
