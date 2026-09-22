@@ -40,6 +40,7 @@ export const BookingDetailsPage = () => {
   const { success, error: toastError } = useToast();
 
   const [booking, setBooking] = useState(null);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
@@ -54,6 +55,7 @@ export const BookingDetailsPage = () => {
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'cash',
+    upiMethod: '',
     reference: '',
     notes: ''
   });
@@ -65,13 +67,20 @@ export const BookingDetailsPage = () => {
     }
     setLoading(true);
     try {
-      const res = await api.get(`/bookings/${id}`);
+      const [res, settingsRes] = await Promise.all([
+        api.get(`/bookings/${id}`),
+        api.get('/settings')
+      ]);
+      
       if (res.data.success) {
         setBooking(res.data.booking);
         setPaymentForm((prev) => ({
           ...prev,
           amount: res.data.booking.balanceDue
         }));
+      }
+      if (settingsRes.data.success) {
+        setUpiMethods(settingsRes.data.settings?.upiMethods || []);
       }
     } catch (err) {
       toastError('Failed to load booking details.');
@@ -382,7 +391,7 @@ export const BookingDetailsPage = () => {
                           {formatCurrency(pay.amount)}
                         </span>
                         <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
-                          {pay.paymentMethod}
+                          {pay.paymentMethod} {pay.upiMethod ? `(${pay.upiMethod})` : ''}
                         </span>
                       </div>
                       <p className="text-slate-500 text-[11px] mt-0.5">
@@ -475,6 +484,10 @@ export const BookingDetailsPage = () => {
                     <span>SGST (9%):</span>
                     <span className="font-mono">{formatCurrency(parseFloat(booking.tax) / 2)}</span>
                   </div>
+                  <div className="flex justify-between text-[11px] text-slate-600 font-semibold pt-1">
+                    <span>Total GST (CGST+SGST):</span>
+                    <span className="font-mono">{formatCurrency(parseFloat(booking.tax))}</span>
+                  </div>
                 </>
               )}
               {parseFloat(booking.discount || 0) > 0 && (
@@ -566,21 +579,40 @@ export const BookingDetailsPage = () => {
               />
             </div>
 
-            <div>
+            <div className={paymentForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
               <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
               <select
                 value={paymentForm.paymentMethod}
-                onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
+                onChange={(e) => {
+                  setPaymentForm({
+                    ...paymentForm,
+                    paymentMethod: e.target.value,
+                    upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
+                  });
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
               >
                 <option value="cash">Cash</option>
                 <option value="upi">UPI</option>
-                <option value="bank_transfer">Bank Transfer / NEFT</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="cheque">Cheque</option>
-                <option value="other">Other</option>
               </select>
             </div>
+
+            {paymentForm.paymentMethod === 'upi' && (
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                <select
+                  required
+                  value={paymentForm.upiMethod}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                >
+                  <option value="">Select UPI App</option>
+                  {upiMethods.map((m, i) => (
+                    <option key={i} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div>

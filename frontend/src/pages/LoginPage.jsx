@@ -127,12 +127,6 @@ export const LoginPage = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-400">
-            <a href="/customer-login" className="text-teal-400 hover:text-teal-300 transition-colors">
-              Customer Portal Login
-            </a>
-          </div>
-
         </div>
       </div>
     </div>

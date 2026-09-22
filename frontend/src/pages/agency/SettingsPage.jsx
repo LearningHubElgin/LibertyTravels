@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   KeyRound,
   ShieldCheck,
-  Compass
+  Compass,
+  Plus,
+  X
 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -17,7 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const SettingsPage = () => {
-  const { user, isSuperAdmin, updateUserProfile } = useAuth();
+  const { user, isSuperAdmin, isAdmin, updateUserProfile } = useAuth();
   const { success, error: toastError } = useToast();
 
   const [activeTab, setActiveTab] = useState('agency'); // 'agency', 'invoice', 'profile'
@@ -37,8 +39,12 @@ export const SettingsPage = () => {
     invoicePrefix: 'INV-2026-',
     invoiceNextNumber: 1001,
     termsAndConditions: '',
-    invoiceFooter: ''
+    invoiceFooter: '',
+    cashOpeningBalance: 0,
+    bankOpeningBalance: 0,
+    upiMethods: []
   });
+  const [upiMethodsInput, setUpiMethodsInput] = useState('');
 
   // Profile Form
   const [profileForm, setProfileForm] = useState({
@@ -56,6 +62,7 @@ export const SettingsPage = () => {
         const res = await api.get('/settings');
         if (res.data.success && res.data.settings) {
           setSettings(res.data.settings);
+          setUpiMethodsInput((res.data.settings.upiMethods || []).join(', '));
         }
       } catch (e) {
         console.error('Failed to load settings:', e);
@@ -68,13 +75,15 @@ export const SettingsPage = () => {
 
   const handleSaveAgencySettings = async (e) => {
     e.preventDefault();
-    if (!isSuperAdmin) {
-      return toastError('Only Super Admin can modify agency and invoice settings.');
+    if (!isAdmin) {
+      return toastError('Only Admins can modify agency and invoice settings.');
     }
 
     setSaving(true);
     try {
-      const res = await api.put('/settings', settings);
+      const methodsArray = upiMethodsInput.split(',').map(m => m.trim()).filter(m => m !== '');
+      const payload = { ...settings, upiMethods: methodsArray };
+      const res = await api.put('/settings', payload);
       if (res.data.success) {
         success('Agency & invoice settings saved successfully.');
       }
@@ -135,6 +144,10 @@ export const SettingsPage = () => {
     }
   };
 
+  const handleUpiMethodsChange = (e) => {
+    setUpiMethodsInput(e.target.value);
+  };
+
   if (loading) return <LoadingSpinner size="lg" text="Loading agency settings..." />;
 
   return (
@@ -191,7 +204,7 @@ export const SettingsPage = () => {
                 <input
                   type="text"
                   required
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.agencyName}
                   onChange={(e) => setSettings({ ...settings, agencyName: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-bold text-slate-900"
@@ -202,7 +215,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Tagline / Brand Slogan</label>
                 <input
                   type="text"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   placeholder="e.g. Your Trusted Travel Partner"
                   value={settings.tagline || ''}
                   onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
@@ -216,7 +229,7 @@ export const SettingsPage = () => {
               <textarea
                 rows="2"
                 required
-                disabled={!isSuperAdmin}
+                disabled={!isAdmin}
                 value={settings.address || ''}
                 onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100"
@@ -228,7 +241,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Official Phone Numbers</label>
                 <input
                   type="text"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.phone || ''}
                   onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
@@ -239,7 +252,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Official Email Address</label>
                 <input
                   type="email"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.email || ''}
                   onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100"
@@ -250,7 +263,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Website URL</label>
                 <input
                   type="text"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.website || ''}
                   onChange={(e) => setSettings({ ...settings, website: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100"
@@ -263,7 +276,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">GSTIN Number (Tax Identifier)</label>
                 <input
                   type="text"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.gstNumber || ''}
                   onChange={(e) => setSettings({ ...settings, gstNumber: e.target.value.toUpperCase() })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono uppercase"
@@ -274,7 +287,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">PAN Number</label>
                 <input
                   type="text"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.panNumber || ''}
                   onChange={(e) => setSettings({ ...settings, panNumber: e.target.value.toUpperCase() })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono uppercase"
@@ -282,7 +295,44 @@ export const SettingsPage = () => {
               </div>
             </div>
 
-            {isSuperAdmin && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Cash Opening Balance</label>
+                <input
+                  type="number"
+                  disabled={!isAdmin}
+                  value={settings.cashOpeningBalance || 0}
+                  onChange={(e) => setSettings({ ...settings, cashOpeningBalance: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Bank Opening Balance</label>
+                <input
+                  type="number"
+                  disabled={!isAdmin}
+                  value={settings.bankOpeningBalance || 0}
+                  onChange={(e) => setSettings({ ...settings, bankOpeningBalance: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block font-semibold text-slate-700 mb-1">Available UPI Methods (Comma Separated)</label>
+              <input
+                type="text"
+                disabled={!isAdmin}
+                placeholder="e.g. GPay, PhonePe, Paytm, Amazon Pay"
+                value={upiMethodsInput}
+                onChange={handleUpiMethodsChange}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">Enter your supported UPI apps separated by commas.</p>
+            </div>
+
+            {isAdmin && (
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
@@ -308,7 +358,7 @@ export const SettingsPage = () => {
                 <input
                   type="text"
                   required
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.invoicePrefix}
                   onChange={(e) => setSettings({ ...settings, invoicePrefix: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
@@ -319,7 +369,7 @@ export const SettingsPage = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Next Sequence Number</label>
                 <input
                   type="number"
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   value={settings.invoiceNextNumber}
                   onChange={(e) => setSettings({ ...settings, invoiceNextNumber: parseInt(e.target.value, 10) || 1001 })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono"
@@ -331,7 +381,7 @@ export const SettingsPage = () => {
               <label className="block font-semibold text-slate-700 mb-1">Default Terms & Conditions (Appears on Invoices)</label>
               <textarea
                 rows="4"
-                disabled={!isSuperAdmin}
+                disabled={!isAdmin}
                 value={settings.termsAndConditions || ''}
                 onChange={(e) => setSettings({ ...settings, termsAndConditions: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100 font-mono text-[11px]"
@@ -342,14 +392,16 @@ export const SettingsPage = () => {
               <label className="block font-semibold text-slate-700 mb-1">Invoice Footer Greeting</label>
               <input
                 type="text"
-                disabled={!isSuperAdmin}
+                disabled={!isAdmin}
                 value={settings.invoiceFooter || ''}
                 onChange={(e) => setSettings({ ...settings, invoiceFooter: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-slate-100"
               />
             </div>
 
-            {isSuperAdmin && (
+
+
+            {isAdmin && (
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
@@ -357,7 +409,7 @@ export const SettingsPage = () => {
                   className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-md shadow-brand-600/20 flex items-center gap-2 transition disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? 'Saving...' : 'Save Invoice Configuration'}
+                  {saving ? 'Saving...' : 'Save Invoice Settings'}
                 </button>
               </div>
             )}

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const customerSchema = new mongoose.Schema(
   {
@@ -44,11 +45,6 @@ const customerSchema = new mongoose.Schema(
       uppercase: true,
       default: ''
     },
-    nationality: {
-      type: String,
-      trim: true,
-      default: ''
-    },
     notes: {
       type: String,
       default: ''
@@ -57,6 +53,12 @@ const customerSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive'],
       default: 'active'
+    },
+    password: {
+      type: String,
+      required: false,
+      minlength: 6,
+      select: false
     }
   },
   {
@@ -65,5 +67,17 @@ const customerSchema = new mongoose.Schema(
     toObject: { virtuals: true, getters: true }
   }
 );
+
+customerSchema.pre('save', async function (next) {
+  if (!this.isModified('password') || !this.password) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+customerSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.models.Customer || mongoose.model('Customer', customerSchema);

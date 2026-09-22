@@ -36,7 +36,10 @@ exports.updateSettings = async (req, res, next) => {
       invoicePrefix,
       invoiceNextNumber,
       termsAndConditions,
-      invoiceFooter
+      invoiceFooter,
+      cashOpeningBalance,
+      bankOpeningBalance,
+      upiMethods
     } = req.body;
 
     if (agencyName) settings.agencyName = agencyName.trim();
@@ -51,6 +54,9 @@ exports.updateSettings = async (req, res, next) => {
     if (invoiceNextNumber !== undefined) settings.invoiceNextNumber = parseInt(invoiceNextNumber, 10);
     if (termsAndConditions !== undefined) settings.termsAndConditions = termsAndConditions;
     if (invoiceFooter !== undefined) settings.invoiceFooter = invoiceFooter;
+    if (cashOpeningBalance !== undefined) settings.cashOpeningBalance = parseFloat(cashOpeningBalance) || 0;
+    if (bankOpeningBalance !== undefined) settings.bankOpeningBalance = parseFloat(bankOpeningBalance) || 0;
+    if (upiMethods !== undefined && Array.isArray(upiMethods)) settings.upiMethods = upiMethods;
 
     await settings.save();
 

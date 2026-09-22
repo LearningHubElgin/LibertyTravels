@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Plane,
   Train,
@@ -37,10 +37,15 @@ import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
 
 export const NewBookingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { success, error: toastError } = useToast();
+
+  const editMode = location.state?.editMode || false;
+  const editData = location.state?.editData || null;
 
   const [companies, setCompanies] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
@@ -83,6 +88,7 @@ export const NewBookingPage = () => {
     // Initial Payment
     initialPayment: 0,
     paymentMethod: 'cash',
+    upiMethod: '',
     paymentReference: '',
     paymentNotes: '',
 
@@ -96,6 +102,45 @@ export const NewBookingPage = () => {
 
   // Extra passengers / guests count
   const [extraGuests, setExtraGuests] = useState(0);
+
+  useEffect(() => {
+    if (editMode && editData) {
+      setFormData({
+        serviceType: editData.serviceType || 'flight',
+        companyId: editData.company?._id || editData.companyId || '',
+        bookingDate: editData.bookingDate ? new Date(editData.bookingDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        referenceNo: editData.referenceNo || editData.pnr || '',
+        description: editData.description || editData.sector || '',
+        passengerName: editData.passengerName || '',
+        
+        customerId: editData.customer?._id || editData.customerId || '',
+        customerName: editData.customer?.name || '',
+        customerPhone: editData.customer?.phone || '',
+        customerEmail: editData.customer?.email || '',
+        customerAddress: editData.customer?.address || '',
+        
+        costPrice: editData.costPrice || 0,
+        sellPrice: editData.sellPrice || editData.baseFare || 0,
+        
+        initialPayment: editData.initialPayment || 0,
+        paymentMethod: editData.paymentMethod || 'cash',
+        upiMethod: editData.upiMethod || '',
+        paymentReference: editData.paymentReference || '',
+        paymentNotes: editData.paymentNotes || '',
+        
+        journeyDate: editData.journeyDate ? new Date(editData.journeyDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        returnDate: editData.returnDate ? new Date(editData.returnDate).toISOString().split('T')[0] : '',
+        bookingType: editData.bookingType || 'one_way',
+        status: editData.status || 'confirmed',
+        notes: editData.notes || ''
+      });
+      setExtraGuests(editData.extraGuests || 0);
+      if (editData.customer) {
+        setCustomerMode('existing');
+        setCustomerSearch(editData.customer.name || editData.customer.phone || '');
+      }
+    }
+  }, [editMode, editData]);
   const totalPassengersCount = 1 + (parseInt(extraGuests, 10) || 0);
 
   // Per-ticket rates for live multiplication
@@ -212,9 +257,10 @@ export const NewBookingPage = () => {
   // Load Companies & Customers
   const loadMasterData = async () => {
     try {
-      const [companiesRes, customersRes] = await Promise.all([
+      const [companiesRes, customersRes, settingsRes] = await Promise.all([
         api.get('/companies?status=active'),
-        api.get('/customers?limit=200')
+        api.get('/customers?limit=200'),
+        api.get('/settings')
       ]);
 
       if (companiesRes.data.success) {
@@ -222,6 +268,9 @@ export const NewBookingPage = () => {
       }
       if (customersRes.data.success) {
         setCustomers(customersRes.data.customers || []);
+      }
+      if (settingsRes.data.success) {
+        setUpiMethods(settingsRes.data.settings?.upiMethods || []);
       }
     } catch (e) {
       console.error('Failed to load master data:', e);
@@ -466,14 +515,23 @@ export const NewBookingPage = () => {
         payload.customerAddress = formData.customerAddress?.trim();
       }
 
-      const res = await api.post('/bookings', payload);
-      if (res.data.success) {
-        success(`Booking ${res.data.booking.referenceNo} created successfully!`);
-        const targetId = res.data.booking?.id || res.data.booking?._id;
-        if (targetId) {
-          navigate(`/bookings/${targetId}`);
-        } else {
-          navigate('/bookings');
+      if (editMode && editData) {
+        const bookingId = editData._id || editData.id;
+        const res = await api.put(`/bookings/${bookingId}`, payload);
+        if (res.data.success) {
+          success(`Booking ${res.data.booking?.referenceNo || ''} updated successfully!`);
+          navigate(`/bookings/${bookingId}`);
+        }
+      } else {
+        const res = await api.post('/bookings', payload);
+        if (res.data.success) {
+          success(`Booking ${res.data.booking.referenceNo} created successfully!`);
+          const targetId = res.data.booking?.id || res.data.booking?._id;
+          if (targetId) {
+            navigate(`/bookings/${targetId}`);
+          } else {
+            navigate('/bookings');
+          }
         }
       }
     } catch (err) {
@@ -486,10 +544,10 @@ export const NewBookingPage = () => {
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-10 min-w-0">
       <PageHeader
-        title="Create New Booking"
+        title={editMode ? "Edit Booking" : "Create New Booking"}
         subtitle="Universal booking module for Flight, Train, Bus, Hotel, and Car reservations"
         icon={CurrentIcon}
-        breadcrumbs={['Bookings', 'New Booking']}
+        breadcrumbs={['Bookings', editMode ? 'Edit Booking' : 'New Booking']}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -1278,6 +1336,10 @@ export const NewBookingPage = () => {
                         <span>SGST ({gstRate/2}%):</span>
                         <span>₹{(calculatedGst / 2).toLocaleString('en-IN')}</span>
                       </div>
+                      <div className="flex justify-between text-amber-400 font-semibold border-t border-slate-800/50 pt-0.5 mt-0.5">
+                        <span>Total GST (CGST+SGST):</span>
+                        <span>₹{calculatedGst.toLocaleString('en-IN')}</span>
+                      </div>
                     </>
                   )}
                   <div className="flex justify-between text-emerald-400 font-bold border-t border-slate-800 pt-1">
@@ -1315,20 +1377,44 @@ export const NewBookingPage = () => {
                   {initPayment > 0 && (
                     <div className="space-y-2">
                       <div>
-                        <label className="block font-semibold text-slate-600 mb-1">Payment Method</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide">
+                          Payment Method
+                        </label>
                         <select
+                          required
                           value={formData.paymentMethod}
-                          onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              paymentMethod: e.target.value,
+                              upiMethod: e.target.value !== 'upi' ? '' : formData.upiMethod
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
                         >
                           <option value="cash">Cash</option>
-                          <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
-                          <option value="bank_transfer">Bank Transfer / NEFT / IMPS</option>
-                          <option value="card">Credit / Debit Card</option>
-                          <option value="cheque">Cheque</option>
-                          <option value="other">Other</option>
+                          <option value="upi">UPI</option>
                         </select>
                       </div>
+
+                      {formData.paymentMethod === 'upi' && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide">
+                            UPI Method *
+                          </label>
+                          <select
+                            required
+                            value={formData.upiMethod}
+                            onChange={(e) => setFormData({ ...formData, upiMethod: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                          >
+                            <option value="">Select UPI App</option>
+                            {upiMethods.map((m, i) => (
+                              <option key={i} value={m}>{m}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
                       <div>
                         <label className="block font-semibold text-slate-600 mb-1">Payment Ref / Txn ID</label>

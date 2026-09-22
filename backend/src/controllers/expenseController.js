@@ -67,6 +67,7 @@ exports.createExpense = async (req, res, next) => {
       description,
       amount,
       paymentMethod = 'bank_transfer',
+      upiMethod,
       paidTo,
       reference,
       notes
@@ -93,6 +94,7 @@ exports.createExpense = async (req, res, next) => {
       description: description.trim(),
       amount: expAmount,
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       paidTo: paidTo.trim(),
       reference: reference ? reference.trim() : '',
       notes: notes ? notes.trim() : '',
@@ -109,6 +111,7 @@ exports.createExpense = async (req, res, next) => {
       credit: 0.00,
       balance: toDecimal(-expAmount),
       paymentMethod,
+      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 
@@ -134,7 +137,7 @@ exports.createExpense = async (req, res, next) => {
 exports.updateExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { expenseDate, category, description, amount, paymentMethod, paidTo, reference, notes } = req.body;
+    const { expenseDate, category, description, amount, paymentMethod, upiMethod, paidTo, reference, notes } = req.body;
 
     const expense = await Expense.findById(id);
     if (!expense) {
@@ -146,6 +149,9 @@ exports.updateExpense = async (req, res, next) => {
     if (description) expense.description = description.trim();
     if (amount !== undefined) expense.amount = toDecimal(amount);
     if (paymentMethod) expense.paymentMethod = paymentMethod;
+    if (upiMethod !== undefined) {
+      expense.upiMethod = (paymentMethod || expense.paymentMethod) === 'upi' ? upiMethod : null;
+    }
     if (paidTo) expense.paidTo = paidTo.trim();
     if (reference !== undefined) expense.reference = reference ? reference.trim() : '';
     if (notes !== undefined) expense.notes = notes ? notes.trim() : '';

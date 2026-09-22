@@ -9,6 +9,7 @@ router.get('/', companyController.getCompanies);
 router.get('/:id', companyController.getCompanyDetails);
 router.post('/', companyController.createCompany);
 router.post('/:id/deposit', companyController.depositFunds);
+router.post('/:id/reward', companyController.receiveReward);
 router.put('/:id', companyController.updateCompany);
 router.delete('/:id', companyController.deleteCompany);
 

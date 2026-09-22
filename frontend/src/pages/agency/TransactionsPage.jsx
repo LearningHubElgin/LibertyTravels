@@ -22,6 +22,7 @@ export const TransactionsPage = () => {
   const { success, error: toastError } = useToast();
 
   const [transactions, setTransactions] = useState([]);
+  const [upiMethods, setUpiMethods] = useState([]);
   const [summary, setSummary] = useState({ totalDebit: 0, totalCredit: 0, netFlow: 0 });
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 1 });
@@ -44,7 +45,8 @@ export const TransactionsPage = () => {
     type: 'adjustment',
     debit: 0,
     credit: 0,
-    paymentMethod: 'bank_transfer'
+    paymentMethod: 'cash',
+    upiMethod: ''
   });
 
   const fetchTransactions = async () => {
@@ -61,6 +63,13 @@ export const TransactionsPage = () => {
         setTransactions(res.data.transactions || []);
         setSummary(res.data.summary || { totalDebit: 0, totalCredit: 0, netFlow: 0 });
         setPagination(res.data.pagination);
+      }
+      
+      if (upiMethods.length === 0) {
+        const settingsRes = await api.get('/settings');
+        if (settingsRes.data.success) {
+          setUpiMethods(settingsRes.data.settings?.upiMethods || []);
+        }
       }
     } catch (e) {
       console.error('Failed to fetch transactions:', e);
@@ -98,7 +107,8 @@ export const TransactionsPage = () => {
           type: 'adjustment',
           debit: 0,
           credit: 0,
-          paymentMethod: 'bank_transfer'
+          paymentMethod: 'cash',
+          upiMethod: ''
         });
         fetchTransactions();
       }
@@ -175,7 +185,7 @@ export const TransactionsPage = () => {
       header: 'Method',
       render: (row) => (
         <span className="font-mono text-[11px] text-slate-600 uppercase">
-          {row.paymentMethod || '-'}
+          {row.paymentMethod || '-'} {row.upiMethod ? `(${row.upiMethod})` : ''}
         </span>
       )
     },
@@ -440,20 +450,41 @@ export const TransactionsPage = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
-            <select
-              value={txnForm.paymentMethod}
-              onChange={(e) => setTxnForm({ ...txnForm, paymentMethod: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
-            >
-              <option value="bank_transfer">Bank Transfer / NEFT</option>
-              <option value="upi">UPI</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="cheque">Cheque</option>
-              <option value="other">Other</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className={txnForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
+              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+              <select
+                value={txnForm.paymentMethod}
+                onChange={(e) => {
+                  setTxnForm({
+                    ...txnForm,
+                    paymentMethod: e.target.value,
+                    upiMethod: e.target.value !== 'upi' ? '' : txnForm.upiMethod
+                  });
+                }}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+              </select>
+            </div>
+
+            {txnForm.paymentMethod === 'upi' && (
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                <select
+                  required
+                  value={txnForm.upiMethod}
+                  onChange={(e) => setTxnForm({ ...txnForm, upiMethod: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                >
+                  <option value="">Select UPI App</option>
+                  {upiMethods.map((m, i) => (
+                    <option key={i} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </form>
       </Modal>

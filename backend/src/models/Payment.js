@@ -43,6 +43,10 @@ const paymentSchema = new mongoose.Schema(
       default: 'cash',
       index: true
     },
+    upiMethod: {
+      type: String,
+      default: null
+    },
     reference: {
       type: String,
       default: '',

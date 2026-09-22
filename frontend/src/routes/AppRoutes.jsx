@@ -6,15 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 
 // Lazy-loaded route components for high-speed initial bundle delivery
-const LandingPage = lazy(() => import('../pages/LandingPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage').then(m => ({ default: m.LoginPage })));
-const CustomerLoginPage = lazy(() => import('../pages/CustomerLoginPage'));
-
-const CustomerLayout = lazy(() => import('../layouts/CustomerLayout'));
-const CustomerDashboard = lazy(() => import('../pages/customer/CustomerDashboard'));
-const CustomerProfile = lazy(() => import('../pages/customer/CustomerProfile'));
-const CustomerBookings = lazy(() => import('../pages/customer/CustomerBookings'));
-const CustomerLedger = lazy(() => import('../pages/customer/CustomerLedger'));
 
 // Super Admin Pages
 const SuperAdminDashboardPage = lazy(() => import('../pages/superadmin/SuperAdminDashboardPage').then(m => ({ default: m.SuperAdminDashboardPage })));
@@ -49,35 +41,24 @@ const PageLoader = () => (
   </div>
 );
 
-
+// Dynamic Role-Based Index Redirection
+const IndexRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'super_admin') {
+    return <Navigate to="/superadmin/dashboard" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
 
 export const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Auth Route */}
-      {/* Public Landing Page */}
-      <Route
-        path="/"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <LandingPage />
-          </Suspense>
-        }
-      />
-
       <Route
         path="/login"
         element={
           <Suspense fallback={<PageLoader />}>
             <LoginPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/customer-login"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <CustomerLoginPage />
           </Suspense>
         }
       />
@@ -90,7 +71,8 @@ export const AppRoutes = () => {
           </ProtectedRoute>
         }
       >
-        {/* ---------------------------------------------------- */}
+        {/* Dynamic Entry based on User Role */}
+        <Route path="/" element={<IndexRedirect />} />
 
         {/* ---------------------------------------------------- */}
         {/* 1. SUPER ADMIN CONTROL PORTAL                        */}
@@ -176,26 +158,8 @@ export const AppRoutes = () => {
         <Route path="/settings" element={<ProtectedRoute agencyOnly><SettingsPage /></ProtectedRoute>} />
       </Route>
 
-      {/* ---------------------------------------------------- */}
-      {/* 3. CUSTOMER PORTAL                                   */}
-      {/* ---------------------------------------------------- */}
-      <Route
-        element={
-          <ProtectedRoute customerOnly>
-            <Suspense fallback={<PageLoader />}>
-              <CustomerLayout />
-            </Suspense>
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/customer/dashboard" element={<CustomerDashboard />} />
-        <Route path="/customer/profile" element={<CustomerProfile />} />
-        <Route path="/customer/bookings" element={<CustomerBookings />} />
-        <Route path="/customer/ledger" element={<CustomerLedger />} />
-      </Route>
-
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<IndexRedirect />} />
     </Routes>
   );
 };
