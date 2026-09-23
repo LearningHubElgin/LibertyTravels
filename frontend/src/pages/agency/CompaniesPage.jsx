@@ -346,7 +346,7 @@ export const CompaniesPage = () => {
           <Link
             to={`/companies/${row.id || row._id}`}
             onClick={(e) => e.stopPropagation()}
-            title="View Full Company Profile, Bookings & Stock Log"
+            title="View Full Company Profile, Bookings & Deposit Balance"
             className="p-1.5 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition"
           >
             <Eye className="w-4 h-4" />
@@ -401,15 +401,13 @@ export const CompaniesPage = () => {
   // Quick stats
   const totalVolume = companies.reduce((acc, c) => acc + (c.totalRevenue || 0), 0);
   const totalBookingsCount = companies.reduce((acc, c) => acc + (c.totalBookings || 0), 0);
-  const totalStockTickets = companies.reduce((acc, c) => acc + (c.totalPurchasedTickets || 0), 0);
-  const totalAvailTickets = companies.reduce((acc, c) => acc + (c.availableTickets || 0), 0);
   const totalWalletDeposit = companies.reduce((acc, c) => acc + (c.walletBalance || 0), 0);
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-8 min-w-0">
       <PageHeader
         title="Companies & Suppliers"
-        subtitle="Manage flight operators, railway networks, bus lines, hotel chains, ticket stock inventory and deposit balances"
+        subtitle="Manage flight operators, railway networks, bus lines, hotel chains, deposit float balances and transactions"
         icon={Building2}
         breadcrumbs={['Master', 'Companies']}
         actions={
@@ -436,10 +434,9 @@ export const CompaniesPage = () => {
 
         <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 shadow-xs flex items-center justify-between hover:shadow-card-hover transition-all">
           <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Tickets in Stock</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Bookings Issued</p>
             <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono mt-0.5">
-              {totalAvailTickets.toLocaleString('en-IN')}
-              <span className="text-xs text-slate-400 font-normal ml-1">/ {totalStockTickets}</span>
+              {totalBookingsCount.toLocaleString('en-IN')}
             </p>
           </div>
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -449,7 +446,7 @@ export const CompaniesPage = () => {
 
         <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 border-l-4 border-l-teal-500 shadow-xs flex items-center justify-between hover:shadow-card-hover transition-all">
           <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Wallet / Deposit</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Deposit Float Balance</p>
             <p className="text-xl sm:text-2xl font-black text-teal-700 font-mono mt-0.5">₹{totalWalletDeposit.toLocaleString('en-IN')}</p>
           </div>
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
