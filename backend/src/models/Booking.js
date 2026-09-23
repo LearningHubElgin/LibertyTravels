@@ -164,6 +164,18 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
       default: ''
+    },
+    supplierRefundAmount: {
+      type: Number,
+      default: 0
+    },
+    customerRefundAmount: {
+      type: Number,
+      default: 0
+    },
+    cancellationReason: {
+      type: String,
+      default: ''
     }
   },
   {

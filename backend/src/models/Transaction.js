@@ -43,11 +43,31 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    accountType: {
+      type: String,
+      enum: ['cash', 'bank', 'none'],
+      default: 'cash',
+      index: true
+    },
+    bankId: {
+      type: String,
+      default: null,
+      index: true
+    },
+    bankName: {
+      type: String,
+      default: null,
+      index: true
+    },
     paymentMethod: {
       type: String,
       default: null
     },
     upiMethod: {
+      type: String,
+      default: null
+    },
+    upiApp: {
       type: String,
       default: null
     },

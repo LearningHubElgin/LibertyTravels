@@ -12,6 +12,7 @@ router.get('/:id', bookingController.getBookingById);
 router.put('/:id', bookingController.updateBooking);
 router.put('/:id/status', bookingController.updateBookingStatus);
 router.patch('/:id/status', bookingController.updateBookingStatus);
+router.post('/:id/cancel', bookingController.cancelBooking);
 router.post('/:id/payments', bookingController.addPaymentToBooking);
 router.delete('/:id', bookingController.deleteBooking);
 

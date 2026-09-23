@@ -34,6 +34,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { DateInput } from '../../components/common/DateInput';
 import { Modal } from '../../components/common/Modal';
 import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
+import { SplitPaymentInput } from '../../components/common/SplitPaymentInput';
 
 export const NewBookingPage = () => {
   const navigate = useNavigate();
@@ -49,6 +50,19 @@ export const NewBookingPage = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+
+  // Split payment state
+  const [splitPaymentData, setSplitPaymentData] = useState({
+    isSplit: false,
+    accountType: 'cash',
+    bankId: null,
+    bankName: null,
+    paymentMethod: 'cash',
+    upiMethod: null,
+    upiApp: null,
+    paymentReference: '',
+    splits: []
+  });
 
   // Quick Add Company Modal
   const [isQuickCompanyModalOpen, setIsQuickCompanyModalOpen] = useState(false);
@@ -498,9 +512,16 @@ export const NewBookingPage = () => {
         profit: netProfit,
 
         initialPayment: initPayment,
-        paymentMethod: formData.paymentMethod,
-        paymentReference: formData.paymentReference,
+        accountType: splitPaymentData.accountType,
+        bankId: splitPaymentData.bankId,
+        bankName: splitPaymentData.bankName,
+        paymentMethod: splitPaymentData.paymentMethod || formData.paymentMethod,
+        upiMethod: splitPaymentData.upiMethod,
+        upiApp: splitPaymentData.upiApp,
+        paymentReference: splitPaymentData.paymentReference || formData.paymentReference,
         paymentNotes: formData.paymentNotes,
+        paymentSplits: splitPaymentData.splits || [],
+        splits: splitPaymentData.splits || [],
         status: formData.status,
 
         passengers: passengersPayload
@@ -1375,57 +1396,12 @@ export const NewBookingPage = () => {
                   </div>
 
                   {initPayment > 0 && (
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide">
-                          Payment Method
-                        </label>
-                        <select
-                          required
-                          value={formData.paymentMethod}
-                          onChange={(e) => {
-                            setFormData({
-                              ...formData,
-                              paymentMethod: e.target.value,
-                              upiMethod: e.target.value !== 'upi' ? '' : formData.upiMethod
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-                        >
-                          <option value="cash">Cash</option>
-                          <option value="upi">UPI</option>
-                        </select>
-                      </div>
-
-                      {formData.paymentMethod === 'upi' && (
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wide">
-                            UPI Method *
-                          </label>
-                          <select
-                            required
-                            value={formData.upiMethod}
-                            onChange={(e) => setFormData({ ...formData, upiMethod: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-                          >
-                            <option value="">Select UPI App</option>
-                            {upiMethods.map((m, i) => (
-                              <option key={i} value={m}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block font-semibold text-slate-600 mb-1">Payment Ref / Txn ID</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. UPI-998822"
-                          value={formData.paymentReference}
-                          onChange={(e) => setFormData({ ...formData, paymentReference: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono focus:outline-none"
-                        />
-                      </div>
+                    <div className="pt-1">
+                      <SplitPaymentInput
+                        initialPayment={formData.initialPayment}
+                        totalAmount={finalTotalAmount}
+                        onChange={setSplitPaymentData}
+                      />
                     </div>
                   )}
 

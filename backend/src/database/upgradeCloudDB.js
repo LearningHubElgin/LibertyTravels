@@ -114,13 +114,32 @@ async function upgradeCloudDatabase() {
   }
   console.log('👑 Verified Super Admin: superadmin / password123');
 
-  // 4. Ensure Liberty Agency Admin (admin@libertytravel.com / admin123)
+  // 4. Ensure Liberty Agency Admin (Liberty / Liberty123 & admin@libertytravel.com / Liberty123)
+  let libertyUser = await User.findOne({ email: 'liberty' });
+  if (!libertyUser) {
+    libertyUser = await User.create({
+      name: 'Liberty Management',
+      email: 'liberty',
+      password: 'Liberty123',
+      role: ROLES.ADMIN,
+      agencyId: masterAgency._id,
+      status: USER_STATUS.ACTIVE
+    });
+  } else {
+    libertyUser.name = 'Liberty Management';
+    libertyUser.role = ROLES.ADMIN;
+    libertyUser.agencyId = masterAgency._id;
+    libertyUser.password = 'Liberty123';
+    await libertyUser.save();
+  }
+  console.log('🏢 Verified Liberty Admin: Liberty / Liberty123');
+
   let libertyAdmin = await User.findOne({ email: 'admin@libertytravel.com' });
   if (!libertyAdmin) {
     libertyAdmin = await User.create({
       name: 'Liberty Admin',
       email: 'admin@libertytravel.com',
-      password: 'admin123',
+      password: 'Liberty123',
       role: ROLES.ADMIN,
       agencyId: masterAgency._id,
       status: USER_STATUS.ACTIVE
@@ -129,10 +148,9 @@ async function upgradeCloudDatabase() {
     libertyAdmin.name = 'Liberty Admin';
     libertyAdmin.role = ROLES.ADMIN;
     libertyAdmin.agencyId = masterAgency._id;
-    libertyAdmin.password = 'admin123';
+    libertyAdmin.password = 'Liberty123';
     await libertyAdmin.save();
   }
-  console.log('🏢 Verified Liberty Admin: admin@libertytravel.com / admin123');
 
   // 5. Ensure Royal Agency Admin (admin@royalheritageholidays.com / agency123)
   let royalAdmin = await User.findOne({ email: 'admin@royalheritageholidays.com' });

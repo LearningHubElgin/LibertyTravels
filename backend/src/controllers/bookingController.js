@@ -201,6 +201,12 @@ exports.createBooking = async (req, res, next) => {
       initialPayment = 0,
       paymentMethod = 'cash',
       upiMethod,
+      upiApp,
+      accountType = 'cash',
+      bankId = null,
+      bankName = null,
+      paymentSplits = [],
+      splits = [],
       paymentReference,
       paymentNotes,
       notes = '',
@@ -385,35 +391,87 @@ exports.createBooking = async (req, res, next) => {
     });
 
     if (initPay > 0) {
+      const activeSplits = (paymentSplits && paymentSplits.length > 0) ? paymentSplits : (splits && splits.length > 0 ? splits : []);
+      const isSplit = activeSplits.length > 0;
       const payRef = paymentReference || await generatePaymentReference();
+
       await Payment.create({
         receiptNo: payRef,
         bookingId: booking._id,
         customerId,
         amount: initPay,
         paymentDate: bookingDate,
-        paymentMethod,
-        upiMethod: paymentMethod === 'upi' ? upiMethod : null,
+        accountType: isSplit ? 'cash' : (accountType || (paymentMethod === 'cash' ? 'cash' : 'bank')),
+        bankId: isSplit ? null : (bankId || null),
+        bankName: isSplit ? null : (bankName || null),
+        paymentMethod: isSplit ? 'other' : paymentMethod,
+        upiMethod: isSplit ? null : (upiMethod || upiApp || null),
+        upiApp: isSplit ? null : (upiApp || upiMethod || null),
+        splits: isSplit ? activeSplits.map(s => ({
+          accountType: s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank'),
+          bankId: s.bankId || null,
+          bankName: s.bankName || null,
+          paymentMethod: s.paymentMethod || 'cash',
+          upiApp: s.upiApp || s.upiMethod || null,
+          amount: toDecimal(s.amount),
+          reference: s.reference || ''
+        })) : [],
         reference: payRef,
         notes: paymentNotes || `Initial payment received for ${booking.referenceNo}`,
         receivedBy: req.user ? (req.user.id || req.user._id) : null
       });
 
-      const txnRef2 = await generateTransactionReference('TXN-PAY');
-      await Transaction.create({
-        transactionDate: bookingDate,
-        referenceNo: txnRef2,
-        bookingId: booking._id,
-        customerId,
-        description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}`,
-        type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-        debit: 0.00,
-        credit: initPay,
-        balance: toDecimal(effectiveTotal - initPay),
-        paymentMethod,
-        upiMethod: paymentMethod === 'upi' ? upiMethod : null,
-        createdBy: req.user ? (req.user.id || req.user._id) : null
-      });
+      if (isSplit) {
+        for (const s of activeSplits) {
+          const sAmount = toDecimal(s.amount);
+          if (sAmount <= 0) continue;
+          const txnRef = await generateTransactionReference('TXN-PAY');
+          const sAccountType = s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank');
+          const sBankDesc = s.bankName ? ` (${s.bankName})` : '';
+          const sUpiDesc = s.upiApp ? ` via ${s.upiApp}` : '';
+          await Transaction.create({
+            transactionDate: bookingDate,
+            referenceNo: txnRef,
+            bookingId: booking._id,
+            customerId,
+            description: `Payment received for ${booking.referenceNo} [Split] - ${s.paymentMethod.toUpperCase()}${sBankDesc}${sUpiDesc}`,
+            type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+            debit: 0.00,
+            credit: sAmount,
+            balance: toDecimal(effectiveTotal - initPay),
+            accountType: sAccountType,
+            bankId: s.bankId || null,
+            bankName: s.bankName || null,
+            paymentMethod: s.paymentMethod,
+            upiMethod: s.upiApp || s.upiMethod || null,
+            upiApp: s.upiApp || null,
+            createdBy: req.user ? (req.user.id || req.user._id) : null
+          });
+        }
+      } else {
+        const txnRef2 = await generateTransactionReference('TXN-PAY');
+        const singleAccountType = accountType || (paymentMethod === 'cash' ? 'cash' : 'bank');
+        const bankDesc = bankName ? ` (${bankName})` : '';
+        const upiDesc = (upiApp || upiMethod) ? ` via ${upiApp || upiMethod}` : '';
+        await Transaction.create({
+          transactionDate: bookingDate,
+          referenceNo: txnRef2,
+          bookingId: booking._id,
+          customerId,
+          description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}${bankDesc}${upiDesc}`,
+          type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+          debit: 0.00,
+          credit: initPay,
+          balance: toDecimal(effectiveTotal - initPay),
+          accountType: singleAccountType,
+          bankId: bankId || null,
+          bankName: bankName || null,
+          paymentMethod,
+          upiMethod: upiMethod || upiApp || null,
+          upiApp: upiApp || upiMethod || null,
+          createdBy: req.user ? (req.user.id || req.user._id) : null
+        });
+      }
     }
 
     if (chosenCompanyId) {
@@ -661,8 +719,20 @@ exports.updateBookingStatus = async (req, res, next) => {
  */
 exports.addPaymentToBooking = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { amount, paymentDate = new Date().toISOString().split('T')[0], paymentMethod = 'cash', upiMethod, reference, notes } = req.body;
+    const {
+      amount,
+      paymentDate = new Date().toISOString().split('T')[0],
+      accountType = 'cash',
+      bankId = null,
+      bankName = null,
+      paymentMethod = 'cash',
+      upiMethod,
+      upiApp,
+      splits = [],
+      paymentSplits = [],
+      reference,
+      notes
+    } = req.body;
 
     const payAmount = toDecimal(amount);
     if (payAmount <= 0) {
@@ -678,29 +748,45 @@ exports.addPaymentToBooking = async (req, res, next) => {
     }
 
     const currentBalance = parseFloat(booking.balanceDue);
-    if (payAmount > currentBalance) {
+    if (payAmount > currentBalance + 0.01) {
       return res.status(400).json({
         success: false,
         message: `Payment amount (₹${payAmount}) cannot exceed outstanding balance (₹${currentBalance}).`
       });
     }
 
+    const activeSplits = (paymentSplits && paymentSplits.length > 0) ? paymentSplits : (splits && splits.length > 0 ? splits : []);
+    const isSplit = activeSplits.length > 0;
     const payRef = reference || await generatePaymentReference();
+
     const payment = await Payment.create({
       receiptNo: payRef,
       bookingId: booking._id,
       customerId: booking.customerId,
       amount: payAmount,
       paymentDate,
-      paymentMethod,
-      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
+      accountType: isSplit ? 'cash' : (accountType || (paymentMethod === 'cash' ? 'cash' : 'bank')),
+      bankId: isSplit ? null : (bankId || null),
+      bankName: isSplit ? null : (bankName || null),
+      paymentMethod: isSplit ? 'other' : paymentMethod,
+      upiMethod: isSplit ? null : (upiMethod || upiApp || null),
+      upiApp: isSplit ? null : (upiApp || upiMethod || null),
+      splits: isSplit ? activeSplits.map(s => ({
+        accountType: s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank'),
+        bankId: s.bankId || null,
+        bankName: s.bankName || null,
+        paymentMethod: s.paymentMethod || 'cash',
+        upiApp: s.upiApp || s.upiMethod || null,
+        amount: toDecimal(s.amount),
+        reference: s.reference || ''
+      })) : [],
       reference: payRef,
       notes: notes || `Payment for booking ${booking.referenceNo}`,
       receivedBy: req.user ? (req.user.id || req.user._id) : null
     });
 
     const newAmountReceived = toDecimal(parseFloat(booking.amountReceived) + payAmount);
-    const newBalanceDue = toDecimal(parseFloat(booking.totalAmount) - newAmountReceived);
+    const newBalanceDue = toDecimal(Math.max(0, parseFloat(booking.totalAmount) - newAmountReceived));
     const newPaymentStatus = newBalanceDue <= 0 ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.PARTIALLY_PAID;
 
     booking.amountReceived = newAmountReceived;
@@ -708,21 +794,57 @@ exports.addPaymentToBooking = async (req, res, next) => {
     booking.paymentStatus = newPaymentStatus;
     await booking.save();
 
-    const txnRef = await generateTransactionReference('TXN-PAY');
-    await Transaction.create({
-      transactionDate: paymentDate,
-      referenceNo: txnRef,
-      bookingId: booking._id,
-      customerId: booking.customerId,
-      description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}`,
-      type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-      debit: 0.00,
-      credit: payAmount,
-      balance: newBalanceDue,
-      paymentMethod,
-      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
-      createdBy: req.user ? (req.user.id || req.user._id) : null
-    });
+    if (isSplit) {
+      for (const s of activeSplits) {
+        const sAmount = toDecimal(s.amount);
+        if (sAmount <= 0) continue;
+        const txnRef = await generateTransactionReference('TXN-PAY');
+        const sAccountType = s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank');
+        const sBankDesc = s.bankName ? ` (${s.bankName})` : '';
+        const sUpiDesc = s.upiApp ? ` via ${s.upiApp}` : '';
+        await Transaction.create({
+          transactionDate: paymentDate,
+          referenceNo: txnRef,
+          bookingId: booking._id,
+          customerId: booking.customerId,
+          description: `Payment received for ${booking.referenceNo} [Split] - ${s.paymentMethod.toUpperCase()}${sBankDesc}${sUpiDesc}`,
+          type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+          debit: 0.00,
+          credit: sAmount,
+          balance: newBalanceDue,
+          accountType: sAccountType,
+          bankId: s.bankId || null,
+          bankName: s.bankName || null,
+          paymentMethod: s.paymentMethod,
+          upiMethod: s.upiApp || s.upiMethod || null,
+          upiApp: s.upiApp || null,
+          createdBy: req.user ? (req.user.id || req.user._id) : null
+        });
+      }
+    } else {
+      const txnRef = await generateTransactionReference('TXN-PAY');
+      const singleAccountType = accountType || (paymentMethod === 'cash' ? 'cash' : 'bank');
+      const bankDesc = bankName ? ` (${bankName})` : '';
+      const upiDesc = (upiApp || upiMethod) ? ` via ${upiApp || upiMethod}` : '';
+      await Transaction.create({
+        transactionDate: paymentDate,
+        referenceNo: txnRef,
+        bookingId: booking._id,
+        customerId: booking.customerId,
+        description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}${bankDesc}${upiDesc}`,
+        type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+        debit: 0.00,
+        credit: payAmount,
+        balance: newBalanceDue,
+        accountType: singleAccountType,
+        bankId: bankId || null,
+        bankName: bankName || null,
+        paymentMethod,
+        upiMethod: upiMethod || upiApp || null,
+        upiApp: upiApp || upiMethod || null,
+        createdBy: req.user ? (req.user.id || req.user._id) : null
+      });
+    }
 
     await Notification.create({
       userId: null,
@@ -744,6 +866,80 @@ exports.addPaymentToBooking = async (req, res, next) => {
       success: true,
       message: 'Payment received successfully',
       payment: payment.toJSON(),
+      booking: booking.toJSON()
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Cancel a booking and handle refunds
+ */
+exports.cancelBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { 
+      supplierRefundAmount = 0, 
+      customerRefundAmount = 0, 
+      refundMethod = 'cash', 
+      cancellationReason = '' 
+    } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled' || booking.status === BOOKING_STATUS.CANCELLED) {
+      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    }
+
+    const oldStatus = booking.status;
+    const sRefund = toDecimal(supplierRefundAmount);
+    const cRefund = toDecimal(customerRefundAmount);
+
+    booking.status = 'cancelled';
+    booking.supplierRefundAmount = sRefund;
+    booking.customerRefundAmount = cRefund;
+    booking.cancellationReason = cancellationReason;
+
+    // Recalculate profit
+    const moneyKept = toDecimal((booking.amountReceived || 0) - cRefund);
+    const moneyLost = toDecimal((booking.costPrice || 0) - sRefund);
+    booking.profit = toDecimal(moneyKept - moneyLost);
+
+    await booking.save();
+
+    if (cRefund > 0) {
+      const txnRef = await generateTransactionReference('TXN-REF');
+      await Transaction.create({
+        transactionDate: new Date().toISOString().split('T')[0],
+        referenceNo: txnRef,
+        bookingId: booking._id,
+        customerId: booking.customerId,
+        description: `Refund for cancelled booking ${booking.referenceNo}`,
+        type: 'refund',
+        debit: cRefund,
+        credit: 0.00,
+        balance: booking.balanceDue, // or 0
+        paymentMethod: refundMethod,
+        createdBy: req.user ? (req.user.id || req.user._id) : null
+      });
+    }
+
+    await logActivity(
+      req.user ? (req.user.id || req.user._id) : null,
+      'Cancel Booking',
+      'Booking',
+      booking._id,
+      `Booking ${booking.referenceNo} cancelled. Supplier Refund: ₹${sRefund}, Customer Refund: ₹${cRefund}.`,
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully',
       booking: booking.toJSON()
     });
   } catch (error) {

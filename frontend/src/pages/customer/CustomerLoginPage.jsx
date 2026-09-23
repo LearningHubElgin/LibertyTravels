@@ -45,8 +45,8 @@ export const CustomerLoginPage = () => {
       </div>
 
       {/* Back Button */}
-      <Link 
-        to="/" 
+      <Link
+        to="/"
         className="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold transition-colors z-20"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -143,11 +143,11 @@ export const CustomerLoginPage = () => {
               </button>
             </div>
           </form>
-          
+
           <div className="mt-6 border-t border-slate-800 pt-6">
-             <div className="text-center text-xs text-slate-400">
-               Need help finding your User ID? Please contact your travel agency.
-             </div>
+            <div className="text-center text-xs text-slate-400">
+              Need help finding your User ID? Please contact your travel agency.
+            </div>
           </div>
         </div>
       </div>

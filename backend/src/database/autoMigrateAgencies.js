@@ -114,24 +114,43 @@ const autoMigrateAgencies = async () => {
       await superAdmin.save();
     }
 
-    // 5. Ensure Liberty Agency Admin (admin@libertytravel.com / admin123)
-    let libertyAdmin = await User.findOne({ email: 'admin@libertytravel.com' });
-    if (!libertyAdmin) {
-      libertyAdmin = await User.create({
-        name: 'Liberty Admin',
-        email: 'admin@libertytravel.com',
-        password: 'admin123',
+    // 5. Ensure Liberty Agency Management Admin (Liberty & admin@libertytravel.com / Liberty123)
+    let libertyUser = await User.findOne({ email: 'liberty' });
+    if (!libertyUser) {
+      libertyUser = await User.create({
+        name: 'Liberty Management',
+        email: 'liberty',
+        password: 'Liberty123',
         role: ROLES.ADMIN,
         agencyId: masterAgency._id,
         status: USER_STATUS.ACTIVE
       });
-      console.log('🏢 Created Liberty Agency Admin: admin@libertytravel.com / admin123');
+      console.log('🏢 Created Liberty Management User: Liberty / Liberty123');
     } else {
-      libertyAdmin.name = 'Liberty Admin';
-      libertyAdmin.role = ROLES.ADMIN;
-      libertyAdmin.agencyId = masterAgency._id;
-      libertyAdmin.password = 'admin123';
-      await libertyAdmin.save();
+      libertyUser.name = 'Liberty Management';
+      libertyUser.role = ROLES.ADMIN;
+      libertyUser.agencyId = masterAgency._id;
+      libertyUser.password = 'Liberty123';
+      await libertyUser.save();
+      console.log('🏢 Verified Liberty Management User: Liberty / Liberty123');
+    }
+
+    let libertyAdminEmail = await User.findOne({ email: 'admin@libertytravel.com' });
+    if (!libertyAdminEmail) {
+      libertyAdminEmail = await User.create({
+        name: 'Liberty Admin',
+        email: 'admin@libertytravel.com',
+        password: 'Liberty123',
+        role: ROLES.ADMIN,
+        agencyId: masterAgency._id,
+        status: USER_STATUS.ACTIVE
+      });
+    } else {
+      libertyAdminEmail.name = 'Liberty Admin';
+      libertyAdminEmail.role = ROLES.ADMIN;
+      libertyAdminEmail.agencyId = masterAgency._id;
+      libertyAdminEmail.password = 'Liberty123';
+      await libertyAdminEmail.save();
     }
 
     // 6. Clean up legacy accounts

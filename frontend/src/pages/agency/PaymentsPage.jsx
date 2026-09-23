@@ -14,6 +14,7 @@ import { DataTable } from '../../components/common/DataTable';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/common/Modal';
 import { formatDate } from '../../utils/formatters';
+import { SplitPaymentInput } from '../../components/common/SplitPaymentInput';
 
 export const PaymentsPage = () => {
   const { success, error: toastError } = useToast();
@@ -36,10 +37,18 @@ export const PaymentsPage = () => {
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'cash',
-    upiMethod: '',
-    reference: '',
     notes: ''
+  });
+  const [splitPaymentData, setSplitPaymentData] = useState({
+    isSplit: false,
+    accountType: 'cash',
+    bankId: null,
+    bankName: null,
+    paymentMethod: 'cash',
+    upiMethod: null,
+    upiApp: null,
+    paymentReference: '',
+    splits: []
   });
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -130,10 +139,22 @@ export const PaymentsPage = () => {
 
     setActionLoading(true);
     try {
-      const res = await api.post('/payments', {
+      const payload = {
         bookingId: selectedBookingId,
-        ...paymentForm
-      });
+        amount: amt,
+        paymentDate: paymentForm.paymentDate,
+        notes: paymentForm.notes,
+        accountType: splitPaymentData.accountType,
+        bankId: splitPaymentData.bankId,
+        bankName: splitPaymentData.bankName,
+        paymentMethod: splitPaymentData.paymentMethod,
+        upiMethod: splitPaymentData.upiMethod,
+        upiApp: splitPaymentData.upiApp,
+        reference: splitPaymentData.paymentReference,
+        splits: splitPaymentData.splits || []
+      };
+
+      const res = await api.post('/payments', payload);
       if (res.data.success) {
         success(`Payment of ₹${amt} received successfully!`);
         setIsReceiveModalOpen(false);
@@ -157,7 +178,7 @@ export const PaymentsPage = () => {
     {
       header: 'Payment Reference',
       render: (row) => (
-        <span className="font-mono font-bold text-xs text-brand-700">{row.reference || '-'}</span>
+        <span className="font-mono font-bold text-xs text-brand-700">{row.reference || row.receiptNo || '-'}</span>
       )
     },
     {
@@ -179,18 +200,47 @@ export const PaymentsPage = () => {
       )
     },
     {
+      header: 'Account / Mode',
+      render: (row) => {
+        const hasSplits = Array.isArray(row.splits) && row.splits.length > 0;
+        if (hasSplits) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 w-max">
+                Split ({row.splits.length} parts)
+              </span>
+              <div className="text-[10px] text-slate-500 font-mono">
+                {row.splits.map((s, idx) => (
+                  <span key={idx} className="block">
+                    {s.accountType === 'cash' ? '💵 Cash' : `🏦 ${s.bankName || 'Bank'}`}: ₹{s.amount}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        const isCash = row.accountType === 'cash' || row.paymentMethod === 'cash';
+        return (
+          <div className="flex flex-col gap-0.5">
+            {isCash ? (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 w-max">
+                💵 Cash Counter
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 w-max">
+                🏦 {row.bankName || 'Bank'} {row.upiApp ? `(${row.upiApp})` : ''}
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
       header: 'Amount Paid',
       className: 'text-right',
       cellClassName: 'text-right font-mono font-black text-sm text-emerald-600',
       render: (row) => formatCurrency(row.amount)
-    },
-    {
-      header: 'Method',
-      render: (row) => (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase font-mono">
-          {row.paymentMethod} {row.upiMethod ? `(${row.upiMethod})` : ''}
-        </span>
-      )
     },
     {
       header: 'Received By',
@@ -334,69 +384,31 @@ export const PaymentsPage = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Payment Date</label>
-                <input
-                  type="date"
-                  required
-                  value={paymentForm.paymentDate}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
-                <select
-                  value={paymentForm.paymentMethod}
-                  onChange={(e) => {
-                    setPaymentForm({
-                      ...paymentForm,
-                      paymentMethod: e.target.value,
-                      upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                </select>
-              </div>
-
-              {paymentForm.paymentMethod === 'upi' && (
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
-                  <select
-                    required
-                    value={paymentForm.upiMethod}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
-                  >
-                    <option value="">Select UPI App</option>
-                    {upiMethods.map((m, i) => (
-                      <option key={i} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Payment Date</label>
+              <input
+                type="date"
+                required
+                value={paymentForm.paymentDate}
+                onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+              />
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Reference / UTR / Cheque Number</label>
-              <input
-                type="text"
-                placeholder="e.g. UPI-99881122"
-                value={paymentForm.reference}
-                onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none font-mono"
+            {/* Split / Single Payment Component */}
+            <div className="pt-1">
+              <SplitPaymentInput
+                initialPayment={parseFloat(paymentForm.amount) || 0}
+                totalAmount={parseFloat(unpaidBookings.find(b => String(b.id) === String(selectedBookingId))?.balanceDue) || 0}
+                onChange={setSplitPaymentData}
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Notes</label>
+              <label className="block font-semibold text-slate-700 mb-1">Notes (Optional)</label>
               <textarea
                 rows="2"
+                placeholder="Add optional notes for this receipt..."
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"

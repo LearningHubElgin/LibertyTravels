@@ -31,6 +31,7 @@ import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import { EditBookingModal } from '../../components/booking/EditBookingModal';
+import { CancelBookingModal } from '../../components/booking/CancelBookingModal';
 import { useToast } from '../../context/ToastContext';
 import { formatDate, formatDateTime } from '../../utils/formatters';
 
@@ -474,6 +475,27 @@ export const BookingDetailsPage = () => {
                 <span>{profit >= 0 ? `+${formatCurrency(profit)}` : `-${formatCurrency(Math.abs(profit))}`}</span>
               </div>
 
+              {booking.status === 'cancelled' && (
+                <div className="bg-rose-50/50 rounded-xl p-3 mt-3 border border-rose-100 space-y-2">
+                  <p className="text-[10px] font-bold text-rose-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <XCircle className="w-3.5 h-3.5" /> Cancellation Details
+                  </p>
+                  <div className="flex justify-between text-rose-700 text-[11px]">
+                    <span>Supplier Refund:</span>
+                    <span className="font-mono font-semibold">{formatCurrency(booking.supplierRefundAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-700 text-[11px]">
+                    <span>Customer Refund:</span>
+                    <span className="font-mono font-semibold">{formatCurrency(booking.customerRefundAmount)}</span>
+                  </div>
+                  {booking.cancellationReason && (
+                    <div className="text-[10px] text-rose-600/80 italic pt-1 border-t border-rose-200/50">
+                      Note: {booking.cancellationReason}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {parseFloat(booking.tax || 0) > 0 && (
                 <>
                   <div className="flex justify-between text-[11px] text-slate-500 pt-1">
@@ -637,6 +659,16 @@ export const BookingDetailsPage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Cancel Booking Modal */}
+      <CancelBookingModal
+        isOpen={isCancelConfirmOpen}
+        onClose={() => setIsCancelConfirmOpen(false)}
+        booking={booking}
+        onSuccess={() => {
+          fetchBooking();
+        }}
+      />
 
       {/* Edit Booking Modal */}
       <EditBookingModal
