@@ -693,13 +693,13 @@ export const NewBookingPage = () => {
                       <option value="">-- Choose Company ({currentConfig.name}) --</option>
                       {relevantCompanies.map((c) => (
                         <option key={c.id || c._id} value={c.id || c._id}>
-                          {c.name} ({c.code}) {c.type ? `• ${c.type.toUpperCase()}` : ''} {c.availableTickets !== undefined ? `[${c.availableTickets} Tkts Avail]` : ''}
+                          {c.name} ({c.code}) {c.type ? `• ${c.type.toUpperCase()}` : ''} {c.walletBalance !== undefined ? `[₹${(c.walletBalance || 0).toLocaleString('en-IN')} Deposit Avail]` : ''}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Live Selected Company Stock & Balance Info Box */}
+                  {/* Live Selected Company Deposit & Balance Info Box */}
                   {selectedCompanyObj && (
                     <div className="mt-2.5 p-3 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-sm border border-slate-700 animate-fadeIn">
                       <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
@@ -714,38 +714,35 @@ export const NewBookingPage = () => {
                         </div>
                         <span
                           className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                            (selectedCompanyObj.availableTickets ?? 0) > 0
+                            (selectedCompanyObj.walletBalance ?? 0) > 0
                               ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
-                              : 'text-amber-400 bg-amber-950/60 border-amber-800/60'
+                              : 'text-rose-400 bg-rose-950/60 border-rose-800/60'
                           }`}
                         >
-                          <Ticket className="w-3 h-3" />
-                          {(selectedCompanyObj.availableTickets ?? 0).toLocaleString('en-IN')} Tickets Avail
+                          <Wallet className="w-3 h-3" />
+                          ₹{(selectedCompanyObj.walletBalance ?? 0).toLocaleString('en-IN')} Available Deposit
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
                         <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                          <p className="text-[10px] text-slate-400 font-medium">Available Stock</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Available Deposit</p>
                           <p className="font-mono font-black text-emerald-400 text-xs mt-0.5">
-                            {(selectedCompanyObj.availableTickets ?? 0).toLocaleString('en-IN')}
-                            <span className="text-[10px] text-slate-400 font-normal ml-0.5">
-                              / {selectedCompanyObj.totalPurchasedTickets || 0}
-                            </span>
-                          </p>
-                        </div>
-
-                        <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                          <p className="text-[10px] text-slate-400 font-medium">Wallet / Balance</p>
-                          <p className="font-mono font-black text-teal-300 text-xs mt-0.5">
                             ₹{(selectedCompanyObj.walletBalance || 0).toLocaleString('en-IN')}
                           </p>
                         </div>
 
                         <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                          <p className="text-[10px] text-slate-400 font-medium">Approx Unit Cost</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Purchasing Capacity</p>
+                          <p className="font-mono font-semibold text-teal-300 text-[11px] mt-0.5">
+                            {(selectedCompanyObj.walletBalance ?? 0) > 0 ? 'Sufficient Balance' : 'Low / Settle Deposit'}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50 col-span-2 sm:col-span-1">
+                          <p className="text-[10px] text-slate-400 font-medium">Commission Rate</p>
                           <p className="font-mono font-black text-amber-300 text-xs mt-0.5">
-                            ₹{selectedCompanyObj.ticketUnitPrice ? selectedCompanyObj.ticketUnitPrice : '0'}/tkt
+                            {selectedCompanyObj.commissionRate ? `${selectedCompanyObj.commissionRate}%` : 'Standard'}
                           </p>
                         </div>
                       </div>

@@ -417,11 +417,6 @@ export const CompanyDetailsPage = () => {
     );
   }
 
-  const stockPercentage =
-    company.totalPurchasedTickets > 0
-      ? Math.min(100, Math.round(((company.availableTickets ?? 0) / company.totalPurchasedTickets) * 100))
-      : 0;
-
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-10 min-w-0">
       {/* Top Header */}
@@ -486,17 +481,20 @@ export const CompanyDetailsPage = () => {
 
       {/* 4 Top KPI Overview Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Tickets in Stock */}
+        {/* Card 1: Total Bookings */}
         <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between hover:shadow-card-hover transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Tickets Booked</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Total Bookings Issued</p>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Ticket className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2">
             <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">
-              {(company.usedTickets ?? 0).toLocaleString('en-IN')}
+              {(summary?.totalBookings || bookings.length || 0).toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-slate-400 font-mono mt-1">
+              {summary?.totalPassengersCount || 0} Total Passenger(s)
             </p>
           </div>
         </div>
@@ -504,7 +502,7 @@ export const CompanyDetailsPage = () => {
         {/* Card 2: Wallet / Deposit */}
         <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 border-l-4 border-l-teal-500 shadow-xs flex flex-col justify-between hover:shadow-card-hover transition-all">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Wallet / Deposit</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">Deposit Float Balance</p>
             <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
@@ -514,7 +512,7 @@ export const CompanyDetailsPage = () => {
               {formatCurrency(company.walletBalance || 0)}
             </p>
             <p className="text-[10px] text-slate-400 font-mono mt-1">
-              Unit Rate: ₹{company.ticketUnitPrice || 0} / tkt
+              Commission Rate: {company.commissionRate || 0}%
             </p>
           </div>
         </div>
