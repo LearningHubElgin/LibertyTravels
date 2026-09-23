@@ -4,17 +4,74 @@ const { generateTransactionReference } = require('../utils/referenceGenerator');
 const { logActivity } = require('../middleware/activityLogger');
 const { TRANSACTION_TYPES } = require('../config/constants');
 
+const DEFAULT_BANKS = [
+  {
+    id: 'hdfc-bank',
+    bankName: 'HDFC Bank',
+    accountName: 'Liberty Tours & Travels Current A/C',
+    accountNumber: '50200084729101',
+    ifscCode: 'HDFC0000124',
+    upiId: 'libertytravels@okhdfcbank',
+    openingBalance: 0,
+    isDefault: true
+  },
+  {
+    id: 'icici-bank',
+    bankName: 'ICICI Bank',
+    accountName: 'Liberty Tours & Travels ICICI A/C',
+    accountNumber: '000505039482',
+    ifscCode: 'ICIC0000005',
+    upiId: 'liberty@icici',
+    openingBalance: 0,
+    isDefault: false
+  },
+  {
+    id: 'sbi-bank',
+    bankName: 'State Bank of India (SBI)',
+    accountName: 'Liberty Tours & Travels SBI A/C',
+    accountNumber: '389201948271',
+    ifscCode: 'SBIN0001234',
+    upiId: 'liberty@sbi',
+    openingBalance: 0,
+    isDefault: false
+  },
+  {
+    id: 'pnb-bank',
+    bankName: 'Punjab National Bank (PNB)',
+    accountName: 'Liberty Tours & Travels PNB A/C',
+    accountNumber: '189200210003492',
+    ifscCode: 'PUNB0189200',
+    upiId: 'liberty@pnb',
+    openingBalance: 0,
+    isDefault: false
+  },
+  {
+    id: 'axis-bank',
+    bankName: 'Axis Bank',
+    accountName: 'Liberty Tours & Travels Axis A/C',
+    accountNumber: '91802003849102',
+    ifscCode: 'UTIB0000010',
+    upiId: 'liberty@axisbank',
+    openingBalance: 0,
+    isDefault: false
+  }
+];
+
 exports.getAccountBalances = async (req, res, next) => {
   try {
-    const agencySetting = await AgencySetting.findOne().lean() || {};
+    const agencySetting = (await AgencySetting.findOne().lean()) || {};
     const cashOpening = parseFloat(agencySetting.cashOpeningBalance || 0);
-    const configuredBanks = agencySetting.bankAccounts || [];
+    
+    // Configured bank accounts or fallback to standard bank list
+    let configuredBanks = (agencySetting.bankAccounts && agencySetting.bankAccounts.length > 0)
+      ? agencySetting.bankAccounts
+      : DEFAULT_BANKS;
 
-    // Fetch all transactions to compute balances
+    // Fetch all transactions to compute live balances
     const allTxns = await Transaction.find().sort({ transactionDate: -1, createdAt: -1 }).lean();
 
     // 1. Calculate Cash Account
-    const cashTxns = allTxns.filter(t => {
+    const cashTxns = allTxns.filter((t) => {
       if (t.accountType === 'cash') return true;
       if (!t.accountType && (t.paymentMethod === 'cash' || (!t.paymentMethod && t.type === 'expense'))) return true;
       return false;
@@ -23,72 +80,120 @@ exports.getAccountBalances = async (req, res, next) => {
     const cashDebits = cashTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
     const cashCurrentBalance = toDecimal(cashOpening + cashCredits - cashDebits);
 
-    // 2. Calculate Configured Bank Accounts
+    // 2. Separate all bank transactions
+    const allBankTxns = allTxns.filter((t) => {
+      if (t.accountType === 'bank') return true;
+      if (['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'].includes(t.paymentMethod)) return true;
+      if (t.bankName || t.bankId) return true;
+      return false;
+    });
+
+    // 3. Match each configured bank account
     const bankCards = [];
-    let totalBankOpening = 0;
-    let totalBankCredits = 0;
-    let totalBankDebits = 0;
+    const matchedTxnIds = new Set();
 
-    if (configuredBanks.length > 0) {
-      for (const bank of configuredBanks) {
-        const bankOpen = parseFloat(bank.openingBalance || 0);
-        totalBankOpening += bankOpen;
-
-        const bankTxns = allTxns.filter(t => {
-          if (t.bankId && t.bankId.toString() === bank.id?.toString()) return true;
-          if (t.bankName && t.bankName.toLowerCase().trim() === bank.bankName.toLowerCase().trim()) return true;
-          return false;
-        });
-
-        const bCredits = bankTxns.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
-        const bDebits = bankTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
-        const bBalance = toDecimal(bankOpen + bCredits - bDebits);
-
-        totalBankCredits += bCredits;
-        totalBankDebits += bDebits;
-
-        bankCards.push({
-          id: bank.id || bank._id,
-          bankName: bank.bankName,
-          accountName: bank.accountName || '',
-          accountNumber: bank.accountNumber || '',
-          ifscCode: bank.ifscCode || '',
-          upiId: bank.upiId || '',
-          openingBalance: toDecimal(bankOpen),
-          totalCredits: toDecimal(bCredits),
-          totalDebits: toDecimal(bDebits),
-          currentBalance: bBalance,
-          isDefault: bank.isDefault || false,
-          recentTransactions: bankTxns.slice(0, 5)
+    // Check if there are any distinct bank names from transactions not in configuredBanks
+    const configuredNames = configuredBanks.map(b => b.bankName.toLowerCase().trim());
+    const extraBanks = [];
+    allBankTxns.forEach(t => {
+      if (t.bankName && !configuredNames.includes(t.bankName.toLowerCase().trim()) && !extraBanks.some(eb => eb.bankName.toLowerCase().trim() === t.bankName.toLowerCase().trim())) {
+        extraBanks.push({
+          id: `bank-${t.bankName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+          bankName: t.bankName,
+          accountName: agencySetting.agencyName || 'Liberty Travels',
+          accountNumber: '',
+          ifscCode: '',
+          upiId: '',
+          openingBalance: 0,
+          isDefault: false
         });
       }
-    } else {
-      // Fallback if no specific banks configured, aggregate all bank transactions
-      const genBankTxns = allTxns.filter(t => t.accountType === 'bank' || ['upi', 'bank_transfer', 'card', 'cheque'].includes(t.paymentMethod));
-      const bOpen = parseFloat(agencySetting.bankOpeningBalance || 0);
-      const bCredits = genBankTxns.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
-      const bDebits = genBankTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
-      totalBankOpening = bOpen;
-      totalBankCredits = bCredits;
-      totalBankDebits = bDebits;
+    });
+
+    const fullBankList = [...configuredBanks, ...extraBanks];
+
+    for (const bank of fullBankList) {
+      const bankOpen = parseFloat(bank.openingBalance || 0);
+      const bKey = (bank.bankName || '').toLowerCase().trim();
+
+      const bankTxns = allBankTxns.filter((t) => {
+        if (t.bankId && t.bankId.toString() === (bank.id || bank._id)?.toString()) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        if (t.bankName && t.bankName.toLowerCase().trim() === bKey) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        // Match abbreviations or keywords (e.g. SBI, PNB, HDFC, ICICI) in bankName or description
+        if (bKey.includes('hdfc') && (t.bankName?.toLowerCase().includes('hdfc') || t.description?.toLowerCase().includes('hdfc'))) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        if (bKey.includes('icici') && (t.bankName?.toLowerCase().includes('icici') || t.description?.toLowerCase().includes('icici'))) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        if (bKey.includes('sbi') && (t.bankName?.toLowerCase().includes('sbi') || t.description?.toLowerCase().includes('sbi'))) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        if (bKey.includes('pnb') && (t.bankName?.toLowerCase().includes('pnb') || t.description?.toLowerCase().includes('pnb'))) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        if (bKey.includes('axis') && (t.bankName?.toLowerCase().includes('axis') || t.description?.toLowerCase().includes('axis'))) {
+          matchedTxnIds.add(t._id.toString());
+          return true;
+        }
+        return false;
+      });
+
+      const bCredits = bankTxns.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
+      const bDebits = bankTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
+      const bBalance = toDecimal(bankOpen + bCredits - bDebits);
 
       bankCards.push({
-        id: 'primary-bank',
-        bankName: 'Primary Bank Account',
-        accountName: agencySetting.agencyName || 'Agency Bank',
-        accountNumber: 'Configured in Settings',
-        ifscCode: '',
-        upiId: '',
-        openingBalance: toDecimal(bOpen),
-        totalCredits: toDecimal(bCredits),
-        totalDebits: toDecimal(bDebits),
-        currentBalance: toDecimal(bOpen + bCredits - bDebits),
-        isDefault: true,
-        recentTransactions: genBankTxns.slice(0, 5)
+        id: bank.id || bank._id,
+        bankName: bank.bankName,
+        accountName: bank.accountName || '',
+        accountNumber: bank.accountNumber || '',
+        ifscCode: bank.ifscCode || '',
+        upiId: bank.upiId || '',
+        openingBalance: toDecimal(bankOpen),
+        totalCredits: toDecimal(bCredits), // Deposited amount into this bank
+        totalDebits: toDecimal(bDebits),   // Withdrawn amount from this bank
+        currentBalance: bBalance,
+        isDefault: Boolean(bank.isDefault),
+        recentTransactions: bankTxns.slice(0, 5)
       });
     }
 
-    const totalBankBalance = toDecimal(bankCards.reduce((sum, b) => sum + parseFloat(b.currentBalance || 0), 0));
+    // Allocate any unassigned bank transactions to default bank (if any)
+    const unassignedTxns = allBankTxns.filter(t => !matchedTxnIds.has(t._id.toString()));
+    if (unassignedTxns.length > 0) {
+      const defaultBankCard = bankCards.find(b => b.isDefault) || bankCards[0];
+      if (defaultBankCard) {
+        const unassignedCredits = unassignedTxns.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
+        const unassignedDebits = unassignedTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
+        defaultBankCard.totalCredits = toDecimal(parseFloat(defaultBankCard.totalCredits) + unassignedCredits);
+        defaultBankCard.totalDebits = toDecimal(parseFloat(defaultBankCard.totalDebits) + unassignedDebits);
+        defaultBankCard.currentBalance = toDecimal(
+          parseFloat(defaultBankCard.openingBalance) + parseFloat(defaultBankCard.totalCredits) - parseFloat(defaultBankCard.totalDebits)
+        );
+      }
+    }
+
+    // 4. Compute Consolidated Total Bank Summary
+    const configuredBankOpeningSum = bankCards.reduce((sum, b) => sum + parseFloat(b.openingBalance || 0), 0);
+    const totalBankOpening = toDecimal(
+      parseFloat(agencySetting.bankOpeningBalance || 0) > 0
+        ? parseFloat(agencySetting.bankOpeningBalance || 0)
+        : configuredBankOpeningSum
+    );
+    const totalBankDeposits = toDecimal(allBankTxns.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0));
+    const totalBankDebits = toDecimal(allBankTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0));
+    const totalBankBalance = toDecimal(totalBankOpening + totalBankDeposits - totalBankDebits);
     const totalLiquidBalance = toDecimal(cashCurrentBalance + totalBankBalance);
 
     return res.status(200).json({
@@ -102,15 +207,23 @@ exports.getAccountBalances = async (req, res, next) => {
         currentBalance: cashCurrentBalance,
         recentTransactions: cashTxns.slice(0, 5)
       },
+      totalBankSummary: {
+        name: 'All Banks (Consolidated Deposits & Balance)',
+        openingBalance: totalBankOpening,
+        totalCredits: totalBankDeposits, // Total deposited across all banks
+        totalDebits: totalBankDebits,    // Total withdrawn across all banks
+        currentBalance: totalBankBalance
+      },
       bankAccounts: bankCards,
       summary: {
         totalCashBalance: cashCurrentBalance,
         totalBankBalance,
+        totalBankDeposits,
         totalLiquidBalance,
-        totalBankOpening: toDecimal(totalBankOpening),
+        totalBankOpening,
         cashOpeningBalance: toDecimal(cashOpening)
       },
-      upiApps: agencySetting.upiMethods || ['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'PayPal', 'Amazon Pay']
+      upiApps: agencySetting.upiMethods || ['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'PayPal', 'Amazon Pay', 'Cred']
     });
   } catch (error) {
     next(error);
@@ -137,6 +250,7 @@ exports.getTransactions = async (req, res, next) => {
     const query = {};
     if (type) query.type = type;
     if (customerId) query.customerId = customerId;
+
     if (accountType && accountType !== 'all') {
       if (accountType === 'cash') {
         query.$or = [
@@ -145,14 +259,37 @@ exports.getTransactions = async (req, res, next) => {
           { accountType: null, paymentMethod: 'cash' }
         ];
       } else if (accountType === 'bank') {
-        query.$or = [
-          { accountType: 'bank' },
-          { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque'] } }
-        ];
+        if (bankName && bankName !== 'all') {
+          const bPattern = bankName.replace(/[()]/g, '').trim();
+          query.$and = [
+            {
+              $or: [
+                { accountType: 'bank' },
+                { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'] } },
+                { bankName: { $exists: true, $ne: null } }
+              ]
+            },
+            {
+              $or: [
+                { bankName: new RegExp(bPattern, 'i') },
+                { description: new RegExp(bPattern, 'i') }
+              ]
+            }
+          ];
+        } else {
+          query.$or = [
+            { accountType: 'bank' },
+            { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'] } },
+            { bankName: { $exists: true, $ne: null } }
+          ];
+        }
       }
-    }
-    if (bankName && bankName !== 'all') {
-      query.bankName = new RegExp(`^${bankName.trim()}$`, 'i');
+    } else if (bankName && bankName !== 'all') {
+      const bPattern = bankName.replace(/[()]/g, '').trim();
+      query.$or = [
+        { bankName: new RegExp(bPattern, 'i') },
+        { description: new RegExp(bPattern, 'i') }
+      ];
     }
 
     if (startDate && endDate) {

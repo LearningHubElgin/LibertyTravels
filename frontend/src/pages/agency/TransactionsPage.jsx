@@ -302,13 +302,37 @@ export const TransactionsPage = () => {
 
   const cash = accountBalances.cashAccount;
   const banks = accountBalances.bankAccounts || [];
+  const totalBank = accountBalances.totalBankSummary;
   const totalSummary = accountBalances.summary;
+
+  // Bank brand color mapping for visual richness
+  const getBankStyle = (name = '') => {
+    const n = name.toLowerCase();
+    if (n.includes('hdfc')) return { iconBg: 'bg-blue-600', badge: 'bg-blue-100 text-blue-800 border-blue-200', border: 'border-blue-200/80 hover:border-blue-400', activeRing: 'ring-2 ring-blue-500 border-blue-400', gradient: 'from-blue-50/70 via-white to-blue-50/20' };
+    if (n.includes('icici')) return { iconBg: 'bg-amber-600', badge: 'bg-amber-100 text-amber-900 border-amber-200', border: 'border-amber-200/80 hover:border-amber-400', activeRing: 'ring-2 ring-amber-500 border-amber-400', gradient: 'from-amber-50/70 via-white to-orange-50/20' };
+    if (n.includes('sbi') || n.includes('state bank')) return { iconBg: 'bg-sky-600', badge: 'bg-sky-100 text-sky-800 border-sky-200', border: 'border-sky-200/80 hover:border-sky-400', activeRing: 'ring-2 ring-sky-500 border-sky-400', gradient: 'from-sky-50/70 via-white to-cyan-50/20' };
+    if (n.includes('pnb') || n.includes('punjab')) return { iconBg: 'bg-rose-600', badge: 'bg-rose-100 text-rose-800 border-rose-200', border: 'border-rose-200/80 hover:border-rose-400', activeRing: 'ring-2 ring-rose-500 border-rose-400', gradient: 'from-rose-50/70 via-white to-red-50/20' };
+    if (n.includes('axis')) return { iconBg: 'bg-purple-600', badge: 'bg-purple-100 text-purple-800 border-purple-200', border: 'border-purple-200/80 hover:border-purple-400', activeRing: 'ring-2 ring-purple-500 border-purple-400', gradient: 'from-purple-50/70 via-white to-pink-50/20' };
+    return { iconBg: 'bg-indigo-600', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', border: 'border-indigo-200/80 hover:border-indigo-400', activeRing: 'ring-2 ring-indigo-500 border-indigo-400', gradient: 'from-indigo-50/70 via-white to-indigo-50/20' };
+  };
+
+  const formatAccountDisplay = (bank) => {
+    if (bank.accountNumber && bank.accountNumber !== 'Configured in Settings') {
+      const numOnly = bank.accountNumber.replace(/\D/g, '');
+      if (numOnly.length >= 4) {
+        return `A/C: •••• ${numOnly.slice(-4)}`;
+      }
+      return `A/C: ${bank.accountNumber}`;
+    }
+    if (bank.upiId) return bank.upiId;
+    return 'Bank Account';
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full min-w-0 pb-12">
       <PageHeader
         title="Financial Transactions & Multi-Account Balances"
-        subtitle="Real-time balances for Cash Counter and individual Bank Accounts (HDFC, PNB, etc.) with detailed ledger history"
+        subtitle="Real-time balances for Cash Counter and individual Bank Accounts (ICICI, HDFC, SBI, PNB, Axis, etc.) with instant filtering"
         icon={ReceiptText}
         actions={
           <button
@@ -320,27 +344,83 @@ export const TransactionsPage = () => {
         }
       />
 
-      {/* TOP SECTION: ACCOUNT BALANCE CARDS (CASH & INDIVIDUAL BANKS) */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
+      {/* TOP SECTION: ACCOUNT BALANCE CARDS (CONSOLIDATED BANK DEPOSITS, CASH & INDIVIDUAL BANKS) */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Wallet className="w-3.5 h-3.5 text-brand-600" /> Liquid Account Balances & Registers
+            <Wallet className="w-3.5 h-3.5 text-brand-600" /> Account Balances & Bank Deposit Registers
           </h3>
           {selectedAccountFilter.type !== 'all' && (
             <button
               onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
-              className="text-[11px] font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1 bg-brand-50 px-2 py-0.5 rounded-lg border border-brand-200 transition"
+              className="text-[11px] font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1 bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-200 transition shadow-2xs"
             >
-              <X className="w-3 h-3" /> Clear Filter (Showing All Accounts)
+              <X className="w-3.5 h-3.5" /> Showing:{' '}
+              {selectedAccountFilter.type === 'cash'
+                ? 'Cash Counter'
+                : selectedAccountFilter.bankName
+                ? selectedAccountFilter.bankName
+                : 'All Banks'}
+              {' '}(Click to Show All)
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* CARD 1: CASH IN HAND */}
+        {/* PRIMARY HIGHLIGHT CARDS: ALL BANKS CONSOLIDATED + CASH COUNTER + TOTAL LIQUIDITY */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* CARD 1: ALL BANK DEPOSITS (CONSOLIDATED TOTAL) */}
+          <div
+            onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
+            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-blue-600 via-brand-600 to-indigo-700 text-white shadow-md hover:shadow-lg ${
+              selectedAccountFilter.type === 'bank' && !selectedAccountFilter.bankName
+                ? 'ring-4 ring-blue-300 shadow-blue-500/30'
+                : 'hover:border-blue-400'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center shadow-xs border border-white/20">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-100 block">
+                    Total Bank Deposits
+                  </span>
+                  <span className="text-xs font-bold text-white">All Banks Consolidated</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-xs">
+                {banks.length} Banks Active
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <span className="text-[10px] text-blue-100 uppercase font-semibold block">Total Live Bank Balance</span>
+              <p className="text-xl sm:text-2xl font-black font-mono text-white mt-0.5 tracking-tight">
+                {formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)}
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-white/20 grid grid-cols-3 gap-1 text-[10px] font-mono">
+              <div>
+                <span className="text-blue-100 block text-[9px] uppercase">Opening</span>
+                <span className="font-bold text-white">{formatCurrency(totalBank?.openingBalance ?? totalSummary?.totalBankOpening ?? 0)}</span>
+              </div>
+              <div>
+                <span className="text-blue-100 block text-[9px] uppercase">In (Cr) Total Deposited</span>
+                <span className="font-bold text-emerald-300">+{formatCurrency(totalBank?.totalCredits ?? totalSummary?.totalBankDeposits ?? 0)}</span>
+              </div>
+              <div>
+                <span className="text-blue-100 block text-[9px] uppercase">Out (Dr) Total Paid</span>
+                <span className="font-bold text-rose-200">-{formatCurrency(totalBank?.totalDebits ?? 0)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: CASH COUNTER (CASH IN HAND) */}
           <div
             onClick={() => setSelectedAccountFilter({ type: 'cash', bankName: '' })}
-            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/20 shadow-2xs hover:shadow-sm ${
+            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/30 shadow-2xs hover:shadow-sm ${
               selectedAccountFilter.type === 'cash'
                 ? 'ring-2 ring-emerald-500 border-emerald-400'
                 : 'border-emerald-200/80 hover:border-emerald-300'
@@ -353,19 +433,19 @@ export const TransactionsPage = () => {
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                    Cash Counter
+                    Cash Register
                   </span>
                   <span className="text-xs font-bold text-slate-900">Cash in Hand</span>
                 </div>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 border border-emerald-200">
-                Register
+                Counter
               </span>
             </div>
 
             <div className="mt-3">
               <span className="text-[10px] text-slate-500 uppercase font-bold block">Current Live Balance</span>
-              <p className="text-lg sm:text-xl font-black font-mono text-emerald-700 mt-0.5">
+              <p className="text-xl sm:text-2xl font-black font-mono text-emerald-700 mt-0.5">
                 {formatCurrency(cash?.currentBalance || 0)}
               </p>
             </div>
@@ -376,79 +456,20 @@ export const TransactionsPage = () => {
                 <span className="font-bold text-slate-700">{formatCurrency(cash?.openingBalance || 0)}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px] uppercase">In (Cr)</span>
+                <span className="text-slate-400 block text-[9px] uppercase">In (Cr) Deposited</span>
                 <span className="font-bold text-emerald-600">+{formatCurrency(cash?.totalCredits || 0)}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[9px] uppercase">Out (Dr)</span>
+                <span className="text-slate-400 block text-[9px] uppercase">Out (Dr) Paid</span>
                 <span className="font-bold text-rose-600">-{formatCurrency(cash?.totalDebits || 0)}</span>
               </div>
             </div>
           </div>
 
-          {/* CARD 2...N: INDIVIDUAL BANK ACCOUNTS (HDFC, PNB, SBI, etc.) */}
-          {banks.map((bank, bIdx) => {
-            const isSelected = selectedAccountFilter.type === 'bank' && selectedAccountFilter.bankName === bank.bankName;
-            return (
-              <div
-                key={bank.id || bIdx}
-                onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: bank.bankName })}
-                className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-blue-50/70 via-white to-blue-50/20 shadow-2xs hover:shadow-sm ${
-                  isSelected
-                    ? 'ring-2 ring-blue-500 border-blue-400'
-                    : 'border-blue-200/80 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 block truncate max-w-[120px]">
-                        {bank.bankName}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {bank.upiId || (bank.accountNumber ? `A/C: ${bank.accountNumber.slice(-4)}` : 'Bank Account')}
-                      </span>
-                    </div>
-                  </div>
-                  {bank.isDefault && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                      Default
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-3">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Current Balance</span>
-                  <p className="text-lg sm:text-xl font-black font-mono text-blue-800 mt-0.5">
-                    {formatCurrency(bank.currentBalance || 0)}
-                  </p>
-                </div>
-
-                <div className="mt-3 pt-2.5 border-t border-blue-100 grid grid-cols-3 gap-1 text-[10px] font-mono">
-                  <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Opening</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(bank.openingBalance || 0)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">In (Cr)</span>
-                    <span className="font-bold text-emerald-600">+{formatCurrency(bank.totalCredits || 0)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Out (Dr)</span>
-                    <span className="font-bold text-rose-600">-{formatCurrency(bank.totalDebits || 0)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* TOTAL LIQUID AGENCY BALANCE CARD */}
+          {/* CARD 3: TOTAL LIQUID AGENCY BALANCE */}
           <div
             onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
-            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-purple-50/80 via-white to-brand-50/30 shadow-2xs hover:shadow-sm ${
+            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-purple-50/90 via-white to-brand-50/30 shadow-2xs hover:shadow-sm ${
               selectedAccountFilter.type === 'all'
                 ? 'ring-2 ring-brand-500 border-brand-300'
                 : 'border-slate-200 hover:border-slate-300'
@@ -473,7 +494,7 @@ export const TransactionsPage = () => {
 
             <div className="mt-3">
               <span className="text-[10px] text-slate-500 uppercase font-bold block">Consolidated Net Balance</span>
-              <p className="text-lg sm:text-xl font-black font-mono text-brand-700 mt-0.5">
+              <p className="text-xl sm:text-2xl font-black font-mono text-brand-700 mt-0.5">
                 {formatCurrency(totalSummary?.totalLiquidBalance || 0)}
               </p>
             </div>
@@ -490,7 +511,44 @@ export const TransactionsPage = () => {
         </div>
       </div>
 
-      {/* FILTER BAR */}
+      {/* QUICK BANK & ACCOUNT FILTER BUTTONS / CHIPS */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pr-1 flex items-center gap-1">
+          <Filter className="w-3 h-3 text-slate-400" /> Filter by:
+        </span>
+        <button
+          onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 ${
+            selectedAccountFilter.type === 'all'
+              ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          All Accounts
+        </button>
+        <button
+          onClick={() => setSelectedAccountFilter({ type: 'cash', bankName: '' })}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1 ${
+            selectedAccountFilter.type === 'cash'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+              : 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+          }`}
+        >
+          <Banknote className="w-3 h-3" /> Cash Counter ({formatCurrency(cash?.currentBalance || 0)})
+        </button>
+        <button
+          onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1 ${
+            selectedAccountFilter.type === 'bank'
+              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+              : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:bg-blue-100'
+          }`}
+        >
+          <Building2 className="w-3 h-3" /> Bank / Online Deposits ({formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)})
+        </button>
+      </div>
+
+      {/* FILTER BAR & SEARCH */}
       <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs w-full min-w-0">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-2 sm:gap-3 w-full">
           <div className="relative flex-1">
@@ -506,26 +564,13 @@ export const TransactionsPage = () => {
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <select
-              value={selectedAccountFilter.type === 'bank' ? `bank:${selectedAccountFilter.bankName}` : selectedAccountFilter.type}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val.startsWith('bank:')) {
-                  setSelectedAccountFilter({ type: 'bank', bankName: val.replace('bank:', '') });
-                } else if (val === 'bank') {
-                  setSelectedAccountFilter({ type: 'bank', bankName: '' });
-                } else {
-                  setSelectedAccountFilter({ type: val, bankName: '' });
-                }
-              }}
+              value={selectedAccountFilter.type}
+              onChange={(e) => setSelectedAccountFilter({ type: e.target.value, bankName: '' })}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none font-semibold text-slate-700"
             >
-              <option value="all">All Accounts</option>
+              <option value="all">All Accounts (Cash + Bank)</option>
               <option value="cash">💵 Cash Counter</option>
-              {banks.map(b => (
-                <option key={b.id} value={`bank:${b.bankName}`}>
-                  🏦 {b.bankName}
-                </option>
-              ))}
+              <option value="bank">🏦 Bank / Online Deposits</option>
             </select>
 
             <select
@@ -674,39 +719,18 @@ export const TransactionsPage = () => {
             </div>
 
             {txnForm.accountType === 'bank' && (
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Target Bank</label>
-                  <select
-                    value={txnForm.bankId}
-                    onChange={(e) => {
-                      const found = banks.find(b => b.id === e.target.value);
-                      setTxnForm({ ...txnForm, bankId: e.target.value, bankName: found ? found.bankName : '' });
-                    }}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-                  >
-                    {banks.length > 0 ? (
-                      banks.map(b => (
-                        <option key={b.id} value={b.id}>{b.bankName}</option>
-                      ))
-                    ) : (
-                      <option value="">Primary Bank</option>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Method / App</label>
-                  <select
-                    value={txnForm.paymentMethod}
-                    onChange={(e) => setTxnForm({ ...txnForm, paymentMethod: e.target.value })}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-                  >
-                    <option value="upi">UPI</option>
-                    <option value="bank_transfer">Net Banking / NEFT</option>
-                    <option value="card">Debit / Credit Card</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
-                </div>
+              <div className="pt-1">
+                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Payment Method / App</label>
+                <select
+                  value={txnForm.paymentMethod}
+                  onChange={(e) => setTxnForm({ ...txnForm, paymentMethod: e.target.value })}
+                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                >
+                  <option value="upi">UPI / Online App</option>
+                  <option value="bank_transfer">Net Banking / NEFT</option>
+                  <option value="card">Debit / Credit Card</option>
+                  <option value="cheque">Cheque</option>
+                </select>
               </div>
             )}
           </div>

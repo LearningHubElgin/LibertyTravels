@@ -70,12 +70,16 @@ exports.updateSettings = async (req, res, next) => {
         isActive: b.isActive !== undefined ? Boolean(b.isActive) : true
       })).filter(b => b.bankName);
       
-      // Also update total bankOpeningBalance as sum if accounts exist
-      if (settings.bankAccounts.length > 0) {
-        settings.bankOpeningBalance = settings.bankAccounts.reduce((sum, b) => sum + (parseFloat(b.openingBalance) || 0), 0);
+      const sumAccounts = settings.bankAccounts.reduce((sum, b) => sum + (parseFloat(b.openingBalance) || 0), 0);
+      if (sumAccounts > 0 && bankOpeningBalance === undefined) {
+        settings.bankOpeningBalance = sumAccounts;
       }
     }
-    if (upiMethods !== undefined && Array.isArray(upiMethods)) settings.upiMethods = upiMethods;
+    if (upiMethods !== undefined && Array.isArray(upiMethods)) {
+      settings.upiMethods = upiMethods
+        .map(m => (typeof m === 'string' ? m.trim() : ''))
+        .filter(Boolean);
+    }
 
     await settings.save();
 

@@ -246,70 +246,7 @@ export const SplitPaymentInput = ({
 
       {/* SINGLE DESTINATION MODE */}
       {!isSplitMode && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Destination Account
-            </label>
-            <div className="grid grid-cols-2 gap-1">
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  setSingleAccountType('cash');
-                  setSinglePaymentMethod('cash');
-                }}
-                className={`py-1.5 px-2 text-xs font-bold rounded-lg border flex items-center justify-center gap-1.5 transition ${
-                  singleAccountType === 'cash'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700 ring-1 ring-emerald-400/30'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Banknote className="w-3.5 h-3.5 text-emerald-600" /> Cash Counter
-              </button>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  setSingleAccountType('bank');
-                  setSinglePaymentMethod('upi');
-                  if (!singleBankId && bankAccounts.length > 0) setSingleBankId(bankAccounts[0].id);
-                }}
-                className={`py-1.5 px-2 text-xs font-bold rounded-lg border flex items-center justify-center gap-1.5 transition ${
-                  singleAccountType === 'bank'
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 ring-1 ring-blue-400/30'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5 text-blue-600" /> Bank Account
-              </button>
-            </div>
-          </div>
-
-          {singleAccountType === 'bank' && (
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Select Bank Account
-              </label>
-              <select
-                disabled={disabled}
-                value={singleBankId}
-                onChange={(e) => setSingleBankId(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-              >
-                {bankAccounts.length > 0 ? (
-                  bankAccounts.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.bankName} {b.accountNumber ? `(${b.accountNumber.slice(-4)})` : ''}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">Default Agency Bank</option>
-                )}
-              </select>
-            </div>
-          )}
-
+        <div className={`grid grid-cols-1 ${singlePaymentMethod === 'upi' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5 pt-1`}>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
               Payment Method
@@ -317,28 +254,28 @@ export const SplitPaymentInput = ({
             <select
               disabled={disabled}
               value={singlePaymentMethod}
-              onChange={(e) => setSinglePaymentMethod(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSinglePaymentMethod(val);
+                setSingleAccountType(val === 'cash' ? 'cash' : 'bank');
+              }}
               className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
             >
               <option value="cash">Cash</option>
-              <option value="upi">UPI (PhonePe, GPay, etc.)</option>
-              <option value="bank_transfer">Net Banking / NEFT / IMPS</option>
-              <option value="card">Debit / Credit Card</option>
-              <option value="cheque">Cheque</option>
-              <option value="other">Other</option>
+              <option value="upi">UPI</option>
             </select>
           </div>
 
           {singlePaymentMethod === 'upi' && (
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                UPI App
+                UPI / Online App
               </label>
               <select
                 disabled={disabled}
                 value={singleUpiApp}
                 onChange={(e) => setSingleUpiApp(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-brand-700"
               >
                 {upiApps.map(app => (
                   <option key={app} value={app}>{app}</option>
@@ -410,7 +347,7 @@ export const SplitPaymentInput = ({
                 className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
               >
                 {/* Account Type Selector */}
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <label className="block text-[9px] font-bold uppercase text-slate-400 mb-0.5">Account</label>
                   <select
                     disabled={disabled}
@@ -419,44 +356,12 @@ export const SplitPaymentInput = ({
                     className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md bg-white focus:outline-none font-semibold text-slate-800"
                   >
                     <option value="cash">💵 Cash Counter</option>
-                    <option value="bank">🏦 Bank Account</option>
+                    <option value="bank">🏦 Bank / Online</option>
                   </select>
                 </div>
 
-                {/* Bank Account Selection (if bank) */}
-                <div className="sm:col-span-3">
-                  <label className="block text-[9px] font-bold uppercase text-slate-400 mb-0.5">
-                    {row.accountType === 'bank' ? 'Target Bank' : 'Register'}
-                  </label>
-                  {row.accountType === 'bank' ? (
-                    <select
-                      disabled={disabled}
-                      value={row.bankId}
-                      onChange={(e) => handleSplitRowChange(idx, 'bankId', e.target.value)}
-                      className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md bg-white focus:outline-none font-medium"
-                    >
-                      {bankAccounts.length > 0 ? (
-                        bankAccounts.map(b => (
-                          <option key={b.id} value={b.id}>
-                            {b.bankName} {b.accountNumber ? `(${b.accountNumber.slice(-4)})` : ''}
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">Primary Agency Bank</option>
-                      )}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      disabled
-                      value="Main Cash Register"
-                      className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md bg-slate-50 text-slate-500 font-medium"
-                    />
-                  )}
-                </div>
-
                 {/* Method / UPI App */}
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <label className="block text-[9px] font-bold uppercase text-slate-400 mb-0.5">Method</label>
                   <select
                     disabled={disabled}
@@ -467,18 +372,13 @@ export const SplitPaymentInput = ({
                     {row.accountType === 'cash' ? (
                       <option value="cash">Cash</option>
                     ) : (
-                      <>
-                        <option value="upi">UPI App</option>
-                        <option value="bank_transfer">Net Banking</option>
-                        <option value="card">Card</option>
-                        <option value="cheque">Cheque</option>
-                      </>
+                      <option value="upi">UPI</option>
                     )}
                   </select>
                 </div>
 
                 {/* UPI App picker if UPI */}
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <label className="block text-[9px] font-bold uppercase text-slate-400 mb-0.5">
                     {row.paymentMethod === 'upi' ? 'UPI Provider' : 'Txn / Note'}
                   </label>
