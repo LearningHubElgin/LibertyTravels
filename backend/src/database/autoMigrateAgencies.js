@@ -1,4 +1,4 @@
-const { Agency, User, Booking, Customer, Company, Expense, Payment, Transaction, Notification } = require('../models');
+const { Agency, User, Booking, Customer, Company, Expense, Payment, Transaction, Notification, AgencySetting } = require('../models');
 const { ROLES, USER_STATUS, AGENCY_STATUS, AGENCY_PLANS } = require('../config/constants');
 
 const autoMigrateAgencies = async () => {
@@ -153,7 +153,70 @@ const autoMigrateAgencies = async () => {
       await libertyAdminEmail.save();
     }
 
-    // 6. Clean up legacy accounts
+    // 6. Ensure default bank accounts exist in AgencySetting
+    let agencySetting = await AgencySetting.findOne();
+    if (!agencySetting) {
+      agencySetting = await AgencySetting.create({});
+    }
+    if (!agencySetting.bankAccounts || agencySetting.bankAccounts.length === 0) {
+      agencySetting.bankAccounts = [
+        {
+          bankName: 'HDFC Bank',
+          accountName: 'Liberty Tours & Travels Current A/C',
+          accountNumber: '50200084729101',
+          ifscCode: 'HDFC0000124',
+          upiId: 'libertytravels@okhdfcbank',
+          openingBalance: 0,
+          isDefault: true,
+          isActive: true
+        },
+        {
+          bankName: 'ICICI Bank',
+          accountName: 'Liberty Tours & Travels ICICI A/C',
+          accountNumber: '000505039482',
+          ifscCode: 'ICIC0000005',
+          upiId: 'liberty@icici',
+          openingBalance: 0,
+          isDefault: false,
+          isActive: true
+        },
+        {
+          bankName: 'State Bank of India (SBI)',
+          accountName: 'Liberty Tours & Travels SBI A/C',
+          accountNumber: '389201948271',
+          ifscCode: 'SBIN0001234',
+          upiId: 'liberty@sbi',
+          openingBalance: 0,
+          isDefault: false,
+          isActive: true
+        },
+        {
+          bankName: 'Punjab National Bank (PNB)',
+          accountName: 'Liberty Tours & Travels PNB A/C',
+          accountNumber: '189200210003492',
+          ifscCode: 'PUNB0189200',
+          upiId: 'liberty@pnb',
+          openingBalance: 0,
+          isDefault: false,
+          isActive: true
+        },
+        {
+          bankName: 'Axis Bank',
+          accountName: 'Liberty Tours & Travels Axis A/C',
+          accountNumber: '91802003849102',
+          ifscCode: 'UTIB0000010',
+          upiId: 'liberty@axisbank',
+          openingBalance: 0,
+          isDefault: false,
+          isActive: true
+        }
+      ];
+      agencySetting.bankOpeningBalance = 0;
+      await agencySetting.save();
+      console.log('🏦 Seeded default multi-bank accounts (HDFC, ICICI, SBI, PNB, Axis) into AgencySetting');
+    }
+
+    // 7. Clean up legacy accounts
     await User.deleteMany({ email: 'staff@libertytravel.com' });
     await User.updateMany({ role: 'staff' }, { role: ROLES.ADMIN });
 

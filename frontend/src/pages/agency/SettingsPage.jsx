@@ -5,34 +5,24 @@ import {
   FileText,
   User,
   Save,
-  CheckCircle2,
   KeyRound,
-  ShieldCheck,
-  Compass,
-  Plus,
-  X,
-  Banknote,
-  CreditCard,
-  Trash2,
-  Edit2,
-  Star
+  Banknote
 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { Modal } from '../../components/common/Modal';
 
 export const SettingsPage = () => {
-  const { user, isSuperAdmin, isAdmin, updateUserProfile } = useAuth();
+  const { user, isAdmin, updateUserProfile } = useAuth();
   const { success, error: toastError } = useToast();
 
-  const [activeTab, setActiveTab] = useState('agency'); // 'agency', 'accounts', 'invoice', 'profile'
+  const [activeTab, setActiveTab] = useState('agency'); // 'agency', 'invoice', 'profile'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Agency & Invoice Settings
+  // Agency & Financial Settings
   const [settings, setSettings] = useState({
     agencyName: 'Liberty Tours & Travels',
     tagline: '',
@@ -49,22 +39,10 @@ export const SettingsPage = () => {
     cashOpeningBalance: 0,
     bankOpeningBalance: 0,
     bankAccounts: [],
-    upiMethods: []
+    upiMethods: ['Paytm', 'Google Pay', 'PhonePe', 'SBI', 'HDFC', 'ICICI']
   });
-  const [upiMethodsInput, setUpiMethodsInput] = useState('');
 
-  // Bank Account Modal State
-  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
-  const [editingBankIndex, setEditingBankIndex] = useState(-1);
-  const [bankForm, setBankForm] = useState({
-    bankName: '',
-    accountName: '',
-    accountNumber: '',
-    ifscCode: '',
-    upiId: '',
-    openingBalance: 0,
-    isDefault: false
-  });
+  const [onlineMethodsInput, setOnlineMethodsInput] = useState('Paytm, Google Pay, PhonePe, SBI, HDFC, ICICI');
 
   // Profile Form
   const [profileForm, setProfileForm] = useState({
@@ -82,7 +60,9 @@ export const SettingsPage = () => {
         const res = await api.get('/settings');
         if (res.data.success && res.data.settings) {
           setSettings(res.data.settings);
-          setUpiMethodsInput((res.data.settings.upiMethods || []).join(', '));
+          if (res.data.settings.upiMethods && res.data.settings.upiMethods.length > 0) {
+            setOnlineMethodsInput(res.data.settings.upiMethods.join(', '));
+          }
         }
       } catch (e) {
         console.error('Failed to load settings:', e);
@@ -93,100 +73,45 @@ export const SettingsPage = () => {
     fetchSettings();
   }, []);
 
-  const handleOpenAddBankModal = () => {
-    setEditingBankIndex(-1);
-    setBankForm({
-      bankName: '',
-      accountName: settings.agencyName || '',
-      accountNumber: '',
-      ifscCode: '',
-      upiId: '',
-      openingBalance: 0,
-      isDefault: (settings.bankAccounts || []).length === 0
-    });
-    setIsBankModalOpen(true);
-  };
-
-  const handleOpenEditBankModal = (index) => {
-    setEditingBankIndex(index);
-    const bank = settings.bankAccounts[index];
-    setBankForm({
-      bankName: bank.bankName || '',
-      accountName: bank.accountName || '',
-      accountNumber: bank.accountNumber || '',
-      ifscCode: bank.ifscCode || '',
-      upiId: bank.upiId || '',
-      openingBalance: bank.openingBalance || 0,
-      isDefault: bank.isDefault || false
-    });
-    setIsBankModalOpen(true);
-  };
-
-  const handleSaveBankModal = (e) => {
-    e.preventDefault();
-    if (!bankForm.bankName.trim()) return toastError('Bank name is required');
-
-    const updatedBanks = [...(settings.bankAccounts || [])];
-    const newBankObj = {
-      id: editingBankIndex >= 0 ? updatedBanks[editingBankIndex].id : Date.now().toString(),
-      ...bankForm,
-      openingBalance: parseFloat(bankForm.openingBalance) || 0
-    };
-
-    if (bankForm.isDefault) {
-      updatedBanks.forEach(b => b.isDefault = false);
-    }
-
-    if (editingBankIndex >= 0) {
-      updatedBanks[editingBankIndex] = newBankObj;
-    } else {
-      updatedBanks.push(newBankObj);
-    }
-
-    setSettings(prev => ({
-      ...prev,
-      bankAccounts: updatedBanks,
-      bankOpeningBalance: updatedBanks.reduce((sum, b) => sum + (parseFloat(b.openingBalance) || 0), 0)
-    }));
-
-    setIsBankModalOpen(false);
-    success(editingBankIndex >= 0 ? 'Bank account updated.' : 'Bank account added to list.');
-  };
-
-  const handleDeleteBank = (index) => {
-    const updatedBanks = settings.bankAccounts.filter((_, i) => i !== index);
-    setSettings(prev => ({
-      ...prev,
-      bankAccounts: updatedBanks,
-      bankOpeningBalance: updatedBanks.reduce((sum, b) => sum + (parseFloat(b.openingBalance) || 0), 0)
-    }));
-    success('Bank account removed.');
-  };
-
-  const handleSetDefaultBank = (index) => {
-    const updatedBanks = settings.bankAccounts.map((b, i) => ({
-      ...b,
-      isDefault: i === index
-    }));
-    setSettings(prev => ({
-      ...prev,
-      bankAccounts: updatedBanks
-    }));
-  };
-
   const handleSaveAgencySettings = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!isAdmin) {
       return toastError('Only Admins can modify agency settings.');
     }
 
     setSaving(true);
     try {
-      const methodsArray = upiMethodsInput.split(',').map(m => m.trim()).filter(m => m !== '');
-      const payload = { ...settings, upiMethods: methodsArray };
+      const methodsArray = onlineMethodsInput
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean);
+
+      const generatedBankAccounts = methodsArray.map((name, idx) => ({
+        id: `bank-${idx + 1}`,
+        bankName: name,
+        accountName: settings.agencyName || '',
+        accountNumber: '',
+        ifscCode: '',
+        upiId: '',
+        openingBalance: 0,
+        isDefault: idx === 0,
+        isActive: true
+      }));
+
+      const payload = {
+        ...settings,
+        cashOpeningBalance: parseFloat(settings.cashOpeningBalance) || 0,
+        bankOpeningBalance: parseFloat(settings.bankOpeningBalance) || 0,
+        upiMethods: methodsArray,
+        bankAccounts: generatedBankAccounts
+      };
+
       const res = await api.put('/settings', payload);
       if (res.data.success) {
         setSettings(res.data.settings);
+        if (res.data.settings.upiMethods && res.data.settings.upiMethods.length > 0) {
+          setOnlineMethodsInput(res.data.settings.upiMethods.join(', '));
+        }
         success('Agency & financial settings saved successfully!');
       }
     } catch (err) {
@@ -231,7 +156,7 @@ export const SettingsPage = () => {
       });
       if (res.data.success) {
         success('Password changed successfully.');
-        setProfileForm(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+        setProfileForm((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
       }
     } catch (err) {
       toastError(err.response?.data?.message || 'Failed to change password');
@@ -240,17 +165,13 @@ export const SettingsPage = () => {
     }
   };
 
-  const handleUpiMethodsChange = (e) => {
-    setUpiMethodsInput(e.target.value);
-  };
-
   if (loading) return <LoadingSpinner size="lg" text="Loading agency settings..." />;
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-8 sm:pb-12 min-w-0">
       <PageHeader
         title="Agency & Financial Settings"
-        subtitle="Manage agency profile, bank accounts & opening balances, invoice headers, GST credentials and security"
+        subtitle="Manage agency profile, online payment banks & wallets, opening balances, invoice headers, GST credentials and security"
         icon={Settings}
       />
 
@@ -265,17 +186,6 @@ export const SettingsPage = () => {
           }`}
         >
           <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Agency Information
-        </button>
-
-        <button
-          onClick={() => setActiveTab('accounts')}
-          className={`pb-3 sm:pb-4 transition border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === 'accounts'
-              ? 'border-brand-600 text-brand-600'
-              : 'border-transparent text-slate-400 hover:text-slate-700'
-          }`}
-        >
-          <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Bank & Cash Accounts
         </button>
 
         <button
@@ -301,10 +211,10 @@ export const SettingsPage = () => {
         </button>
       </div>
 
-      {/* Tab 1: Agency Information */}
+      {/* Tab 1: Agency Information (Includes Online Payment Banks & Wallets & Balances) */}
       {activeTab === 'agency' && (
         <div className="bg-white p-3.5 sm:p-8 rounded-b-xl sm:rounded-b-2xl border border-slate-200 shadow-xs -mt-4 sm:-mt-6 w-full min-w-0">
-          <form onSubmit={handleSaveAgencySettings} className="space-y-4 sm:space-y-6 text-[11px] sm:text-xs">
+          <form onSubmit={handleSaveAgencySettings} className="space-y-5 sm:space-y-6 text-[11px] sm:text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Agency Legal Name *</label>
@@ -402,6 +312,77 @@ export const SettingsPage = () => {
               </div>
             </div>
 
+            {/* Financial Balances Section */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                      <Banknote className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Cash Counter Opening Balance</h4>
+                      <p className="text-[10px] text-slate-400">Starting cash in counter</p>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Amount (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      disabled={!isAdmin}
+                      value={settings.cashOpeningBalance ?? ''}
+                      onChange={(e) => setSettings({ ...settings, cashOpeningBalance: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono font-bold text-slate-900 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0">
+                      <Building2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">Bank / Online Opening Balance</h4>
+                      <p className="text-[10px] text-slate-400">Starting bank ledger balance</p>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Amount (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      disabled={!isAdmin}
+                      value={settings.bankOpeningBalance ?? ''}
+                      onChange={(e) => setSettings({ ...settings, bankOpeningBalance: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono font-bold text-slate-900 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Online Payment Banks & Wallets (Comma-Separated) - Matching Screenshot */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block font-bold text-[#2C4A1D] text-xs sm:text-sm">
+                  Online Payment Banks & Wallets (Comma-Separated)
+                </label>
+                <input
+                  type="text"
+                  disabled={!isAdmin}
+                  placeholder="Paytm , Google Pay, phone pe, sbi, HDFC, ICICI"
+                  value={onlineMethodsInput}
+                  onChange={(e) => setOnlineMethodsInput(e.target.value)}
+                  className="w-full px-5 py-3 border border-[#6B8E23] bg-[#F7FAEE] rounded-full focus:outline-none focus:ring-2 focus:ring-[#6B8E23] text-slate-900 text-xs sm:text-sm font-medium shadow-2xs"
+                />
+                <p className="text-[11px] text-slate-500 font-normal">
+                  Options for receptionists to choose payment destinations.
+                </p>
+              </div>
+            </div>
+
             {isAdmin && (
               <div className="flex justify-end pt-4">
                 <button
@@ -418,203 +399,7 @@ export const SettingsPage = () => {
         </div>
       )}
 
-      {/* Tab 2: Bank & Cash Accounts Manager */}
-      {activeTab === 'accounts' && (
-        <div className="bg-white p-3.5 sm:p-8 rounded-b-xl sm:rounded-b-2xl border border-slate-200 shadow-xs -mt-4 sm:-mt-6 w-full min-w-0 space-y-6 text-xs">
-          <form onSubmit={handleSaveAgencySettings} className="space-y-6">
-            {/* Cash Counter Section */}
-            <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 rounded-xl border border-emerald-200/80">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
-                    <Banknote className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">Cash Counter / Register Opening Balance</h3>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      Starting cash in hand at the agency counter before recorded operations.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="w-full sm:w-64 shrink-0">
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                    Cash Opening Balance (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    disabled={!isAdmin}
-                    value={settings.cashOpeningBalance || 0}
-                    onChange={(e) => setSettings({ ...settings, cashOpeningBalance: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-slate-300 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono font-bold text-slate-900"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Bank Accounts Section */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-brand-600" /> Agency Bank Accounts
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Configure your agency bank accounts (e.g. HDFC, PNB, SBI) with opening balances.
-                  </p>
-                </div>
-
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={handleOpenAddBankModal}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition shadow-xs self-start sm:self-auto"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Bank Account
-                  </button>
-                )}
-              </div>
-
-              {/* Bank Accounts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(settings.bankAccounts || []).length > 0 ? (
-                  settings.bankAccounts.map((bank, idx) => (
-                    <div
-                      key={bank.id || idx}
-                      className={`p-4 rounded-xl border transition relative bg-white ${
-                        bank.isDefault
-                          ? 'border-brand-300 bg-brand-50/20 ring-1 ring-brand-400/30'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                              {bank.bankName}
-                              {bank.isDefault && (
-                                <span className="px-1.5 py-0.5 bg-brand-50 text-brand-700 border border-brand-200 rounded text-[9px] font-bold">
-                                  Default
-                                </span>
-                              )}
-                            </h4>
-                            <p className="text-[10px] text-slate-500 font-mono">
-                              A/C: {bank.accountNumber || 'Not specified'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleSetDefaultBank(idx)}
-                              className={`p-1.5 rounded-lg transition ${
-                                bank.isDefault
-                                  ? 'text-amber-500'
-                                  : 'text-slate-300 hover:text-amber-500'
-                              }`}
-                              title={bank.isDefault ? 'Default Account' : 'Set as Default'}
-                            >
-                              <Star className={`w-3.5 h-3.5 ${bank.isDefault ? 'fill-amber-500' : ''}`} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditBankModal(idx)}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition"
-                              title="Edit Details"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBank(idx)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition"
-                              title="Delete Account"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2 text-[11px]">
-                        <div>
-                          <span className="text-slate-400 text-[9px] block uppercase font-bold">IFSC / UPI ID</span>
-                          <span className="font-mono text-slate-700 font-semibold truncate block">
-                            {bank.upiId || bank.ifscCode || '-'}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-slate-400 text-[9px] block uppercase font-bold">Opening Balance</span>
-                          <span className="font-mono text-slate-900 font-black">
-                            ₹{parseFloat(bank.openingBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 p-6 rounded-xl border border-dashed border-slate-200 text-center bg-slate-50/50">
-                    <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-slate-700">No specific bank accounts added yet</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Add accounts like HDFC, PNB, SBI to split customer payments and track per-bank balances.
-                    </p>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={handleOpenAddBankModal}
-                        className="mt-3 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg transition shadow-2xs inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" /> Add First Bank Account
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Supported UPI Methods Section */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-              <label className="block font-bold text-slate-800 text-xs">
-                Supported UPI & Payment Apps (Comma Separated)
-              </label>
-              <input
-                type="text"
-                disabled={!isAdmin}
-                placeholder="e.g. PhonePe, Google Pay, Paytm, BHIM, Amazon Pay, PayPal, Cred"
-                value={upiMethodsInput}
-                onChange={handleUpiMethodsChange}
-                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-xs"
-              />
-              <p className="text-[10px] text-slate-500">
-                These apps will appear in POS split payment dropdowns when receiving UPI payments.
-              </p>
-            </div>
-
-            {isAdmin && (
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-md shadow-brand-600/20 flex items-center gap-2 transition disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? 'Saving...' : 'Save Bank & Cash Settings'}
-                </button>
-              </div>
-            )}
-          </form>
-        </div>
-      )}
-
-      {/* Tab 3: Invoice & Terms Settings */}
+      {/* Tab 2: Invoice & Terms Settings */}
       {activeTab === 'invoice' && (
         <div className="bg-white p-6 sm:p-8 rounded-b-2xl border border-slate-200 shadow-xs -mt-6">
           <form onSubmit={handleSaveAgencySettings} className="space-y-6 text-xs">
@@ -681,7 +466,7 @@ export const SettingsPage = () => {
         </div>
       )}
 
-      {/* Tab 4: My Profile & Password */}
+      {/* Tab 3: My Profile & Password */}
       {activeTab === 'profile' && (
         <div className="bg-white p-6 sm:p-8 rounded-b-2xl border border-slate-200 shadow-xs -mt-6 space-y-8">
           <div>
@@ -786,118 +571,6 @@ export const SettingsPage = () => {
           </div>
         </div>
       )}
-
-      {/* Add / Edit Bank Modal */}
-      <Modal
-        isOpen={isBankModalOpen}
-        onClose={() => setIsBankModalOpen(false)}
-        title={editingBankIndex >= 0 ? 'Edit Bank Account' : 'Add New Bank Account'}
-      >
-        <form onSubmit={handleSaveBankModal} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Bank Name *</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. HDFC Bank, Punjab National Bank (PNB), SBI"
-              value={bankForm.bankName}
-              onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Account Holder Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Liberty Tours & Travels"
-                value={bankForm.accountName}
-                onChange={(e) => setBankForm({ ...bankForm, accountName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Account Number</label>
-              <input
-                type="text"
-                placeholder="e.g. 50200012345678"
-                value={bankForm.accountNumber}
-                onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">IFSC Code</label>
-              <input
-                type="text"
-                placeholder="e.g. HDFC0001234"
-                value={bankForm.ifscCode}
-                onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono uppercase"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">UPI ID / VPA</label>
-              <input
-                type="text"
-                placeholder="e.g. libertytravels@hdfcbank"
-                value={bankForm.upiId}
-                onChange={(e) => setBankForm({ ...bankForm, upiId: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Opening Balance (₹)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={bankForm.openingBalance}
-              onChange={(e) => setBankForm({ ...bankForm, openingBalance: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono font-bold"
-            />
-            <p className="text-[10px] text-slate-400 mt-1">
-              Initial ledger balance for this bank before incoming/outgoing transactions.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="isDefault"
-              checked={bankForm.isDefault}
-              onChange={(e) => setBankForm({ ...bankForm, isDefault: e.target.checked })}
-              className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500"
-            />
-            <label htmlFor="isDefault" className="text-xs text-slate-700 font-medium cursor-pointer">
-              Set as Default Bank Account for transactions
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsBankModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-xs"
-            >
-              {editingBankIndex >= 0 ? 'Update Account' : 'Add Bank Account'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };
