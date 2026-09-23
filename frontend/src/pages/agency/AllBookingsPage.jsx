@@ -30,6 +30,7 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Modal } from '../../components/common/Modal';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
+import { CancelBookingModal } from '../../components/booking/CancelBookingModal';
 import { formatDate } from '../../utils/formatters';
 
 export const AllBookingsPage = () => {
@@ -57,8 +58,8 @@ export const AllBookingsPage = () => {
   // Modals
   const [selectedBookingForInvoice, setSelectedBookingForInvoice] = useState(null);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState(null);
   const [deleteBookingId, setDeleteBookingId] = useState(null);
-  const [cancelBookingId, setCancelBookingId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Add Payment form state
@@ -439,7 +440,7 @@ export const AllBookingsPage = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCancelBookingId(row.id || row._id);
+                setSelectedBookingForCancel(row);
               }}
               title="Cancel Booking"
               className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition"
@@ -736,17 +737,18 @@ export const AllBookingsPage = () => {
         </Modal>
       )}
 
-      {/* Cancel Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={!!cancelBookingId}
-        onClose={() => setCancelBookingId(null)}
-        onConfirm={handleCancelBooking}
-        title="Cancel Flight Booking"
-        message="Are you sure you want to cancel this booking? This will update the status to CANCELLED and log the activity."
-        confirmText="Yes, Cancel Booking"
-        type="warning"
-        loading={actionLoading}
-      />
+      {/* Cancel Booking Modal */}
+      {selectedBookingForCancel && (
+        <CancelBookingModal
+          isOpen={!!selectedBookingForCancel}
+          onClose={() => setSelectedBookingForCancel(null)}
+          booking={selectedBookingForCancel}
+          onSuccess={() => {
+            fetchBookings();
+            setSelectedBookingForCancel(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

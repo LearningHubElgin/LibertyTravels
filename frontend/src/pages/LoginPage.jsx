@@ -45,8 +45,8 @@ export const LoginPage = () => {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Back Button */}
-      <Link 
-        to="/" 
+      <Link
+        to="/"
         className="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold transition-colors z-20"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -91,7 +91,7 @@ export const LoginPage = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@libertytravel.com or superadmin"
+                  placeholder="Liberty or admin@libertytravel.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                 />
               </div>
@@ -137,7 +137,7 @@ export const LoginPage = () => {
           </form>
 
         </div>
-        
+
         <div className="mt-6 text-center">
           <p className="text-xs text-slate-400">
             Are you a customer?{' '}

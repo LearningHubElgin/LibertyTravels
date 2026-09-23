@@ -68,6 +68,10 @@ exports.createExpense = async (req, res, next) => {
       amount,
       paymentMethod = 'bank_transfer',
       upiMethod,
+      upiApp,
+      accountType = 'bank',
+      bankId = null,
+      bankName = null,
       paidTo,
       reference,
       notes
@@ -94,7 +98,7 @@ exports.createExpense = async (req, res, next) => {
       description: description.trim(),
       amount: expAmount,
       paymentMethod,
-      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
+      upiMethod: paymentMethod === 'upi' ? (upiMethod || upiApp) : null,
       paidTo: paidTo.trim(),
       reference: reference ? reference.trim() : '',
       notes: notes ? notes.trim() : '',
@@ -102,6 +106,7 @@ exports.createExpense = async (req, res, next) => {
     });
 
     const txnRef = await generateTransactionReference('TXN-EXP');
+    const effectiveAccountType = accountType || (paymentMethod === 'cash' ? 'cash' : 'bank');
     await Transaction.create({
       transactionDate: expenseDate,
       referenceNo: txnRef,
@@ -110,8 +115,12 @@ exports.createExpense = async (req, res, next) => {
       debit: expAmount,
       credit: 0.00,
       balance: toDecimal(-expAmount),
+      accountType: effectiveAccountType,
+      bankId: bankId || null,
+      bankName: bankName || null,
       paymentMethod,
-      upiMethod: paymentMethod === 'upi' ? upiMethod : null,
+      upiMethod: paymentMethod === 'upi' ? (upiMethod || upiApp) : null,
+      upiApp: upiApp || null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 

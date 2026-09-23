@@ -37,6 +37,19 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    accountType: {
+      type: String,
+      enum: ['cash', 'bank'],
+      default: 'cash'
+    },
+    bankId: {
+      type: String,
+      default: null
+    },
+    bankName: {
+      type: String,
+      default: null
+    },
     paymentMethod: {
       type: String,
       enum: ['cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other'],
@@ -47,6 +60,29 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    upiApp: {
+      type: String,
+      default: null
+    },
+    splits: [
+      {
+        accountType: {
+          type: String,
+          enum: ['cash', 'bank'],
+          default: 'cash'
+        },
+        bankId: { type: String, default: null },
+        bankName: { type: String, default: null },
+        paymentMethod: {
+          type: String,
+          enum: ['cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other'],
+          default: 'cash'
+        },
+        upiApp: { type: String, default: null },
+        amount: { type: Number, required: true },
+        reference: { type: String, default: '' }
+      }
+    ],
     reference: {
       type: String,
       default: '',

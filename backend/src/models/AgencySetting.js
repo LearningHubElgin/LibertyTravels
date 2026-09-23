@@ -43,9 +43,22 @@ const agencySettingSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    bankAccounts: [
+      {
+        id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+        bankName: { type: String, required: true },
+        accountName: { type: String, default: '' },
+        accountNumber: { type: String, default: '' },
+        ifscCode: { type: String, default: '' },
+        upiId: { type: String, default: '' },
+        openingBalance: { type: Number, default: 0 },
+        isDefault: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true }
+      }
+    ],
     upiMethods: {
       type: [String],
-      default: ['Paytm', 'Google Pay', 'PhonePe', 'PayPal', 'Amazon Pay']
+      default: ['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'PayPal', 'Amazon Pay', 'Cred']
     },
     invoicePrefix: {
       type: String,

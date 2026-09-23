@@ -39,6 +39,7 @@ exports.updateSettings = async (req, res, next) => {
       invoiceFooter,
       cashOpeningBalance,
       bankOpeningBalance,
+      bankAccounts,
       upiMethods
     } = req.body;
 
@@ -56,6 +57,24 @@ exports.updateSettings = async (req, res, next) => {
     if (invoiceFooter !== undefined) settings.invoiceFooter = invoiceFooter;
     if (cashOpeningBalance !== undefined) settings.cashOpeningBalance = parseFloat(cashOpeningBalance) || 0;
     if (bankOpeningBalance !== undefined) settings.bankOpeningBalance = parseFloat(bankOpeningBalance) || 0;
+    if (bankAccounts !== undefined && Array.isArray(bankAccounts)) {
+      settings.bankAccounts = bankAccounts.map(b => ({
+        id: b.id || new require('mongoose').Types.ObjectId().toString(),
+        bankName: (b.bankName || '').trim(),
+        accountName: (b.accountName || '').trim(),
+        accountNumber: (b.accountNumber || '').trim(),
+        ifscCode: (b.ifscCode || '').trim().toUpperCase(),
+        upiId: (b.upiId || '').trim(),
+        openingBalance: parseFloat(b.openingBalance) || 0,
+        isDefault: Boolean(b.isDefault),
+        isActive: b.isActive !== undefined ? Boolean(b.isActive) : true
+      })).filter(b => b.bankName);
+      
+      // Also update total bankOpeningBalance as sum if accounts exist
+      if (settings.bankAccounts.length > 0) {
+        settings.bankOpeningBalance = settings.bankAccounts.reduce((sum, b) => sum + (parseFloat(b.openingBalance) || 0), 0);
+      }
+    }
     if (upiMethods !== undefined && Array.isArray(upiMethods)) settings.upiMethods = upiMethods;
 
     await settings.save();

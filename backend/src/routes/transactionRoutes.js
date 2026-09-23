@@ -5,6 +5,7 @@ const { authenticate, authorizeAdmin } = require('../middleware/auth');
 
 router.use(authenticate, authorizeAdmin);
 
+router.get('/account-balances', transactionController.getAccountBalances);
 router.get('/', transactionController.getTransactions);
 router.post('/', transactionController.createTransaction);
 router.delete('/:id', transactionController.deleteTransaction);
