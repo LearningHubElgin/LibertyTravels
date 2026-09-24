@@ -84,3 +84,52 @@ export const formatCurrency = (val, withDecimals = false) => {
   }
   return `₹${num.toLocaleString('en-IN')}`;
 };
+
+// Convert number to Indian English words (e.g. 58778 -> "Rupees Fifty Eight Thousand Seven Hundred Seventy Eight Only")
+export const numberToWords = (num) => {
+  const n = Math.floor(Math.abs(Number(num) || 0));
+  if (n === 0) return 'Zero Rupees Only';
+
+  const a = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+  ];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const convertLessThanOneThousand = (number) => {
+    let current = '';
+    if (number >= 100) {
+      current += a[Math.floor(number / 100)] + ' Hundred ';
+      number %= 100;
+    }
+    if (number >= 20) {
+      current += b[Math.floor(number / 10)] + ' ';
+      number %= 10;
+    }
+    if (number > 0) {
+      current += a[number] + ' ';
+    }
+    return current.trim();
+  };
+
+  let crore = Math.floor(n / 10000000);
+  let remainder = n % 10000000;
+  let lakh = Math.floor(remainder / 100000);
+  remainder %= 100000;
+  let thousand = Math.floor(remainder / 1000);
+  let hundred = remainder % 1000;
+
+  let words = '';
+  if (crore > 0) words += convertLessThanOneThousand(crore) + ' Crore ';
+  if (lakh > 0) words += convertLessThanOneThousand(lakh) + ' Lakh ';
+  if (thousand > 0) words += convertLessThanOneThousand(thousand) + ' Thousand ';
+  if (hundred > 0) words += convertLessThanOneThousand(hundred) + ' ';
+
+  const paise = Math.round((Math.abs(Number(num) || 0) - n) * 100);
+  let result = 'Rupees ' + words.trim();
+  if (paise > 0) {
+    result += ' and ' + convertLessThanOneThousand(paise) + ' Paise';
+  }
+  return result + ' Only';
+};
+

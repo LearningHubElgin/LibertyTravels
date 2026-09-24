@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/formatters';
+import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 
 export const CustomerDashboardPage = () => {
   const { user, logout } = useAuth();
@@ -50,6 +51,7 @@ export const CustomerDashboardPage = () => {
   const [bookingSearch, setBookingSearch] = useState('');
   const [bookingFilter, setBookingFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedBookingForBill, setSelectedBookingForBill] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   const fetchData = async () => {
@@ -404,13 +406,26 @@ export const CustomerDashboardPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
                         <div>
                           <div className="text-[10px] text-slate-400 sm:text-right">Total Fare</div>
                           <div className="font-bold text-sm text-white sm:text-right">
                             {formatCurrency(booking.totalAmount)}
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBookingForBill(booking);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold transition shrink-0 cursor-pointer"
+                          title="View & Download Bill"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          <span>Bill</span>
+                        </button>
 
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
                           booking.paymentStatus === 'paid'
@@ -546,9 +561,23 @@ export const CustomerDashboardPage = () => {
                       </div>
                     </div>
 
-                    <div className="mt-3.5 pt-2 flex items-center justify-between text-xs text-brand-400 font-semibold">
-                      <span>Tap to view itinerary & voucher</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                    <div className="mt-3.5 pt-2 flex items-center justify-between text-xs text-brand-400 font-semibold border-t border-slate-800/80">
+                      <div className="flex items-center gap-1.5 hover:text-brand-300">
+                        <span>Tap to view itinerary & voucher</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBookingForBill(booking);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-xs transition cursor-pointer"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>View Bill</span>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -985,13 +1014,22 @@ export const CustomerDashboardPage = () => {
                 </div>
               )}
 
-              {/* Agency Assistance footer */}
-              <div className="pt-2">
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center gap-2">
                 <button
-                  onClick={() => setSelectedBooking(null)}
-                  className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-xs transition"
+                  type="button"
+                  onClick={() => setSelectedBookingForBill(selectedBooking)}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer"
                 >
-                  Close Voucher
+                  <Receipt className="w-4 h-4" />
+                  <span>View / Print Bill</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBooking(null)}
+                  className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Close
                 </button>
               </div>
 
@@ -999,6 +1037,16 @@ export const CustomerDashboardPage = () => {
 
           </div>
         </div>
+      )}
+
+      {/* Full Screen Bill & Tax Invoice Modal */}
+      {selectedBookingForBill && (
+        <InvoiceModal
+          isOpen={!!selectedBookingForBill}
+          onClose={() => setSelectedBookingForBill(null)}
+          booking={selectedBookingForBill}
+          initialMode="total_bill"
+        />
       )}
 
     </div>
