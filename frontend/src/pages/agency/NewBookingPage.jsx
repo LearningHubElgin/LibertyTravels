@@ -26,6 +26,7 @@ import {
   Layers,
   Ticket,
   Wallet,
+  AlertCircle,
   FileSpreadsheet
 } from 'lucide-react';
 import api from '../../services/api';
@@ -74,6 +75,16 @@ export const NewBookingPage = () => {
     status: 'active'
   });
   const [savingQuickCompany, setSavingQuickCompany] = useState(false);
+
+  // Quick Deposit Modal
+  const [isQuickDepositModalOpen, setIsQuickDepositModalOpen] = useState(false);
+  const [quickDepositForm, setQuickDepositForm] = useState({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    reference: '',
+    notes: ''
+  });
+  const [savingQuickDeposit, setSavingQuickDeposit] = useState(false);
 
   // Customer Mode: 'existing' or 'new'
   const [customerMode, setCustomerMode] = useState('existing');
@@ -433,6 +444,38 @@ export const NewBookingPage = () => {
     }
   };
 
+  // Quick Deposit Handler
+  const handleQuickDeposit = async (e) => {
+    e.preventDefault();
+    const depositAmt = parseFloat(quickDepositForm.amount);
+    if (isNaN(depositAmt) || depositAmt <= 0) {
+      return toastError('Please enter a valid deposit amount (greater than 0).');
+    }
+    if (!formData.companyId) {
+      return toastError('Please select a company first.');
+    }
+
+    setSavingQuickDeposit(true);
+    try {
+      const res = await api.post(`/companies/${formData.companyId}/deposit`, quickDepositForm);
+      if (res.data?.success) {
+        success(`Successfully deposited ₹${depositAmt.toLocaleString('en-IN')} to ${selectedCompanyObj?.name || 'Company'}!`);
+        setIsQuickDepositModalOpen(false);
+        setQuickDepositForm({
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+          reference: '',
+          notes: ''
+        });
+        await loadMasterData();
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to deposit funds.');
+    } finally {
+      setSavingQuickDeposit(false);
+    }
+  };
+
   // Main Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -440,6 +483,15 @@ export const NewBookingPage = () => {
     // Validation
     if (!formData.companyId) {
       return toastError('Please select a Company / Vendor.');
+    }
+
+    if (selectedCompanyObj && cost > 0) {
+      const availableDeposit = parseFloat(selectedCompanyObj.walletBalance || 0);
+      if (availableDeposit < cost) {
+        return toastError(
+          `Insufficient deposited balance for ${selectedCompanyObj.name}. Required: ₹${cost.toLocaleString('en-IN')}, Available: ₹${availableDeposit.toLocaleString('en-IN')}. Please deposit funds into ${selectedCompanyObj.name}'s wallet before booking.`
+        );
+      }
     }
 
     if (!formData.bookingDate) {
@@ -670,16 +722,27 @@ export const NewBookingPage = () => {
                     <label className="block font-bold text-slate-800">
                       Company / Supplier *
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuickCompanyForm((prev) => ({ ...prev, type: formData.serviceType }));
-                        setIsQuickCompanyModalOpen(true);
-                      }}
-                      className="text-[11px] font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Quick Add Company
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {formData.companyId && (
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickDepositModalOpen(true)}
+                          className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <Wallet className="w-3.5 h-3.5" /> Deposit Funds
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickCompanyForm((prev) => ({ ...prev, type: formData.serviceType }));
+                          setIsQuickCompanyModalOpen(true);
+                        }}
+                        className="text-[11px] font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Quick Add Company
+                      </button>
+                    </div>
                   </div>
 
                   <div className="relative">
@@ -712,16 +775,25 @@ export const NewBookingPage = () => {
                             <span className="text-[10px] text-slate-400 capitalize">{selectedCompanyObj.type || 'Supplier'} Provider</span>
                           </div>
                         </div>
-                        <span
-                          className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                            (selectedCompanyObj.walletBalance ?? 0) > 0
-                              ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
-                              : 'text-rose-400 bg-rose-950/60 border-rose-800/60'
-                          }`}
-                        >
-                          <Wallet className="w-3 h-3" />
-                          ₹{(selectedCompanyObj.walletBalance ?? 0).toLocaleString('en-IN')} Available Deposit
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                              (selectedCompanyObj.walletBalance ?? 0) > 0
+                                ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
+                                : 'text-rose-400 bg-rose-950/60 border-rose-800/60'
+                            }`}
+                          >
+                            <Wallet className="w-3 h-3" />
+                            ₹{(selectedCompanyObj.walletBalance ?? 0).toLocaleString('en-IN')} Available Deposit
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsQuickDepositModalOpen(true)}
+                            className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded-md font-bold transition shadow-2xs cursor-pointer"
+                          >
+                            + Top-Up
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
@@ -733,9 +805,21 @@ export const NewBookingPage = () => {
                         </div>
 
                         <div className="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                          <p className="text-[10px] text-slate-400 font-medium">Purchasing Capacity</p>
-                          <p className="font-mono font-semibold text-teal-300 text-[11px] mt-0.5">
-                            {(selectedCompanyObj.walletBalance ?? 0) > 0 ? 'Sufficient Balance' : 'Low / Settle Deposit'}
+                          <p className="text-[10px] text-slate-400 font-medium">Deposit Capacity</p>
+                          <p
+                            className={`font-mono font-semibold text-[11px] mt-0.5 ${
+                              cost > 0 && cost > (selectedCompanyObj.walletBalance || 0)
+                                ? 'text-rose-400 font-bold'
+                                : (selectedCompanyObj.walletBalance ?? 0) > 0
+                                ? 'text-teal-300'
+                                : 'text-amber-400'
+                            }`}
+                          >
+                            {cost > 0 && cost > (selectedCompanyObj.walletBalance || 0)
+                              ? '⚠️ Insufficient Float'
+                              : (selectedCompanyObj.walletBalance ?? 0) > 0
+                              ? 'Sufficient Balance'
+                              : 'Deposit Required'}
                           </p>
                         </div>
 
@@ -749,8 +833,30 @@ export const NewBookingPage = () => {
                     </div>
                   )}
 
+                  {/* INSUFFICIENT BALANCE WARNING BANNER */}
+                  {selectedCompanyObj && cost > 0 && cost > (selectedCompanyObj.walletBalance || 0) && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start justify-between gap-3 text-rose-800 animate-fadeIn">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div className="text-xs">
+                          <p className="font-bold text-rose-900">Insufficient Deposited Balance for {selectedCompanyObj.name}</p>
+                          <p className="text-[11px] text-rose-700 mt-0.5">
+                            Ticket buying cost is <span className="font-bold font-mono">₹{cost.toLocaleString('en-IN')}</span>, but current deposit float is only <span className="font-bold font-mono">₹{(selectedCompanyObj.walletBalance || 0).toLocaleString('en-IN')}</span>. You must deposit funds to issue this booking.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickDepositModalOpen(true)}
+                        className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shrink-0 shadow-xs cursor-pointer transition"
+                      >
+                        Deposit Now
+                      </button>
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Fetched from Company Master module (accessible via sidebar "Companies")
+                    Ticket cost will be deducted directly from this company's deposited float.
                   </p>
                 </div>
 
@@ -1505,6 +1611,102 @@ export const NewBookingPage = () => {
               className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-xs"
             >
               {savingQuickCompany ? 'Adding...' : 'Add & Select'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* QUICK DEPOSIT FUNDS MODAL */}
+      <Modal
+        isOpen={isQuickDepositModalOpen}
+        onClose={() => setIsQuickDepositModalOpen(false)}
+        title={`Deposit Funds – ${selectedCompanyObj?.name || 'Company Float'}`}
+        size="md"
+      >
+        <form onSubmit={handleQuickDeposit} className="space-y-3.5 text-xs">
+          {selectedCompanyObj && (
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-slate-900">{selectedCompanyObj.name} ({selectedCompanyObj.code})</p>
+                <p className="text-[10px] text-slate-500 capitalize">{selectedCompanyObj.type} Provider</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Current Deposit Float</p>
+                <p className="font-mono font-black text-emerald-700 text-sm">
+                  ₹{(selectedCompanyObj.walletBalance || 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Deposit Amount (₹) *</label>
+            <div className="relative">
+              <span className="text-slate-400 font-bold absolute left-3 top-1/2 -translate-y-1/2">₹</span>
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                required
+                placeholder="e.g. 50000"
+                value={quickDepositForm.amount}
+                onWheel={(e) => e.target.blur()}
+                onChange={(e) => setQuickDepositForm({ ...quickDepositForm, amount: e.target.value })}
+                className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Deposit Date</label>
+              <input
+                type="date"
+                required
+                value={quickDepositForm.date}
+                onChange={(e) => setQuickDepositForm({ ...quickDepositForm, date: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Reference / Cheque No</label>
+              <input
+                type="text"
+                placeholder="e.g. NEFT-9921"
+                value={quickDepositForm.reference}
+                onChange={(e) => setQuickDepositForm({ ...quickDepositForm, reference: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Notes / Description</label>
+            <input
+              type="text"
+              placeholder="e.g. Advance deposit for ticket issuance"
+              value={quickDepositForm.notes}
+              onChange={(e) => setQuickDepositForm({ ...quickDepositForm, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsQuickDepositModalOpen(false)}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingQuickDeposit}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
+            >
+              <Wallet className="w-3.5 h-3.5" />
+              {savingQuickDeposit ? 'Depositing...' : 'Confirm Deposit'}
             </button>
           </div>
         </form>

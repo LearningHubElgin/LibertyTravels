@@ -64,7 +64,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   // Helper: parse Passenger Name & extra passengers count from "Passenger Name/ pax / Guest / Narration"
-  // Format examples: "Niladri +1" (total 2), "Niladri + 2" (total 3), "Niladri (+2)", "Niladri" (total 1)
+  // Format examples: "VINOD SAHANI X 1" (total 1), "RAKESH X 2" (total 2), "Niladri +1" (total 2), "Niladri + 2" (total 3), "Niladri" (total 1)
   const parsePassengerNarration = (rawVal, fallbackExtra = 0) => {
     if (!rawVal && rawVal !== 0) {
       const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
@@ -77,12 +77,27 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
       return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra, rawString: '' };
     }
 
-    // Match "+1", "+ 1", "+2", "+ 2", "+ 10", "+1 pax", "+2 guests", "(+2)", etc.
-    const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
-    const match = str.match(plusRegex);
+    // 1. Match "X 1", "X 2", "x1", "*1", "X 10" multipliers: e.g. "VINOD SAHANI X 1" -> total 1 pax
+    const xMultiplierRegex = /(?:[\s,(/-]|\b)[xX*]\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?$/i;
+    const xMatch = str.match(xMultiplierRegex);
+    if (xMatch) {
+      const totalCount = Math.max(1, parseInt(xMatch[1], 10) || 1);
+      const extraCount = Math.max(0, totalCount - 1);
+      let clean = str.replace(xMultiplierRegex, '').replace(/[\s,(/-]+$/, '').trim();
+      if (!clean) clean = str;
+      return {
+        cleanName: clean,
+        extraPassengers: extraCount,
+        passengerCount: totalCount,
+        rawString: str
+      };
+    }
 
-    if (match) {
-      const extraCount = Math.max(0, parseInt(match[1], 10) || 0);
+    // 2. Match "+1", "+ 1", "+2", "+ 1 pax", "(+2)" add-ons: e.g. "Niladri +1" -> total 2 pax
+    const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
+    const plusMatch = str.match(plusRegex);
+    if (plusMatch) {
+      const extraCount = Math.max(0, parseInt(plusMatch[1], 10) || 0);
       let clean = str.replace(plusRegex, '').replace(/[\s,(/-]+$/, '').trim();
       if (!clean) clean = str;
       return {
@@ -186,7 +201,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
     return key;
   };
 
-  // Helper: robust date parser for Excel dates (DD-MM-YYYY, D-M-YYYY, serial dates, ISO dates)
+  // Helper: robust date parser for Excel dates (DD-MM-YYYY, DD MM YYYY, D-M-YYYY, serial dates, ISO dates)
   const parseExcelDate = (val) => {
     if (!val) return new Date().toISOString().split('T')[0];
 
@@ -209,8 +224,8 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
 
     const str = String(val).trim();
 
-    // Match DD-MM-YYYY or D-M-YYYY or DD/MM/YYYY or D/M/YYYY (Indian/International travel standard)
-    const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    // Match DD-MM-YYYY or DD MM YYYY or DD/MM/YYYY or D M YYYY (e.g. 29 07 2026, 28-07-2026)
+    const dmyMatch = str.match(/^(\d{1,2})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{4})$/);
     if (dmyMatch) {
       const day = dmyMatch[1].padStart(2, '0');
       const month = dmyMatch[2].padStart(2, '0');
@@ -218,8 +233,8 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
       return `${year}-${month}-${day}`;
     }
 
-    // Match YYYY-MM-DD or YYYY/MM/DD
-    const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    // Match YYYY-MM-DD or YYYY MM DD
+    const ymdMatch = str.match(/^(\d{4})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{1,2})$/);
     if (ymdMatch) {
       const year = ymdMatch[1];
       const month = ymdMatch[2].padStart(2, '0');
@@ -228,7 +243,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
     }
 
     // Match DD-MM-YY (2-digit year)
-    const dmyShortMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+    const dmyShortMatch = str.match(/^(\d{1,2})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{2})$/);
     if (dmyShortMatch) {
       const day = dmyShortMatch[1].padStart(2, '0');
       const month = dmyShortMatch[2].padStart(2, '0');
@@ -362,13 +377,21 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
           const matchedExisting = rawRefNo ? (existingRefMap.get(rawRefNo) || existingPnrMap.get(rawRefNo) || null) : null;
           const isExistingBooking = Boolean(matchedExisting);
 
-          // Format defaults
-          const cost = parseFloat(mapped.costPrice || 0) || 0;
-          const sell = parseFloat(mapped.sellPrice || 0) || cost;
+          // Format financial numbers & detect refunds from negative sale or signed cost or REFUND description
+          const rawCost = parseFloat(mapped.costPrice || 0) || 0;
+          const rawSell = parseFloat(mapped.sellPrice || 0) || 0;
+          const descStr = String(mapped.description || '').toUpperCase();
+          const isRefund = descStr.includes('REFUND') || rawSell < 0 || (rawCost > 0 && rawSell <= 0);
+
+          // In standard travel registers:
+          // Negative cost (e.g. -7114.05) represents float outflow; positive cost in refund represents float inflow.
+          const cost = Math.abs(rawCost);
+          const sell = Math.abs(rawSell);
           const tax = parseFloat(mapped.tax || 0) || 0;
-          const profit = sell - cost - tax;
+          const profit = isRefund ? 0 : Math.round((sell - cost - tax) * 100) / 100;
           const initialPay = parseFloat(mapped.initialPayment || 0) || 0;
           const balance = Math.max(0, sell - initialPay);
+          const rowStatus = isRefund ? 'cancelled' : (mapped.status || 'confirmed');
 
           // Determine service type with full auto-detection and normalization
           let rawServiceVal = mapped.serviceType;
@@ -486,13 +509,16 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
             companyName: mapped.companyName || `${service.toUpperCase()} Vendor`,
             costPrice: cost,
             sellPrice: sell,
+            rawCost,
+            rawSell,
             tax,
             profit,
+            isRefund,
             initialPayment: initialPay,
             balanceDue: balance,
             paymentMethod: mapped.paymentMethod || 'cash',
-            status: mapped.status || 'confirmed',
-            notes: mapped.notes || 'Imported via Excel Sheet',
+            status: rowStatus,
+            notes: mapped.notes || (isRefund ? 'Refund entry imported via Excel' : 'Imported via Excel Sheet'),
             isValid: Boolean(finalCustName && (sell > 0 || cost > 0))
           };
         });

@@ -10,7 +10,7 @@ export const SplitPaymentInput = ({
 }) => {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [upiApps, setUpiApps] = useState(['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'Amazon Pay', 'PayPal']);
-  
+
   // Single mode state
   const [singlePaymentMethod, setSinglePaymentMethod] = useState('cash'); // 'cash' | 'upi'
   const [singleUpiApp, setSingleUpiApp] = useState('PhonePe');
@@ -45,7 +45,7 @@ export const SplitPaymentInput = ({
   useEffect(() => {
     const isCash = singlePaymentMethod === 'cash';
     const selectedBank = bankAccounts.find(b => b.id === singleBankId);
-    
+
     onChange({
       isSplit: false,
       accountType: isCash ? 'cash' : 'bank',
@@ -132,3 +132,4 @@ export const SplitPaymentInput = ({
     </div>
   );
 };
+{/* This payment input component is working fine, but when i select bank account and click on save button the amount is not saving to database. please check the code and fix the issue. */ }

@@ -19,7 +19,9 @@ import {
   Plus,
   Trash2,
   Sparkles,
-  Ticket
+  Ticket,
+  AlertCircle,
+  Wallet
 } from 'lucide-react';
 import api from '../../services/api';
 import { Modal } from '../common/Modal';
@@ -297,10 +299,26 @@ export const EditBookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     );
   }, [companies, formData.serviceType]);
 
+  const selectedCompanyObj = useMemo(() => {
+    return companies.find((c) => String(c.id || c._id) === String(formData.companyId));
+  }, [companies, formData.companyId]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.sellPrice || parseFloat(formData.sellPrice) < 0) {
       return toastError('Please enter a valid sale price.');
+    }
+
+    if (selectedCompanyObj && cost > 0) {
+      const isSameCompany = String(formData.companyId) === String(booking.companyId || booking.company?._id || booking.company?.id);
+      const oldCost = isSameCompany ? parseFloat(booking.costPrice || 0) : 0;
+      const additionalRequired = cost - oldCost;
+      const available = parseFloat(selectedCompanyObj.walletBalance || 0);
+      if (additionalRequired > 0 && available < additionalRequired) {
+        return toastError(
+          `Insufficient deposited balance for ${selectedCompanyObj.name}. Additional required: ₹${additionalRequired.toLocaleString('en-IN')}, Available: ₹${available.toLocaleString('en-IN')}. Please deposit funds to ${selectedCompanyObj.name}.`
+        );
+      }
     }
 
     setSubmitting(true);
@@ -392,11 +410,20 @@ export const EditBookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
                   <option value="">-- Choose Company --</option>
                   {relevantCompanies.map((c) => (
                     <option key={c.id || c._id} value={c.id || c._id}>
-                      {c.name} ({c.code})
+                      {c.name} ({c.code}) {c.walletBalance !== undefined ? `[₹${(c.walletBalance || 0).toLocaleString('en-IN')} Deposit]` : ''}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {selectedCompanyObj && (
+                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 px-1">
+                  <span>Available Deposit:</span>
+                  <span className="font-mono font-bold text-emerald-600">
+                    ₹{(selectedCompanyObj.walletBalance || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Booking Date */}

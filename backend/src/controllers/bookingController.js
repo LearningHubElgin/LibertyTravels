@@ -305,6 +305,26 @@ exports.createBooking = async (req, res, next) => {
       finalPassengerCount = 1 + finalExtraGuests;
     }
 
+    let companyObj = null;
+
+    if (chosenCompanyId) {
+      companyObj = await Company.findById(chosenCompanyId);
+      if (!companyObj) {
+        return res.status(404).json({
+          success: false,
+          message: 'Selected company does not exist.'
+        });
+      }
+
+      const availableDeposit = parseFloat(companyObj.walletBalance || 0);
+      if (cPrice > 0 && availableDeposit < cPrice) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient deposited balance for ${companyObj.name}. Available: ₹${availableDeposit.toLocaleString('en-IN')}, Required Cost: ₹${cPrice.toLocaleString('en-IN')}. Please deposit funds to ${companyObj.name} before creating this booking.`
+        });
+      }
+    }
+
     const activeAgencyId = req.agencyId || (req.user && req.user.agencyId) || null;
 
     const booking = await Booking.create({
@@ -563,6 +583,105 @@ exports.updateBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    // Handle Company Deposit Balance adjustments if costPrice or companyId changed
+    const oldCompanyId = booking.companyId ? String(booking.companyId) : null;
+    const oldCostPrice = parseFloat(booking.costPrice || 0);
+    const targetCompanyId = companyId !== undefined ? (companyId || null) : booking.companyId;
+    const targetCostPrice = costPrice !== undefined ? toDecimal(costPrice) : oldCostPrice;
+
+    if (String(targetCompanyId || '') !== String(oldCompanyId || '')) {
+      // 1. Refund old company if applicable
+      if (oldCompanyId && oldCostPrice > 0) {
+        const oldComp = await Company.findById(oldCompanyId);
+        if (oldComp) {
+          const before = parseFloat(oldComp.walletBalance || 0);
+          oldComp.walletBalance = before + oldCostPrice;
+          if (!oldComp.transactions) oldComp.transactions = [];
+          oldComp.transactions.push({
+            type: 'deposit',
+            amount: oldCostPrice,
+            balanceBefore: before,
+            balanceAfter: oldComp.walletBalance,
+            reference: `REVERSAL-${booking.referenceNo}`,
+            notes: `Company reassignment reversal for ${booking.referenceNo}`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date()
+          });
+          await oldComp.save();
+        }
+      }
+
+      // 2. Validate and deduct from new company
+      if (targetCompanyId && targetCostPrice > 0) {
+        const newComp = await Company.findById(targetCompanyId);
+        if (!newComp) {
+          return res.status(404).json({ success: false, message: 'Selected company does not exist.' });
+        }
+        const avail = parseFloat(newComp.walletBalance || 0);
+        if (avail < targetCostPrice) {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient deposited balance for ${newComp.name}. Available: ₹${avail.toLocaleString('en-IN')}, Required: ₹${targetCostPrice.toLocaleString('en-IN')}. Please deposit funds to ${newComp.name}.`
+          });
+        }
+        newComp.walletBalance = avail - targetCostPrice;
+        if (!newComp.transactions) newComp.transactions = [];
+        newComp.transactions.push({
+          type: 'deduction',
+          amount: targetCostPrice,
+          balanceBefore: avail,
+          balanceAfter: newComp.walletBalance,
+          reference: booking.referenceNo,
+          notes: `Booking reassigned to ${newComp.name}`,
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date()
+        });
+        await newComp.save();
+      }
+    } else if (targetCompanyId && targetCostPrice !== oldCostPrice) {
+      const costDiff = toDecimal(targetCostPrice - oldCostPrice);
+      const comp = await Company.findById(targetCompanyId);
+      if (comp) {
+        const avail = parseFloat(comp.walletBalance || 0);
+        if (costDiff > 0) {
+          if (avail < costDiff) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient deposited balance for ${comp.name}. Available: ₹${avail.toLocaleString('en-IN')}, Additional Cost Required: ₹${costDiff.toLocaleString('en-IN')}. Please deposit funds to ${comp.name}.`
+            });
+          }
+          comp.walletBalance = avail - costDiff;
+          if (!comp.transactions) comp.transactions = [];
+          comp.transactions.push({
+            type: 'deduction',
+            amount: costDiff,
+            balanceBefore: avail,
+            balanceAfter: comp.walletBalance,
+            reference: booking.referenceNo,
+            notes: `Cost price increase for ${booking.referenceNo}`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date()
+          });
+          await comp.save();
+        } else if (costDiff < 0) {
+          const refundAmt = Math.abs(costDiff);
+          comp.walletBalance = avail + refundAmt;
+          if (!comp.transactions) comp.transactions = [];
+          comp.transactions.push({
+            type: 'deposit',
+            amount: refundAmt,
+            balanceBefore: avail,
+            balanceAfter: comp.walletBalance,
+            reference: `ADJ-${booking.referenceNo}`,
+            notes: `Cost price reduction adjustment for ${booking.referenceNo}`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date()
+          });
+          await comp.save();
+        }
+      }
+    }
+
     if (req.body.bookingDate) booking.bookingDate = req.body.bookingDate;
     if (serviceType) booking.serviceType = serviceType;
     if (bookingType) booking.bookingType = bookingType;
@@ -571,8 +690,8 @@ exports.updateBooking = async (req, res, next) => {
     if (journeyDate) booking.journeyDate = journeyDate;
     if (returnDate !== undefined) booking.returnDate = returnDate || null;
     
-    if (companyId) {
-      booking.companyId = companyId;
+    if (companyId !== undefined) {
+      booking.companyId = companyId || null;
     }
     if (flightNumber !== undefined) booking.flightNumber = flightNumber ? flightNumber.trim().toUpperCase() : '';
     if (pnr) booking.pnr = pnr.trim().toUpperCase();
@@ -911,6 +1030,29 @@ exports.cancelBooking = async (req, res, next) => {
 
     await booking.save();
 
+    // Refund back into Company Deposit Balance if supplier refunded funds
+    if (booking.companyId && sRefund > 0) {
+      const company = await Company.findById(booking.companyId);
+      if (company) {
+        const balanceBefore = parseFloat(company.walletBalance || 0);
+        company.walletBalance = balanceBefore + sRefund;
+        const ticketsCount = booking.passengerCount || 1;
+        company.usedTickets = Math.max(0, (company.usedTickets || 0) - ticketsCount);
+        if (!company.transactions) company.transactions = [];
+        company.transactions.push({
+          type: 'deposit',
+          amount: sRefund,
+          balanceBefore,
+          balanceAfter: company.walletBalance,
+          reference: `REFUND-${booking.referenceNo}`,
+          notes: `Supplier cancellation refund for ${booking.referenceNo}`,
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date()
+        });
+        await company.save();
+      }
+    }
+
     if (cRefund > 0) {
       const txnRef = await generateTransactionReference('TXN-REF');
       await Transaction.create({
@@ -966,10 +1108,29 @@ exports.deleteBooking = async (req, res, next) => {
     await Passenger.deleteMany({ bookingId: id });
 
     if (booking.companyId) {
-      const ticketsCount = booking.passengerCount || (1 + (parseInt(booking.extraGuests || 0, 10) || 0));
-      await Company.findByIdAndUpdate(booking.companyId, {
-        $inc: { usedTickets: -ticketsCount }
-      }).catch(() => {});
+      const company = await Company.findById(booking.companyId);
+      if (company) {
+        // If the booking was not cancelled, refund the costPrice back to the company's deposited balance
+        const refundAmt = parseFloat(booking.costPrice || 0);
+        if (booking.status !== 'cancelled' && refundAmt > 0) {
+          const balanceBefore = parseFloat(company.walletBalance || 0);
+          company.walletBalance = balanceBefore + refundAmt;
+          if (!company.transactions) company.transactions = [];
+          company.transactions.push({
+            type: 'deposit',
+            amount: refundAmt,
+            balanceBefore,
+            balanceAfter: company.walletBalance,
+            reference: `DELETE-${refNo}`,
+            notes: `Automatic refund from deleted booking ${refNo}`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date()
+          });
+        }
+        const ticketsCount = booking.passengerCount || (1 + (parseInt(booking.extraGuests || 0, 10) || 0));
+        company.usedTickets = Math.max(0, (company.usedTickets || 0) - ticketsCount);
+        await company.save();
+      }
     }
 
     await Booking.findByIdAndDelete(id);
@@ -1053,21 +1214,22 @@ exports.bulkImportBookings = async (req, res, next) => {
         return `${y}-${m}-${d}`;
       }
       const str = String(val).trim();
-      const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      // Match DD-MM-YYYY or DD MM YYYY or DD/MM/YYYY or D M YYYY (e.g. 29 07 2026, 28-07-2026)
+      const dmyMatch = str.match(/^(\d{1,2})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{4})$/);
       if (dmyMatch) {
         const day = dmyMatch[1].padStart(2, '0');
         const month = dmyMatch[2].padStart(2, '0');
         const year = dmyMatch[3];
         return `${year}-${month}-${day}`;
       }
-      const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+      const ymdMatch = str.match(/^(\d{4})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{1,2})$/);
       if (ymdMatch) {
         const year = ymdMatch[1];
         const month = ymdMatch[2].padStart(2, '0');
         const day = ymdMatch[3].padStart(2, '0');
         return `${year}-${month}-${day}`;
       }
-      const dmyShortMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+      const dmyShortMatch = str.match(/^(\d{1,2})[\s\-/. ]+(\d{1,2})[\s\-/. ]+(\d{2})$/);
       if (dmyShortMatch) {
         const day = dmyShortMatch[1].padStart(2, '0');
         const month = dmyShortMatch[2].padStart(2, '0');
@@ -1077,7 +1239,7 @@ exports.bulkImportBookings = async (req, res, next) => {
       return str;
     };
 
-    // Helper: auto-extract passenger name & extra count from "Passenger Name/ pax / Guest / Narration" (e.g. "Niladri +1" -> 2 pax)
+    // Helper: auto-extract passenger name & extra count from "Passenger Name/ pax / Guest / Narration" (e.g. "VINOD SAHANI X 1", "Niladri +1")
     const parsePassengerNarration = (rawVal, fallbackExtra = 0) => {
       if (!rawVal && rawVal !== 0) {
         const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
@@ -1088,6 +1250,19 @@ exports.bulkImportBookings = async (req, res, next) => {
         const extra = Math.max(0, parseInt(fallbackExtra, 10) || 0);
         return { cleanName: '', extraPassengers: extra, passengerCount: 1 + extra };
       }
+
+      // 1. Match "X 1", "X 2", "x1", "*1" multipliers: e.g. "VINOD SAHANI X 1" -> total 1 pax
+      const xMultiplierRegex = /(?:[\s,(/-]|\b)[xX*]\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?$/i;
+      const xMatch = str.match(xMultiplierRegex);
+      if (xMatch) {
+        const totalCount = Math.max(1, parseInt(xMatch[1], 10) || 1);
+        const extraCount = Math.max(0, totalCount - 1);
+        let clean = str.replace(xMultiplierRegex, '').replace(/[\s,(/-]+$/, '').trim();
+        if (!clean) clean = str;
+        return { cleanName: clean, extraPassengers: extraCount, passengerCount: totalCount };
+      }
+
+      // 2. Match "+1", "+ 1", "+2", "+ 1 pax", "(+2)" add-ons: e.g. "Niladri +1" -> total 2 pax
       const plusRegex = /(?:[\s,(/-]|\b)\+\s*(\d+)(?:\s*(?:pax|passengers?|guests?|persons?|person|seats?|adults?))?(?:\s*\))?/i;
       const match = str.match(plusRegex);
       if (match) {
@@ -1169,17 +1344,23 @@ exports.bulkImportBookings = async (req, res, next) => {
           companyMap.set(rawCompName.toLowerCase(), company);
         }
 
-        // 3. Compute Financials
-        const costPrice = toDecimal(parseFloat(row.costPrice || row.cost || row.buyRate || 0));
-        const sellPrice = toDecimal(parseFloat(row.sellPrice || row.sell || row.price || row.amount || costPrice || 0));
+        // 3. Compute Financials & Detect Signed Cost / Refunds
+        const rawCost = parseFloat(row.costPrice || row.cost || row.buyRate || 0) || 0;
+        const rawSell = parseFloat(row.sellPrice || row.sell || row.price || row.amount || 0) || 0;
+        const descStr = String(row.description || row.sector || '').toUpperCase();
+        const isRefund = descStr.includes('REFUND') || rawSell < 0 || (rawCost > 0 && rawSell <= 0);
+
+        const costPrice = toDecimal(Math.abs(rawCost));
+        const sellPrice = toDecimal(Math.abs(rawSell));
         const tax = toDecimal(parseFloat(row.tax || row.gst || 0));
         const initialPayment = toDecimal(parseFloat(row.initialPayment || row.paid || row.amountReceived || 0));
         
-        const grossProfit = toDecimal(sellPrice - costPrice);
-        const netProfit = tax > 0 ? toDecimal(grossProfit - tax) : grossProfit;
-        const totalAmount = sellPrice > 0 ? sellPrice : costPrice;
+        const grossProfit = isRefund ? 0 : toDecimal(sellPrice - costPrice);
+        const netProfit = (isRefund || tax <= 0) ? grossProfit : toDecimal(grossProfit - tax);
+        const totalAmount = isRefund ? 0 : (sellPrice > 0 ? sellPrice : costPrice);
         const balanceDue = toDecimal(Math.max(0, totalAmount - initialPayment));
-        const paymentStatus = balanceDue <= 0 ? 'paid' : initialPayment > 0 ? 'partially_paid' : 'unpaid';
+        const paymentStatus = isRefund ? 'paid' : (balanceDue <= 0 ? 'paid' : initialPayment > 0 ? 'partially_paid' : 'unpaid');
+        const bookingStatus = isRefund ? 'cancelled' : (row.status || 'confirmed');
 
         // 4. Generate reference if not given & Check if booking already exists in DB
         let referenceNo = (row.referenceNo || row.pnr || row.ref || '').toString().trim().toUpperCase();
@@ -1232,6 +1413,7 @@ exports.bulkImportBookings = async (req, res, next) => {
             existingBooking.totalAmount = totalAmount;
             existingBooking.balanceDue = balanceDue;
             existingBooking.paymentStatus = paymentStatus;
+            existingBooking.status = bookingStatus;
             if (row.notes) existingBooking.notes = row.notes;
 
             await existingBooking.save();
@@ -1289,7 +1471,7 @@ exports.bulkImportBookings = async (req, res, next) => {
         const journeyDate = parseExcelDate(row.journeyDate || row.travelDate || row.bookingDate || row.date);
         const sector = (row.sector || row.route || row.description || `${serviceType.toUpperCase()} Booking`).trim().toUpperCase();
 
-        // 5. Compute passenger count & extra guests auto-extracted from Passenger Name/ pax / Guest / Narration (e.g. "Niladri +1" -> 2 tickets)
+        // 5. Compute passenger count & extra guests auto-extracted from Passenger Name/ pax / Guest / Narration (e.g. "VINOD SAHANI X 1", "Niladri +1")
         const rawPaxInput = row.passengerName || row['Passenger Name/ pax / Guest / Narration'] || customerName;
         const paxParse = parsePassengerNarration(rawPaxInput, row.extraPassengers || row.extraGuests || row.extraPassenger || row.extraPax);
         const primaryPaxName = (paxParse.cleanName || customerName).trim();
@@ -1314,7 +1496,7 @@ exports.bulkImportBookings = async (req, res, next) => {
           passengerName: primaryPaxName,
           passengerCount: totalTickets,
           extraGuests: extraPaxCount,
-          status: row.status || 'confirmed',
+          status: bookingStatus,
           paymentStatus,
           customerId: customer._id,
           costPrice,
@@ -1326,7 +1508,7 @@ exports.bulkImportBookings = async (req, res, next) => {
           amountReceived: initialPayment,
           balanceDue,
           commission: 0,
-          notes: row.notes || 'Imported via Excel Sheet',
+          notes: row.notes || (isRefund ? 'Refund entry via Excel Sheet' : 'Imported via Excel Sheet'),
           createdBy: userId
         });
 
@@ -1357,11 +1539,45 @@ exports.bulkImportBookings = async (req, res, next) => {
 
         await Passenger.insertMany(passengerRecords);
 
-        // Deduct from Company Quota / Available Tickets (increment usedTickets by totalTickets)
+        // Update Company Deposit Float Balance and Ticket Quota
         if (company && company._id) {
-          await Company.findByIdAndUpdate(company._id, {
-            $inc: { usedTickets: totalTickets }
-          });
+          const compDoc = await Company.findById(company._id);
+          if (compDoc) {
+            if (isRefund) {
+              // Refund credits the company float
+              const before = parseFloat(compDoc.walletBalance || 0);
+              compDoc.walletBalance = before + costPrice;
+              if (!compDoc.transactions) compDoc.transactions = [];
+              compDoc.transactions.push({
+                type: 'deposit',
+                amount: costPrice,
+                balanceBefore: before,
+                balanceAfter: compDoc.walletBalance,
+                reference: referenceNo,
+                notes: `Refund for ${primaryPaxName} (${referenceNo})`,
+                date: bookingDate,
+                createdAt: new Date()
+              });
+              await compDoc.save();
+            } else {
+              // Booking deduction from company float
+              const before = parseFloat(compDoc.walletBalance || 0);
+              compDoc.walletBalance = before - costPrice;
+              compDoc.usedTickets = (compDoc.usedTickets || 0) + totalTickets;
+              if (!compDoc.transactions) compDoc.transactions = [];
+              compDoc.transactions.push({
+                type: 'deduction',
+                amount: costPrice,
+                balanceBefore: before,
+                balanceAfter: compDoc.walletBalance,
+                reference: referenceNo,
+                notes: `Booking for ${primaryPaxName} (${referenceNo})`,
+                date: bookingDate,
+                createdAt: new Date()
+              });
+              await compDoc.save();
+            }
+          }
         }
 
         // 7. If initial payment exists, record Payment and Ledger Transaction
