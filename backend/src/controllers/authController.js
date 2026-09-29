@@ -13,23 +13,24 @@ const signToken = (user) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, id, loginId, password } = req.body;
+    const identifier = (email || username || id || loginId || '').toLowerCase().trim();
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide both email and password'
+        message: 'Please provide both login ID / email and password'
       });
     }
 
-    let user = await User.findOne({ email: email.toLowerCase().trim() })
+    let user = await User.findOne({ email: identifier })
       .select('+password')
       .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
 
     let isCustomer = false;
 
     if (!user) {
-      user = await Customer.findOne({ customerCode: email.trim() })
+      user = await Customer.findOne({ customerCode: identifier })
         .select('+password')
         .populate('agencyId', 'name code logo tagline address city country phone email gstNumber invoiceSettings');
       

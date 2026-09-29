@@ -42,21 +42,21 @@ const seedDatabase = async () => {
 
     // 1. Create Default Users (Super Admin & Admin)
     const superAdmin = await User.create({
-      name: 'Liberty Super Admin',
-      email: 'admin@libertytravel.com',
-      password: 'admin123',
+      name: 'Global Super Admin',
+      email: 'superadmin',
+      password: 'password123',
       role: ROLES.SUPER_ADMIN,
       status: USER_STATUS.ACTIVE
     });
 
     const admin = await User.create({
-      name: 'Operations Manager',
-      email: 'staff@libertytravel.com',
-      password: 'staff123',
+      name: 'Liberty Admin',
+      email: 'liberty',
+      password: 'Liberty123',
       role: ROLES.ADMIN,
       status: USER_STATUS.ACTIVE
     });
-    console.log('👤 Created Super Admin and Admin staff accounts.');
+    console.log('👤 Created Super Admin (superadmin) and Admin accounts.');
 
     // 2. Create Default Agency Settings
     await AgencySetting.create({
@@ -106,8 +106,8 @@ const seedDatabase = async () => {
     console.log('✅ DATABASE ESSENTIAL INITIALIZATION COMPLETED!');
     console.log('------------------------------------------------------------');
     console.log('🔑 Login Credentials:');
-    console.log('   1. Super Admin: admin@libertytravel.com | admin123');
-    console.log('   2. Staff Admin: staff@libertytravel.com | staff123');
+    console.log('   1. Super Admin: superadmin | password123');
+    console.log('   2. Agency Admin: liberty | Liberty123');
     console.log('============================================================\n');
 
     process.exit(0);
