@@ -53,7 +53,11 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const isMatch = await user.comparePassword(password);
+    let isMatch = await user.comparePassword(password);
+    if (!isMatch && typeof password === 'string' && password.trim() !== password) {
+      isMatch = await user.comparePassword(password.trim());
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,

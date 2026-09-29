@@ -37,51 +37,43 @@ export const CustomerLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#071628] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-[#071628] flex flex-col justify-center px-4 py-8 sm:py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-600/10 blur-[100px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-teal-500/10 blur-[100px]"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-brand-600/10 blur-[100px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-teal-500/10 blur-[100px]"></div>
       </div>
 
       {/* Back Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold transition-colors z-20"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-slate-400 hover:text-white flex items-center gap-2 text-xs sm:text-sm font-semibold transition-colors z-20 py-1 px-2 rounded-lg hover:bg-slate-800/40"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Home
       </Link>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-gradient-to-tr from-brand-600 via-sky-500 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 border border-white/20">
-            <Plane className="w-8 h-8 text-white" />
+      <div className="w-full max-w-sm sm:max-w-md mx-auto relative z-10 text-center mt-6 sm:mt-0">
+        <div className="flex justify-center mb-3 sm:mb-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-tr from-brand-600 via-sky-500 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 border border-white/20">
+            <Plane className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
         </div>
-        <h2 className="text-3xl font-black text-white tracking-tight">
+        <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight">
           Customer Portal
         </h2>
-        <p className="mt-2 text-sm font-medium text-slate-400">
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm font-medium text-slate-400">
           Sign in to view your bookings and history
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
-        <div className="bg-[#0B1E36] py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-800">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+      <div className="mt-5 sm:mt-8 w-full max-w-sm sm:max-w-md mx-auto relative z-10">
+        <div className="bg-[#0B1E36] py-6 px-5 sm:py-8 sm:px-10 shadow-2xl rounded-2xl sm:rounded-3xl border border-slate-800">
+          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-700">{error}</p>
-                  </div>
-                </div>
+              <div className="p-3.5 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-xl flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
+                {error}
               </div>
             )}
 
@@ -98,9 +90,10 @@ export const CustomerLoginPage = () => {
                   name="customerCode"
                   type="text"
                   required
+                  autoComplete="username"
                   value={customerCode}
                   onChange={(e) => setCustomerCode(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-base sm:text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                   placeholder="e.g. CUST-12345"
                 />
               </div>
@@ -117,11 +110,12 @@ export const CustomerLoginPage = () => {
                 <input
                   id="phone"
                   name="phone"
-                  type="text"
+                  type="tel"
                   required
+                  autoComplete="current-password"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#071628] border border-slate-700 text-white text-base sm:text-xs rounded-xl placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                   placeholder="Enter your registered phone number"
                 />
               </div>
@@ -131,7 +125,7 @@ export const CustomerLoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2 transition duration-200 disabled:opacity-50"
+                className="w-full mt-2 py-3 px-4 bg-brand-600 hover:bg-brand-500 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2 transition duration-200 disabled:opacity-50"
               >
                 {loading ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -144,7 +138,7 @@ export const CustomerLoginPage = () => {
             </div>
           </form>
 
-          <div className="mt-6 border-t border-slate-800 pt-6">
+          <div className="mt-5 sm:mt-6 border-t border-slate-800 pt-5 sm:pt-6">
             <div className="text-center text-xs text-slate-400">
               Need help finding your User ID? Please contact your travel agency.
             </div>
