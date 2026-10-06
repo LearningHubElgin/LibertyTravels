@@ -6,7 +6,6 @@ import {
   Filter,
   ArrowDownRight,
   ArrowUpRight,
-  Trash2,
   Download,
   Banknote,
   Building2,
@@ -22,7 +21,6 @@ import { DataTable } from '../../components/common/DataTable';
 import { Modal } from '../../components/common/Modal';
 import { useToast } from '../../context/ToastContext';
 import { formatDate } from '../../utils/formatters';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export const TransactionsPage = () => {
   const { success, error: toastError } = useToast();
@@ -49,7 +47,6 @@ export const TransactionsPage = () => {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [deleteTxnId, setDeleteTxnId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Manual Transaction Form
@@ -175,23 +172,6 @@ export const TransactionsPage = () => {
     }
   };
 
-  const handleDeleteTransaction = async () => {
-    if (!deleteTxnId) return;
-    setActionLoading(true);
-    try {
-      const res = await api.delete(`/transactions/${deleteTxnId}`);
-      if (res.data.success) {
-        success('Transaction deleted.');
-        setDeleteTxnId(null);
-        fetchTransactions();
-        fetchBalances();
-      }
-    } catch (err) {
-      toastError('Failed to delete transaction.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   const formatCurrency = (val) => `₹${parseFloat(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
@@ -221,6 +201,13 @@ export const TransactionsPage = () => {
     {
       header: 'Account / Destination',
       render: (row) => {
+        if (row.accountType === 'none' || row.type === 'booking') {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 w-max">
+              Customer Ledger Only
+            </span>
+          );
+        }
         const isCash = row.accountType === 'cash' || row.paymentMethod === 'cash';
         return (
           <div className="flex flex-col gap-0.5">
@@ -283,20 +270,6 @@ export const TransactionsPage = () => {
         ) : (
           <span className="text-slate-300">-</span>
         )
-    },
-    {
-      header: 'Actions',
-      className: 'text-right',
-      cellClassName: 'text-right',
-      render: (row) => (
-        <button
-          onClick={() => setDeleteTxnId(row.id || row._id)}
-          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition"
-          title="Delete Transaction"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )
     }
   ];
 
@@ -304,6 +277,9 @@ export const TransactionsPage = () => {
   const banks = accountBalances.bankAccounts || [];
   const totalBank = accountBalances.totalBankSummary;
   const totalSummary = accountBalances.summary;
+  const selectedBankObj = selectedAccountFilter.bankName
+    ? banks.find(b => b.bankName?.toLowerCase().trim() === selectedAccountFilter.bankName.toLowerCase().trim())
+    : null;
 
   // Bank brand color mapping for visual richness
   const getBankStyle = (name = '') => {
@@ -348,7 +324,7 @@ export const TransactionsPage = () => {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Wallet className="w-3.5 h-3.5 text-brand-600" /> Account Balances & Bank Deposit Registers
+            <Wallet className="w-3.5 h-3.5 text-brand-600" /> Account Balances & Registers (Total, Cash, Online)
           </h3>
           {selectedAccountFilter.type !== 'all' && (
             <button
@@ -357,72 +333,78 @@ export const TransactionsPage = () => {
             >
               <X className="w-3.5 h-3.5" /> Showing:{' '}
               {selectedAccountFilter.type === 'cash'
-                ? 'Cash Counter'
+                ? 'Cash'
                 : selectedAccountFilter.bankName
                 ? selectedAccountFilter.bankName
-                : 'All Banks'}
-              {' '}(Click to Show All)
+                : 'Online'}
+              {' '}(Click to Show Total)
             </button>
           )}
         </div>
 
-        {/* PRIMARY HIGHLIGHT CARDS: ALL BANKS CONSOLIDATED + CASH COUNTER + TOTAL LIQUIDITY */}
+        {/* PRIMARY HIGHLIGHT CARDS: 1. TOTAL CASH & ONLINE, 2. CASH, 3. ONLINE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* CARD 1: ALL BANK DEPOSITS (CONSOLIDATED TOTAL) */}
+          {/* CARD 1 (FIRST): TOTAL CASH & ONLINE (CONSOLIDATED LIQUIDITY) */}
           <div
-            onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
-            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-blue-600 via-brand-600 to-indigo-700 text-white shadow-md hover:shadow-lg ${
-              selectedAccountFilter.type === 'bank' && !selectedAccountFilter.bankName
-                ? 'ring-4 ring-blue-300 shadow-blue-500/30'
-                : 'hover:border-blue-400'
+            onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
+            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-indigo-700 via-brand-600 to-blue-600 text-white shadow-md hover:shadow-lg ${
+              selectedAccountFilter.type === 'all'
+                ? 'ring-4 ring-brand-300 shadow-brand-500/30 border-white/40'
+                : 'hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md text-white flex items-center justify-center shadow-xs border border-white/20">
-                  <Building2 className="w-5 h-5 text-white" />
+                  <Layers className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-blue-100 block">
-                    Total Bank Deposits
+                    Total Liquidity
                   </span>
-                  <span className="text-xs font-bold text-white">All Banks Consolidated</span>
+                  <span className="text-xs font-bold text-white">Total Cash & Online</span>
                 </div>
               </div>
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-xs">
-                {banks.length} Banks Active
+                Cash + Online
               </span>
             </div>
 
             <div className="mt-3">
-              <span className="text-[10px] text-blue-100 uppercase font-semibold block">Total Live Bank Balance</span>
+              <span className="text-[10px] text-blue-100 uppercase font-semibold block">Consolidated Net Balance</span>
               <p className="text-xl sm:text-2xl font-black font-mono text-white mt-0.5 tracking-tight">
-                {formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)}
+                {formatCurrency(totalSummary?.totalLiquidBalance || 0)}
               </p>
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-white/20 grid grid-cols-3 gap-1 text-[10px] font-mono">
               <div>
                 <span className="text-blue-100 block text-[9px] uppercase">Opening</span>
-                <span className="font-bold text-white">{formatCurrency(totalBank?.openingBalance ?? totalSummary?.totalBankOpening ?? 0)}</span>
+                <span className="font-bold text-white">
+                  {formatCurrency(parseFloat(cash?.openingBalance || 0) + parseFloat(totalBank?.openingBalance || 0))}
+                </span>
               </div>
               <div>
                 <span className="text-blue-100 block text-[9px] uppercase">In (Cr) Total Deposited</span>
-                <span className="font-bold text-emerald-300">+{formatCurrency(totalBank?.totalCredits ?? totalSummary?.totalBankDeposits ?? 0)}</span>
+                <span className="font-bold text-emerald-300">
+                  +{formatCurrency(parseFloat(cash?.totalCredits || 0) + parseFloat(totalBank?.totalCredits || 0))}
+                </span>
               </div>
               <div>
                 <span className="text-blue-100 block text-[9px] uppercase">Out (Dr) Total Paid</span>
-                <span className="font-bold text-rose-200">-{formatCurrency(totalBank?.totalDebits ?? 0)}</span>
+                <span className="font-bold text-rose-200">
+                  -{formatCurrency(parseFloat(cash?.totalDebits || 0) + parseFloat(totalBank?.totalDebits || 0))}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* CARD 2: CASH COUNTER (CASH IN HAND) */}
+          {/* CARD 2 (NEXT): CASH (CASH REGISTER / CASH IN HAND) */}
           <div
             onClick={() => setSelectedAccountFilter({ type: 'cash', bankName: '' })}
             className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/30 shadow-2xs hover:shadow-sm ${
               selectedAccountFilter.type === 'cash'
-                ? 'ring-2 ring-emerald-500 border-emerald-400'
+                ? 'ring-4 ring-emerald-300 border-emerald-500 shadow-emerald-500/20'
                 : 'border-emerald-200/80 hover:border-emerald-300'
             }`}
           >
@@ -439,7 +421,7 @@ export const TransactionsPage = () => {
                 </div>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 border border-emerald-200">
-                Counter
+                Cash Counter
               </span>
             </div>
 
@@ -466,86 +448,161 @@ export const TransactionsPage = () => {
             </div>
           </div>
 
-          {/* CARD 3: TOTAL LIQUID AGENCY BALANCE */}
+          {/* CARD 3 (THIRD): ONLINE (ONLINE DEPOSITS & ALL BANKS) */}
           <div
-            onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
-            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-purple-50/90 via-white to-brand-50/30 shadow-2xs hover:shadow-sm ${
-              selectedAccountFilter.type === 'all'
-                ? 'ring-2 ring-brand-500 border-brand-300'
-                : 'border-slate-200 hover:border-slate-300'
+            onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
+            className={`p-4 rounded-xl border transition cursor-pointer relative bg-gradient-to-br from-blue-50/90 via-white to-sky-50/30 shadow-2xs hover:shadow-sm ${
+              selectedAccountFilter.type === 'bank' && !selectedAccountFilter.bankName
+                ? 'ring-4 ring-blue-300 border-blue-500 shadow-blue-500/20'
+                : selectedAccountFilter.bankName
+                ? 'ring-2 ring-blue-400 border-blue-400'
+                : 'border-blue-200/80 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center shadow-xs">
-                  <Layers className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <Building2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-800 block">
-                    Agency Liquidity
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 block">
+                    Online Deposits
                   </span>
-                  <span className="text-xs font-bold text-slate-900">Total Liquid Funds</span>
+                  <span className="text-xs font-bold text-slate-900">
+                    {selectedBankObj ? selectedBankObj.bankName : 'All Banks & Online'}
+                  </span>
                 </div>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                Cash + Banks
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                {selectedBankObj ? 'Selected Bank' : `${banks.length} Banks Active`}
               </span>
             </div>
 
             <div className="mt-3">
-              <span className="text-[10px] text-slate-500 uppercase font-bold block">Consolidated Net Balance</span>
-              <p className="text-xl sm:text-2xl font-black font-mono text-brand-700 mt-0.5">
-                {formatCurrency(totalSummary?.totalLiquidBalance || 0)}
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                {selectedBankObj ? `${selectedBankObj.bankName} Live Balance` : 'Total Live Online Balance'}
+              </span>
+              <p className="text-xl sm:text-2xl font-black font-mono text-blue-700 mt-0.5">
+                {formatCurrency(
+                  selectedBankObj
+                    ? selectedBankObj.currentBalance
+                    : (totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)
+                )}
               </p>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-purple-100 flex items-center justify-between text-[10px]">
-              <span className="text-slate-500">
-                Cash: <strong className="font-mono text-emerald-700">{formatCurrency(totalSummary?.totalCashBalance || 0)}</strong>
-              </span>
-              <span className="text-slate-500">
-                Banks: <strong className="font-mono text-blue-700">{formatCurrency(totalSummary?.totalBankBalance || 0)}</strong>
-              </span>
+            <div className="mt-3 pt-2.5 border-t border-blue-100 grid grid-cols-3 gap-1 text-[10px] font-mono">
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase">Opening</span>
+                <span className="font-bold text-slate-700">
+                  {formatCurrency(
+                    selectedBankObj
+                      ? selectedBankObj.openingBalance
+                      : (totalBank?.openingBalance ?? totalSummary?.totalBankOpening ?? 0)
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase">In (Cr) Deposited</span>
+                <span className="font-bold text-emerald-600">
+                  +{formatCurrency(
+                    selectedBankObj
+                      ? selectedBankObj.totalCredits
+                      : (totalBank?.totalCredits ?? totalSummary?.totalBankDeposits ?? 0)
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase">Out (Dr) Paid</span>
+                <span className="font-bold text-rose-600">
+                  -{formatCurrency(
+                    selectedBankObj
+                      ? selectedBankObj.totalDebits
+                      : (totalBank?.totalDebits ?? 0)
+                  )}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* QUICK BANK & ACCOUNT FILTER BUTTONS / CHIPS */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pr-1 flex items-center gap-1">
-          <Filter className="w-3 h-3 text-slate-400" /> Filter by:
-        </span>
-        <button
-          onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 ${
-            selectedAccountFilter.type === 'all'
-              ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          All Accounts
-        </button>
-        <button
-          onClick={() => setSelectedAccountFilter({ type: 'cash', bankName: '' })}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1 ${
-            selectedAccountFilter.type === 'cash'
-              ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-              : 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-          }`}
-        >
-          <Banknote className="w-3 h-3" /> Cash Counter ({formatCurrency(cash?.currentBalance || 0)})
-        </button>
-        <button
-          onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1 ${
-            selectedAccountFilter.type === 'bank'
-              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-              : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:bg-blue-100'
-          }`}
-        >
-          <Building2 className="w-3 h-3" /> Bank / Online Deposits ({formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)})
-        </button>
+      {/* QUICK BANK & ACCOUNT FILTER BUTTONS / TABS */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pr-1 flex items-center gap-1">
+            <Filter className="w-3 h-3 text-slate-400" /> Filter by:
+          </span>
+          <button
+            onClick={() => setSelectedAccountFilter({ type: 'all', bankName: '' })}
+            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1.5 ${
+              selectedAccountFilter.type === 'all'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" /> Total (Cash & Online) ({formatCurrency(totalSummary?.totalLiquidBalance || 0)})
+          </button>
+          <button
+            onClick={() => setSelectedAccountFilter({ type: 'cash', bankName: '' })}
+            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1.5 ${
+              selectedAccountFilter.type === 'cash'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                : 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <Banknote className="w-3.5 h-3.5" /> Cash ({formatCurrency(cash?.currentBalance || 0)})
+          </button>
+          <button
+            onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
+            className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1.5 ${
+              selectedAccountFilter.type === 'bank'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:bg-blue-100'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" /> Online ({formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)})
+          </button>
+        </div>
+
+        {/* SUB-FILTER: WHEN ONLINE IS SELECTED, SHOW WHICH BANKS ARE AVAILABLE */}
+        {selectedAccountFilter.type === 'bank' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1 pl-3 sm:pl-4 bg-gradient-to-r from-blue-50/90 via-sky-50/40 to-white p-2 sm:p-2.5 rounded-xl border border-blue-200 shadow-2xs transition-all">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 shrink-0 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-blue-600" /> Which Bank:
+            </span>
+            <button
+              onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: '' })}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 ${
+                !selectedAccountFilter.bankName
+                  ? 'bg-blue-700 text-white border-blue-700 shadow-xs'
+                  : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-100/50'
+              }`}
+            >
+              All Banks ({formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)})
+            </button>
+            {banks.map((b) => {
+              const isSelected = selectedAccountFilter.bankName?.toLowerCase().trim() === b.bankName?.toLowerCase().trim();
+              return (
+                <button
+                  key={b.id || b._id || b.bankName}
+                  onClick={() => setSelectedAccountFilter({ type: 'bank', bankName: b.bankName })}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition shrink-0 flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-300'
+                      : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-100/60'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-300' : 'bg-blue-400'}`}></span>
+                  <span>{b.bankName}</span>
+                  <span className={`font-mono text-[10px] ${isSelected ? 'text-blue-100 font-extrabold' : 'text-slate-500'}`}>
+                    ({formatCurrency(b.currentBalance || 0)})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* FILTER BAR & SEARCH */}
@@ -568,24 +625,39 @@ export const TransactionsPage = () => {
               onChange={(e) => setSelectedAccountFilter({ type: e.target.value, bankName: '' })}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none font-semibold text-slate-700"
             >
-              <option value="all">All Accounts (Cash + Bank)</option>
-              <option value="cash">💵 Cash Counter</option>
-              <option value="bank">🏦 Bank / Online Deposits</option>
+              <option value="all">Total (Cash & Online)</option>
+              <option value="cash">💵 Cash</option>
+              <option value="bank">🌐 Online</option>
             </select>
+
+            {/* If Online is selected, show Bank Dropdown right next to it! */}
+            {selectedAccountFilter.type === 'bank' && (
+              <select
+                value={selectedAccountFilter.bankName}
+                onChange={(e) => setSelectedAccountFilter({ type: 'bank', bankName: e.target.value })}
+                className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-blue-300 rounded-lg sm:rounded-xl bg-blue-50/90 focus:outline-none font-bold text-blue-900 shadow-2xs"
+              >
+                <option value="">All Banks ({formatCurrency(totalBank?.currentBalance ?? totalSummary?.totalBankBalance ?? 0)})</option>
+                {banks.map((b) => (
+                  <option key={b.id || b._id || b.bankName} value={b.bankName}>
+                    {b.bankName} ({formatCurrency(b.currentBalance || 0)})
+                  </option>
+                ))}
+              </select>
+            )}
 
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs border border-slate-200 rounded-lg sm:rounded-xl bg-white focus:outline-none"
             >
-              <option value="">All Types</option>
-              <option value="booking">Booking (Dr)</option>
-              <option value="customer_payment">Payment (Cr)</option>
-              <option value="expense">Expense (Dr)</option>
-              <option value="refund">Refund</option>
-              <option value="adjustment">Adjustment</option>
+              <option value="">All In / Out Types</option>
+              <option value="customer_payment">Payment Received (Cr - Inflow)</option>
+              <option value="expense">Expense Paid (Dr - Outflow)</option>
+              <option value="refund">Refund Paid (Dr - Outflow)</option>
+              <option value="adjustment">Manual Adjustment</option>
               <option value="commission">Commission</option>
-              <option value="other_income">Other Income</option>
+              <option value="other_income">Other Income (Cr - Inflow)</option>
             </select>
 
             <input
@@ -780,18 +852,6 @@ export const TransactionsPage = () => {
           </div>
         </form>
       </Modal>
-
-      {/* CONFIRM DELETE DIALOG */}
-      <ConfirmDialog
-        isOpen={Boolean(deleteTxnId)}
-        title="Delete Transaction Entry"
-        message="Are you sure you want to delete this financial transaction? This action directly impacts your ledger balances."
-        confirmText="Yes, Delete Entry"
-        type="danger"
-        loading={actionLoading}
-        onConfirm={handleDeleteTransaction}
-        onCancel={() => setDeleteTxnId(null)}
-      />
     </div>
   );
 };

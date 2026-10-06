@@ -159,6 +159,7 @@ export const AppRoutes = () => {
 
         {/* Bookings */}
         <Route path="/bookings/new" element={<ProtectedRoute agencyOnly><NewBookingPage /></ProtectedRoute>} />
+        <Route path="/bookings/:id/edit" element={<ProtectedRoute agencyOnly><NewBookingPage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute agencyOnly><AllBookingsPage /></ProtectedRoute>} />
         <Route path="/bookings/:id" element={<ProtectedRoute agencyOnly><BookingDetailsPage /></ProtectedRoute>} />
 

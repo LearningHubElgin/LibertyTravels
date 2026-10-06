@@ -214,7 +214,7 @@ exports.createBooking = async (req, res, next) => {
       passengers = []
     } = req.body;
 
-    const chosenCompanyId = companyId || null;
+    const chosenCompanyId = companyId || req.body.supplierId || null;
 
     if (!existingCustomerId && (!customerName || !customerPhone)) {
       return res.status(400).json({
@@ -405,15 +405,16 @@ exports.createBooking = async (req, res, next) => {
       debit: effectiveTotal,
       credit: 0.00,
       balance: effectiveTotal,
+      accountType: 'none',
       paymentMethod: null,
       upiMethod: null,
       createdBy: req.user ? (req.user.id || req.user._id) : null
     });
 
     if (initPay > 0) {
-      const activeSplits = (paymentSplits && paymentSplits.length > 0) ? paymentSplits : (splits && splits.length > 0 ? splits : []);
-      const isSplit = activeSplits.length > 0;
       const payRef = paymentReference || await generatePaymentReference();
+      const normalizedMethod = paymentMethod === 'online' ? 'online' : 'cash';
+      const chosenBank = normalizedMethod === 'online' ? (bankName || req.body.onlineMethod || upiMethod || null) : null;
 
       await Payment.create({
         receiptNo: payRef,
@@ -421,77 +422,38 @@ exports.createBooking = async (req, res, next) => {
         customerId,
         amount: initPay,
         paymentDate: bookingDate,
-        accountType: isSplit ? 'cash' : (accountType || (paymentMethod === 'cash' ? 'cash' : 'bank')),
-        bankId: isSplit ? null : (bankId || null),
-        bankName: isSplit ? null : (bankName || null),
-        paymentMethod: isSplit ? 'other' : paymentMethod,
-        upiMethod: isSplit ? null : (upiMethod || upiApp || null),
-        upiApp: isSplit ? null : (upiApp || upiMethod || null),
-        splits: isSplit ? activeSplits.map(s => ({
-          accountType: s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank'),
-          bankId: s.bankId || null,
-          bankName: s.bankName || null,
-          paymentMethod: s.paymentMethod || 'cash',
-          upiApp: s.upiApp || s.upiMethod || null,
-          amount: toDecimal(s.amount),
-          reference: s.reference || ''
-        })) : [],
+        accountType: normalizedMethod === 'cash' ? 'cash' : 'bank',
+        bankId: null,
+        bankName: chosenBank,
+        paymentMethod: normalizedMethod,
+        upiMethod: chosenBank,
+        upiApp: chosenBank,
+        splits: [],
         reference: payRef,
         notes: paymentNotes || `Initial payment received for ${booking.referenceNo}`,
         receivedBy: req.user ? (req.user.id || req.user._id) : null
       });
 
-      if (isSplit) {
-        for (const s of activeSplits) {
-          const sAmount = toDecimal(s.amount);
-          if (sAmount <= 0) continue;
-          const txnRef = await generateTransactionReference('TXN-PAY');
-          const sAccountType = s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank');
-          const sBankDesc = s.bankName ? ` (${s.bankName})` : '';
-          const sUpiDesc = s.upiApp ? ` via ${s.upiApp}` : '';
-          await Transaction.create({
-            transactionDate: bookingDate,
-            referenceNo: txnRef,
-            bookingId: booking._id,
-            customerId,
-            description: `Payment received for ${booking.referenceNo} [Split] - ${s.paymentMethod.toUpperCase()}${sBankDesc}${sUpiDesc}`,
-            type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-            debit: 0.00,
-            credit: sAmount,
-            balance: toDecimal(effectiveTotal - initPay),
-            accountType: sAccountType,
-            bankId: s.bankId || null,
-            bankName: s.bankName || null,
-            paymentMethod: s.paymentMethod,
-            upiMethod: s.upiApp || s.upiMethod || null,
-            upiApp: s.upiApp || null,
-            createdBy: req.user ? (req.user.id || req.user._id) : null
-          });
-        }
-      } else {
-        const txnRef2 = await generateTransactionReference('TXN-PAY');
-        const singleAccountType = accountType || (paymentMethod === 'cash' ? 'cash' : 'bank');
-        const bankDesc = bankName ? ` (${bankName})` : '';
-        const upiDesc = (upiApp || upiMethod) ? ` via ${upiApp || upiMethod}` : '';
-        await Transaction.create({
-          transactionDate: bookingDate,
-          referenceNo: txnRef2,
-          bookingId: booking._id,
-          customerId,
-          description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}${bankDesc}${upiDesc}`,
-          type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-          debit: 0.00,
-          credit: initPay,
-          balance: toDecimal(effectiveTotal - initPay),
-          accountType: singleAccountType,
-          bankId: bankId || null,
-          bankName: bankName || null,
-          paymentMethod,
-          upiMethod: upiMethod || upiApp || null,
-          upiApp: upiApp || upiMethod || null,
-          createdBy: req.user ? (req.user.id || req.user._id) : null
-        });
-      }
+      const txnRef2 = await generateTransactionReference('TXN-PAY');
+      const bankDesc = chosenBank ? ` (${chosenBank})` : '';
+      await Transaction.create({
+        transactionDate: bookingDate,
+        referenceNo: txnRef2,
+        bookingId: booking._id,
+        customerId,
+        description: `Payment received for ${booking.referenceNo} via ${normalizedMethod.toUpperCase()}${bankDesc}`,
+        type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+        debit: 0.00,
+        credit: initPay,
+        balance: toDecimal(effectiveTotal - initPay),
+        accountType: normalizedMethod === 'cash' ? 'cash' : 'bank',
+        bankId: null,
+        bankName: chosenBank,
+        paymentMethod: normalizedMethod,
+        upiMethod: chosenBank,
+        upiApp: chosenBank,
+        createdBy: req.user ? (req.user.id || req.user._id) : null
+      });
     }
 
     if (chosenCompanyId) {
@@ -506,16 +468,18 @@ exports.createBooking = async (req, res, next) => {
         company.walletBalance = balanceAfter;
         
         if (!company.transactions) company.transactions = [];
-        company.transactions.push({
-          type: 'deduction',
-          amount: deductionAmount,
-          balanceBefore,
-          balanceAfter,
-          reference: booking.referenceNo,
-          notes: `Booking for ${primaryPassengerName}`,
-          date: bookingDate,
-          createdAt: new Date()
-        });
+        if (deductionAmount > 0) {
+          company.transactions.push({
+            type: 'deduction',
+            amount: deductionAmount,
+            balanceBefore,
+            balanceAfter,
+            reference: booking.referenceNo,
+            notes: `Booking for ${primaryPassengerName}`,
+            date: bookingDate,
+            createdAt: new Date()
+          });
+        }
         
         await company.save();
       }
@@ -694,9 +658,29 @@ exports.updateBooking = async (req, res, next) => {
       booking.companyId = companyId || null;
     }
     if (flightNumber !== undefined) booking.flightNumber = flightNumber ? flightNumber.trim().toUpperCase() : '';
+    if (req.body.referenceNo) {
+      booking.referenceNo = req.body.referenceNo.trim().toUpperCase();
+    }
     if (pnr) booking.pnr = pnr.trim().toUpperCase();
     if (ticketNumber !== undefined) booking.ticketNumber = ticketNumber ? ticketNumber.trim() : '';
     if (passengerName !== undefined) booking.passengerName = passengerName ? passengerName.trim() : '';
+    if (req.body.customerId) {
+      booking.customerId = req.body.customerId;
+    } else if (req.body.customerName && req.body.customerPhone) {
+      let customerObj = await Customer.findOne({ phone: req.body.customerPhone.trim() });
+      if (!customerObj) {
+        const customerCode = await generateCustomerCode();
+        customerObj = await Customer.create({
+          agencyId: booking.agencyId || req.agencyId || (req.user && req.user.agencyId) || null,
+          customerCode,
+          name: req.body.customerName.trim(),
+          phone: req.body.customerPhone.trim(),
+          email: req.body.customerEmail ? req.body.customerEmail.toLowerCase().trim() : '',
+          address: req.body.customerAddress ? req.body.customerAddress.trim() : ''
+        });
+      }
+      booking.customerId = customerObj._id;
+    }
     if (status) booking.status = status;
     if (notes !== undefined) booking.notes = notes ? notes.trim() : '';
     if (commission !== undefined) booking.commission = toDecimal(commission);
@@ -838,6 +822,7 @@ exports.updateBookingStatus = async (req, res, next) => {
  */
 exports.addPaymentToBooking = async (req, res, next) => {
   try {
+    const { id } = req.params;
     const {
       amount,
       paymentDate = new Date().toISOString().split('T')[0],
@@ -874,9 +859,9 @@ exports.addPaymentToBooking = async (req, res, next) => {
       });
     }
 
-    const activeSplits = (paymentSplits && paymentSplits.length > 0) ? paymentSplits : (splits && splits.length > 0 ? splits : []);
-    const isSplit = activeSplits.length > 0;
     const payRef = reference || await generatePaymentReference();
+    const normalizedMethod = paymentMethod === 'online' ? 'online' : 'cash';
+    const chosenBank = normalizedMethod === 'online' ? (bankName || req.body.onlineMethod || upiMethod || null) : null;
 
     const payment = await Payment.create({
       receiptNo: payRef,
@@ -884,21 +869,13 @@ exports.addPaymentToBooking = async (req, res, next) => {
       customerId: booking.customerId,
       amount: payAmount,
       paymentDate,
-      accountType: isSplit ? 'cash' : (accountType || (paymentMethod === 'cash' ? 'cash' : 'bank')),
-      bankId: isSplit ? null : (bankId || null),
-      bankName: isSplit ? null : (bankName || null),
-      paymentMethod: isSplit ? 'other' : paymentMethod,
-      upiMethod: isSplit ? null : (upiMethod || upiApp || null),
-      upiApp: isSplit ? null : (upiApp || upiMethod || null),
-      splits: isSplit ? activeSplits.map(s => ({
-        accountType: s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank'),
-        bankId: s.bankId || null,
-        bankName: s.bankName || null,
-        paymentMethod: s.paymentMethod || 'cash',
-        upiApp: s.upiApp || s.upiMethod || null,
-        amount: toDecimal(s.amount),
-        reference: s.reference || ''
-      })) : [],
+      accountType: normalizedMethod === 'cash' ? 'cash' : 'bank',
+      bankId: null,
+      bankName: chosenBank,
+      paymentMethod: normalizedMethod,
+      upiMethod: chosenBank,
+      upiApp: chosenBank,
+      splits: [],
       reference: payRef,
       notes: notes || `Payment for booking ${booking.referenceNo}`,
       receivedBy: req.user ? (req.user.id || req.user._id) : null
@@ -913,57 +890,26 @@ exports.addPaymentToBooking = async (req, res, next) => {
     booking.paymentStatus = newPaymentStatus;
     await booking.save();
 
-    if (isSplit) {
-      for (const s of activeSplits) {
-        const sAmount = toDecimal(s.amount);
-        if (sAmount <= 0) continue;
-        const txnRef = await generateTransactionReference('TXN-PAY');
-        const sAccountType = s.accountType || (s.paymentMethod === 'cash' ? 'cash' : 'bank');
-        const sBankDesc = s.bankName ? ` (${s.bankName})` : '';
-        const sUpiDesc = s.upiApp ? ` via ${s.upiApp}` : '';
-        await Transaction.create({
-          transactionDate: paymentDate,
-          referenceNo: txnRef,
-          bookingId: booking._id,
-          customerId: booking.customerId,
-          description: `Payment received for ${booking.referenceNo} [Split] - ${s.paymentMethod.toUpperCase()}${sBankDesc}${sUpiDesc}`,
-          type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-          debit: 0.00,
-          credit: sAmount,
-          balance: newBalanceDue,
-          accountType: sAccountType,
-          bankId: s.bankId || null,
-          bankName: s.bankName || null,
-          paymentMethod: s.paymentMethod,
-          upiMethod: s.upiApp || s.upiMethod || null,
-          upiApp: s.upiApp || null,
-          createdBy: req.user ? (req.user.id || req.user._id) : null
-        });
-      }
-    } else {
-      const txnRef = await generateTransactionReference('TXN-PAY');
-      const singleAccountType = accountType || (paymentMethod === 'cash' ? 'cash' : 'bank');
-      const bankDesc = bankName ? ` (${bankName})` : '';
-      const upiDesc = (upiApp || upiMethod) ? ` via ${upiApp || upiMethod}` : '';
-      await Transaction.create({
-        transactionDate: paymentDate,
-        referenceNo: txnRef,
-        bookingId: booking._id,
-        customerId: booking.customerId,
-        description: `Payment received for ${booking.referenceNo} via ${paymentMethod.toUpperCase()}${bankDesc}${upiDesc}`,
-        type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
-        debit: 0.00,
-        credit: payAmount,
-        balance: newBalanceDue,
-        accountType: singleAccountType,
-        bankId: bankId || null,
-        bankName: bankName || null,
-        paymentMethod,
-        upiMethod: upiMethod || upiApp || null,
-        upiApp: upiApp || upiMethod || null,
-        createdBy: req.user ? (req.user.id || req.user._id) : null
-      });
-    }
+    const txnRef = await generateTransactionReference('TXN-PAY');
+    const bankDesc = chosenBank ? ` (${chosenBank})` : '';
+    await Transaction.create({
+      transactionDate: paymentDate,
+      referenceNo: txnRef,
+      bookingId: booking._id,
+      customerId: booking.customerId,
+      description: `Payment received for ${booking.referenceNo} via ${normalizedMethod.toUpperCase()}${bankDesc}`,
+      type: TRANSACTION_TYPES.CUSTOMER_PAYMENT,
+      debit: 0.00,
+      credit: payAmount,
+      balance: newBalanceDue,
+      accountType: normalizedMethod === 'cash' ? 'cash' : 'bank',
+      bankId: null,
+      bankName: chosenBank,
+      paymentMethod: normalizedMethod,
+      upiMethod: chosenBank,
+      upiApp: chosenBank,
+      createdBy: req.user ? (req.user.id || req.user._id) : null
+    });
 
     await Notification.create({
       userId: null,
@@ -1001,7 +947,9 @@ exports.cancelBooking = async (req, res, next) => {
     const { 
       supplierRefundAmount = 0, 
       customerRefundAmount = 0, 
-      refundMethod = 'cash', 
+      refundMethod = 'cash',
+      onlineMethod = '',
+      refundReference = '',
       cancellationReason = '' 
     } = req.body;
 
@@ -1017,16 +965,21 @@ exports.cancelBooking = async (req, res, next) => {
     const oldStatus = booking.status;
     const sRefund = toDecimal(supplierRefundAmount);
     const cRefund = toDecimal(customerRefundAmount);
-
-    booking.status = 'cancelled';
-    booking.supplierRefundAmount = sRefund;
-    booking.customerRefundAmount = cRefund;
-    booking.cancellationReason = cancellationReason;
+    const isOnline = refundMethod === 'online' || refundMethod === 'upi' || refundMethod === 'bank_transfer';
+    const refundMethodName = isOnline ? (onlineMethod ? `Online (${onlineMethod})` : 'Online') : 'Cash';
 
     // Recalculate profit
     const moneyKept = toDecimal((booking.amountReceived || 0) - cRefund);
     const moneyLost = toDecimal((booking.costPrice || 0) - sRefund);
     booking.profit = toDecimal(moneyKept - moneyLost);
+
+    booking.status = 'cancelled';
+    booking.supplierRefundAmount = sRefund;
+    booking.customerRefundAmount = cRefund;
+    booking.customerRefundMethod = refundMethodName;
+    booking.cancellationReason = cancellationReason;
+    booking.balanceDue = 0;
+    booking.paymentStatus = cRefund > 0 ? 'refunded' : (moneyKept > 0 ? 'paid' : 'unpaid');
 
     await booking.save();
 
@@ -1040,7 +993,7 @@ exports.cancelBooking = async (req, res, next) => {
         company.usedTickets = Math.max(0, (company.usedTickets || 0) - ticketsCount);
         if (!company.transactions) company.transactions = [];
         company.transactions.push({
-          type: 'deposit',
+          type: 'refund',
           amount: sRefund,
           balanceBefore,
           balanceAfter: company.walletBalance,
@@ -1053,19 +1006,60 @@ exports.cancelBooking = async (req, res, next) => {
       }
     }
 
+    // 1. Reversal / Cancellation Credit for the customer in Customer Ledger
+    const cnlRef = await generateTransactionReference('TXN-CNL');
+    await Transaction.create({
+      transactionDate: new Date().toISOString().split('T')[0],
+      referenceNo: cnlRef,
+      agencyId: booking.agencyId || null,
+      bookingId: booking._id,
+      customerId: booking.customerId,
+      description: `Cancellation credit for ${booking.referenceNo} (Booking cancelled)`,
+      type: 'adjustment',
+      debit: 0.00,
+      credit: booking.totalAmount,
+      balance: 0,
+      accountType: 'none',
+      createdBy: req.user ? (req.user.id || req.user._id) : null
+    });
+
+    // 2. If agency retained a cancellation fee from customer, debit that fee
+    if (moneyKept > 0) {
+      const feeRef = await generateTransactionReference('TXN-FEE');
+      await Transaction.create({
+        transactionDate: new Date().toISOString().split('T')[0],
+        referenceNo: feeRef,
+        agencyId: booking.agencyId || null,
+        bookingId: booking._id,
+        customerId: booking.customerId,
+        description: `Cancellation fee retained for ${booking.referenceNo}`,
+        type: 'adjustment',
+        debit: moneyKept,
+        credit: 0.00,
+        balance: moneyKept,
+        accountType: 'none',
+        createdBy: req.user ? (req.user.id || req.user._id) : null
+      });
+    }
+
+    // 3. Customer refund payout (money returned to customer)
     if (cRefund > 0) {
-      const txnRef = await generateTransactionReference('TXN-REF');
+      const txnRef = (refundReference && refundReference.trim()) || await generateTransactionReference('TXN-REF');
       await Transaction.create({
         transactionDate: new Date().toISOString().split('T')[0],
         referenceNo: txnRef,
+        agencyId: booking.agencyId || null,
         bookingId: booking._id,
         customerId: booking.customerId,
-        description: `Refund for cancelled booking ${booking.referenceNo}`,
+        description: `Refund for cancelled booking ${booking.referenceNo} via ${refundMethodName}`,
         type: 'refund',
         debit: cRefund,
         credit: 0.00,
-        balance: booking.balanceDue, // or 0
-        paymentMethod: refundMethod,
+        balance: 0,
+        accountType: isOnline ? 'bank' : 'cash',
+        bankName: isOnline ? (onlineMethod || null) : null,
+        paymentMethod: isOnline ? 'online' : 'cash',
+        upiMethod: isOnline ? (onlineMethod || null) : null,
         createdBy: req.user ? (req.user.id || req.user._id) : null
       });
     }
@@ -1075,7 +1069,7 @@ exports.cancelBooking = async (req, res, next) => {
       'Cancel Booking',
       'Booking',
       booking._id,
-      `Booking ${booking.referenceNo} cancelled. Supplier Refund: ₹${sRefund}, Customer Refund: ₹${cRefund}.`,
+      `Booking ${booking.referenceNo} cancelled. Supplier Refund: ₹${sRefund}, Customer Refund: ₹${cRefund} (${refundMethodName}).`,
       req.ip
     );
 
@@ -1109,23 +1103,29 @@ exports.deleteBooking = async (req, res, next) => {
 
     if (booking.companyId) {
       const company = await Company.findById(booking.companyId);
-      if (company) {
-        // If the booking was not cancelled, refund the costPrice back to the company's deposited balance
-        const refundAmt = parseFloat(booking.costPrice || 0);
-        if (booking.status !== 'cancelled' && refundAmt > 0) {
-          const balanceBefore = parseFloat(company.walletBalance || 0);
-          company.walletBalance = balanceBefore + refundAmt;
-          if (!company.transactions) company.transactions = [];
-          company.transactions.push({
-            type: 'deposit',
-            amount: refundAmt,
-            balanceBefore,
-            balanceAfter: company.walletBalance,
-            reference: `DELETE-${refNo}`,
-            notes: `Automatic refund from deleted booking ${refNo}`,
-            date: new Date().toISOString().split('T')[0],
-            createdAt: new Date()
-          });
+      if (company && company.transactions) {
+        // Cleanly remove all transactions associated with this deleted booking
+        const initialCount = company.transactions.length;
+        company.transactions = company.transactions.filter(t => {
+          const r = (t.reference || '').trim();
+          return r !== refNo && r !== `DELETE-${refNo}` && r !== `REFUND-${refNo}`;
+        });
+
+        if (company.transactions.length !== initialCount) {
+          if (company.transactions.length === 0) {
+            company.walletBalance = 0;
+          } else {
+            let running = 0;
+            for (let i = 0; i < company.transactions.length; i++) {
+              const current = company.transactions[i];
+              if (i === 0) running = parseFloat(current.balanceBefore || 0);
+              current.balanceBefore = running;
+              const effect = current.type === 'deduction' ? -parseFloat(current.amount || 0) : parseFloat(current.amount || 0);
+              running = Math.round((running + effect) * 100) / 100;
+              current.balanceAfter = running;
+            }
+            company.walletBalance = running;
+          }
         }
         const ticketsCount = booking.passengerCount || (1 + (parseInt(booking.extraGuests || 0, 10) || 0));
         company.usedTickets = Math.max(0, (company.usedTickets || 0) - ticketsCount);

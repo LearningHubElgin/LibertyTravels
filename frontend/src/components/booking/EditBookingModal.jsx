@@ -324,20 +324,36 @@ export const EditBookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     setSubmitting(true);
     try {
       const bId = booking.id || booking._id;
+      const p1Parts = (formData.passengerName || '').trim().split(' ');
+      const p1FirstName = p1Parts[0] || (formData.passengerName || '').trim() || 'Passenger';
+      const p1LastName = p1Parts.slice(1).join(' ') || '';
+
+      const autoPassengers = [
+        {
+          title: 'Mr',
+          firstName: p1FirstName,
+          lastName: p1LastName,
+          phone: '',
+          nationality: 'Indian'
+        }
+      ];
+      for (let g = 1; g < totalPassengersCount; g++) {
+        autoPassengers.push({
+          title: 'Mr',
+          firstName: `${p1FirstName} (Guest ${g})`,
+          lastName: p1LastName,
+          phone: '',
+          nationality: 'Indian'
+        });
+      }
+
       const payload = {
         ...formData,
         extraGuests,
         passengerCount: totalPassengersCount,
         tax: calculatedGst,
         profit: netProfit,
-        passengers: passengersList.map((p) => ({
-          title: p.title || 'Mr',
-          firstName: (p.firstName || '').trim(),
-          lastName: (p.lastName || '').trim(),
-          phone: p.phone || '',
-          passportNumber: (p.passportNumber || '').trim().toUpperCase(),
-          nationality: p.nationality || 'Indian'
-        }))
+        passengers: autoPassengers
       };
 
       const res = await api.put(`/bookings/${bId}`, payload);
@@ -554,80 +570,7 @@ export const EditBookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
             </div>
           </div>
 
-          {/* Passenger Names List Editor */}
-          {passengersList.length > 0 && (
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <p className="font-bold text-slate-700 text-[11px] flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-brand-600" /> Passenger Details ({passengersList.length} Tickets)
-              </p>
-              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                {passengersList.map((p, idx) => (
-                  <div key={p.id || idx} className="grid grid-cols-12 gap-1.5 items-center p-1.5 rounded-lg bg-white border border-slate-200 text-[11px]">
-                    <span className="col-span-1 text-slate-400 font-bold text-center">#{idx + 1}</span>
-                    <select
-                      value={p.title || 'Mr'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPassengersList((prev) => {
-                          const updated = [...prev];
-                          updated[idx] = { ...updated[idx], title: val };
-                          return updated;
-                        });
-                      }}
-                      className="col-span-2 px-1.5 py-1 border border-slate-200 rounded-md font-semibold text-xs bg-slate-50"
-                    >
-                      <option value="Mr">Mr</option>
-                      <option value="Mrs">Mrs</option>
-                      <option value="Ms">Ms</option>
-                      <option value="Master">Mstr</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="First Name"
-                      value={p.firstName}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPassengersList((prev) => {
-                          const updated = [...prev];
-                          updated[idx] = { ...updated[idx], firstName: val };
-                          return updated;
-                        });
-                      }}
-                      className="col-span-4 px-2 py-1 border border-slate-200 rounded-md text-xs font-semibold"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Last Name"
-                      value={p.lastName}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPassengersList((prev) => {
-                          const updated = [...prev];
-                          updated[idx] = { ...updated[idx], lastName: val };
-                          return updated;
-                        });
-                      }}
-                      className="col-span-3 px-2 py-1 border border-slate-200 rounded-md text-xs font-semibold"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Phone / Passport"
-                      value={p.passportNumber || p.phone}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPassengersList((prev) => {
-                          const updated = [...prev];
-                          updated[idx] = { ...updated[idx], passportNumber: val };
-                          return updated;
-                        });
-                      }}
-                      className="col-span-2 px-2 py-1 border border-slate-200 rounded-md text-xs font-mono"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Pricing & Profit Columns with Live Multiplier */}

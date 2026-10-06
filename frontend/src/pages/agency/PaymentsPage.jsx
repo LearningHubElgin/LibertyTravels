@@ -14,13 +14,12 @@ import { DataTable } from '../../components/common/DataTable';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/common/Modal';
 import { formatDate } from '../../utils/formatters';
-import { SplitPaymentInput } from '../../components/common/SplitPaymentInput';
 
 export const PaymentsPage = () => {
   const { success, error: toastError } = useToast();
 
   const [payments, setPayments] = useState([]);
-  const [upiMethods, setUpiMethods] = useState([]);
+  const [onlineBanks, setOnlineBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
@@ -37,18 +36,10 @@ export const PaymentsPage = () => {
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    notes: ''
-  });
-  const [splitPaymentData, setSplitPaymentData] = useState({
-    isSplit: false,
-    accountType: 'cash',
-    bankId: null,
-    bankName: null,
     paymentMethod: 'cash',
-    upiMethod: null,
-    upiApp: null,
-    paymentReference: '',
-    splits: []
+    onlineBank: '',
+    reference: '',
+    notes: ''
   });
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -68,10 +59,10 @@ export const PaymentsPage = () => {
       }
       
       // Also fetch upi methods if not already fetched
-      if (upiMethods.length === 0) {
+      if (onlineBanks.length === 0) {
         const settingsRes = await api.get('/settings');
         if (settingsRes.data.success) {
-          setUpiMethods(settingsRes.data.settings?.upiMethods || []);
+          setOnlineBanks(settingsRes.data.settings?.upiMethods || []);
         }
       }
     } catch (e) {
@@ -93,7 +84,13 @@ export const PaymentsPage = () => {
 
   const handleOpenReceiveModal = async () => {
     try {
-      const res = await api.get('/bookings?limit=100');
+      const [res, settingsRes] = await Promise.all([
+        api.get('/bookings?limit=100'),
+        api.get('/settings')
+      ]);
+      if (settingsRes.data?.success && settingsRes.data?.settings?.upiMethods) {
+        setOnlineBanks(settingsRes.data.settings.upiMethods);
+      }
       if (res.data.success) {
         const pending = (res.data.bookings || []).filter(
           (b) => parseFloat(b.balanceDue || 0) > 0 && b.status !== 'cancelled'
@@ -105,7 +102,7 @@ export const PaymentsPage = () => {
             amount: pending[0].balanceDue,
             paymentDate: new Date().toISOString().split('T')[0],
             paymentMethod: 'cash',
-            upiMethod: '',
+            onlineBank: '',
             reference: '',
             notes: ''
           });
@@ -137,6 +134,10 @@ export const PaymentsPage = () => {
       return toastError(`Payment (₹${amt}) cannot exceed remaining balance of ₹${chosen.balanceDue}.`);
     }
 
+    if (paymentForm.paymentMethod === 'online' && !paymentForm.onlineBank) {
+      return toastError('Please select which Online Bank / Wallet was used for payment.');
+    }
+
     setActionLoading(true);
     try {
       const payload = {
@@ -144,14 +145,14 @@ export const PaymentsPage = () => {
         amount: amt,
         paymentDate: paymentForm.paymentDate,
         notes: paymentForm.notes,
-        accountType: splitPaymentData.accountType,
-        bankId: splitPaymentData.bankId,
-        bankName: splitPaymentData.bankName,
-        paymentMethod: splitPaymentData.paymentMethod,
-        upiMethod: splitPaymentData.upiMethod,
-        upiApp: splitPaymentData.upiApp,
-        reference: splitPaymentData.paymentReference,
-        splits: splitPaymentData.splits || []
+        accountType: paymentForm.paymentMethod === 'cash' ? 'cash' : 'bank',
+        bankName: paymentForm.paymentMethod === 'online' ? paymentForm.onlineBank : null,
+        onlineMethod: paymentForm.paymentMethod === 'online' ? paymentForm.onlineBank : null,
+        paymentMethod: paymentForm.paymentMethod,
+        upiMethod: paymentForm.paymentMethod === 'online' ? paymentForm.onlineBank : null,
+        upiApp: paymentForm.paymentMethod === 'online' ? paymentForm.onlineBank : null,
+        reference: paymentForm.reference,
+        splits: []
       };
 
       const res = await api.post('/payments', payload);
@@ -395,12 +396,58 @@ export const PaymentsPage = () => {
               />
             </div>
 
-            {/* Split / Single Payment Component */}
-            <div className="pt-1">
-              <SplitPaymentInput
-                initialPayment={parseFloat(paymentForm.amount) || 0}
-                totalAmount={parseFloat(unpaidBookings.find(b => String(b.id) === String(selectedBookingId))?.balanceDue) || 0}
-                onChange={setSplitPaymentData}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Payment Mode</label>
+                <select
+                  value={paymentForm.paymentMethod}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPaymentForm({
+                      ...paymentForm,
+                      paymentMethod: val,
+                      onlineBank: val === 'cash' ? '' : paymentForm.onlineBank
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="online">Online</option>
+                </select>
+              </div>
+
+              {paymentForm.paymentMethod === 'online' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Online Bank / Wallet *</label>
+                  {onlineBanks.length > 0 ? (
+                    <select
+                      required
+                      value={paymentForm.onlineBank}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, onlineBank: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none font-semibold text-brand-700"
+                    >
+                      <option value="">Select Bank / Wallet</option>
+                      {onlineBanks.map((b, idx) => (
+                        <option key={idx} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="px-3 py-2 text-xs bg-amber-50 text-amber-800 rounded-xl border border-amber-200">
+                      No bank added in database
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Ref / Txn ID / Cheque No</label>
+              <input
+                type="text"
+                placeholder="e.g. UTR / Txn ID"
+                value={paymentForm.reference}
+                onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none font-mono"
               />
             </div>
 

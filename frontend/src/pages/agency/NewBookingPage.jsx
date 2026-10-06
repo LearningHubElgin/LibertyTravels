@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Plane,
   Train,
@@ -33,37 +33,26 @@ import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { DateInput } from '../../components/common/DateInput';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import { ExcelImportModal } from '../../components/booking/ExcelImportModal';
-import { SplitPaymentInput } from '../../components/common/SplitPaymentInput';
 
 export const NewBookingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: paramBookingId } = useParams();
   const { success, error: toastError } = useToast();
 
-  const editMode = location.state?.editMode || false;
-  const editData = location.state?.editData || null;
+  const editMode = Boolean(paramBookingId || location.state?.editMode);
+  const [editData, setEditData] = useState(location.state?.editData || null);
+  const [loadingEditBooking, setLoadingEditBooking] = useState(Boolean(paramBookingId && !location.state?.editData));
 
   const [companies, setCompanies] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [upiMethods, setUpiMethods] = useState([]);
+  const [onlineBanks, setOnlineBanks] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-
-  // Split payment state
-  const [splitPaymentData, setSplitPaymentData] = useState({
-    isSplit: false,
-    accountType: 'cash',
-    bankId: null,
-    bankName: null,
-    paymentMethod: 'cash',
-    upiMethod: null,
-    upiApp: null,
-    paymentReference: '',
-    splits: []
-  });
 
   // Quick Add Company Modal
   const [isQuickCompanyModalOpen, setIsQuickCompanyModalOpen] = useState(false);
@@ -113,7 +102,7 @@ export const NewBookingPage = () => {
     // Initial Payment
     initialPayment: 0,
     paymentMethod: 'cash',
-    upiMethod: '',
+    onlineBank: '',
     paymentReference: '',
     paymentNotes: '',
 
@@ -128,44 +117,134 @@ export const NewBookingPage = () => {
   // Extra passengers / guests count
   const [extraGuests, setExtraGuests] = useState(0);
 
+  // Passenger list state for individual ticket manifest
+  const [passengersList, setPassengersList] = useState([]);
+
+  // Fetch booking details if editing directly via URL
+  useEffect(() => {
+    if (paramBookingId && !editData) {
+      setLoadingEditBooking(true);
+      api.get(`/bookings/${paramBookingId}`)
+        .then((res) => {
+          if (res.data?.success && res.data.booking) {
+            setEditData(res.data.booking);
+          } else {
+            toastError('Booking not found.');
+            navigate('/bookings');
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load booking for editing:', err);
+          toastError('Failed to load booking details.');
+          navigate('/bookings');
+        })
+        .finally(() => {
+          setLoadingEditBooking(false);
+        });
+    }
+  }, [paramBookingId]);
+
+  // Pre-fill form when editing
   useEffect(() => {
     if (editMode && editData) {
+      const bPaxCount = editData.passengers?.length || editData.passengerCount || 1;
+      const bExtra = editData.extraGuests !== undefined ? editData.extraGuests : Math.max(0, bPaxCount - 1);
+      const bCost = parseFloat(editData.costPrice || 0);
+      const bSell = parseFloat(editData.sellPrice || editData.totalAmount || 0);
+      const bTax = parseFloat(editData.tax || 0);
+
       setFormData({
         serviceType: editData.serviceType || 'flight',
-        companyId: editData.company?._id || editData.companyId || '',
+        companyId: editData.company?._id || editData.company?.id || editData.companyId || '',
         bookingDate: editData.bookingDate ? new Date(editData.bookingDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         referenceNo: editData.referenceNo || editData.pnr || '',
         description: editData.description || editData.sector || '',
         passengerName: editData.passengerName || '',
         
-        customerId: editData.customer?._id || editData.customerId || '',
+        customerId: editData.customer?._id || editData.customer?.id || editData.customerId || '',
         customerName: editData.customer?.name || '',
         customerPhone: editData.customer?.phone || '',
         customerEmail: editData.customer?.email || '',
         customerAddress: editData.customer?.address || '',
         
-        costPrice: editData.costPrice || 0,
-        sellPrice: editData.sellPrice || editData.baseFare || 0,
+        costPrice: bCost,
+        sellPrice: bSell,
         
-        initialPayment: editData.initialPayment || 0,
+        initialPayment: editData.initialPayment || editData.amountReceived || 0,
         paymentMethod: editData.paymentMethod || 'cash',
-        upiMethod: editData.upiMethod || '',
+        onlineBank: editData.onlineMethod || editData.bankName || editData.upiMethod || '',
         paymentReference: editData.paymentReference || '',
         paymentNotes: editData.paymentNotes || '',
         
-        journeyDate: editData.journeyDate ? new Date(editData.journeyDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        journeyDate: editData.journeyDate ? new Date(editData.journeyDate).toISOString().split('T')[0] : (editData.bookingDate ? new Date(editData.bookingDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
         returnDate: editData.returnDate ? new Date(editData.returnDate).toISOString().split('T')[0] : '',
         bookingType: editData.bookingType || 'one_way',
         status: editData.status || 'confirmed',
         notes: editData.notes || ''
       });
-      setExtraGuests(editData.extraGuests || 0);
+
+      setExtraGuests(bExtra);
+
+      const totalPax = 1 + bExtra;
+      if (totalPax > 0) {
+        setUnitCost(bCost > 0 ? String(Math.round((bCost / totalPax) * 100) / 100) : '');
+        setUnitSell(bSell > 0 ? String(Math.round((bSell / totalPax) * 100) / 100) : '');
+      }
+
+      if (bTax > 0) {
+        setCustomGstAmount(String(bTax));
+        setGstMode('profit');
+      } else if (editData.tax === 0) {
+        setCustomGstAmount('0');
+        setGstMode('none');
+      }
+
       if (editData.customer) {
         setCustomerMode('existing');
         setCustomerSearch(editData.customer.name || editData.customer.phone || '');
       }
+
+      // Populate passengers list
+      if (editData.passengers && Array.isArray(editData.passengers) && editData.passengers.length > 0) {
+        setPassengersList(
+          editData.passengers.map((p, idx) => ({
+            id: p._id || idx,
+            title: p.title || 'Mr',
+            firstName: p.firstName || '',
+            lastName: p.lastName || '',
+            phone: p.phone || '',
+            passportNumber: p.passportNumber || '',
+            nationality: p.nationality || 'Indian'
+          }))
+        );
+      } else {
+        const parts = (editData.passengerName || '').split(' ');
+        const lead = {
+          id: 'lead',
+          title: 'Mr',
+          firstName: parts[0] || editData.passengerName || 'Passenger',
+          lastName: parts.slice(1).join(' ') || '',
+          phone: editData.customer?.phone || '',
+          passportNumber: '',
+          nationality: 'Indian'
+        };
+        const list = [lead];
+        for (let g = 1; g <= bExtra; g++) {
+          list.push({
+            id: `guest-${g}`,
+            title: 'Mr',
+            firstName: `${parts[0] || 'Passenger'} (Guest ${g})`,
+            lastName: parts.slice(1).join(' ') || '',
+            phone: '',
+            passportNumber: '',
+            nationality: 'Indian'
+          });
+        }
+        setPassengersList(list);
+      }
     }
   }, [editMode, editData]);
+
   const totalPassengersCount = 1 + (parseInt(extraGuests, 10) || 0);
 
   // Per-ticket rates for live multiplication
@@ -206,6 +285,40 @@ export const NewBookingPage = () => {
       }));
       setUnitSell(String(Math.round(impliedSell * 100) / 100));
     }
+
+    // Synchronize passengersList count
+    setPassengersList((prev) => {
+      const updated = [...prev];
+      const p1Name = formData.passengerName || 'Passenger';
+      const pParts = p1Name.split(' ');
+      if (updated.length === 0) {
+        updated.push({
+          id: 'lead',
+          title: 'Mr',
+          firstName: pParts[0] || 'Passenger',
+          lastName: pParts.slice(1).join(' ') || '',
+          phone: formData.customerPhone || '',
+          passportNumber: '',
+          nationality: 'Indian'
+        });
+      }
+      if (updated.length < newTotalTickets) {
+        for (let i = updated.length; i < newTotalTickets; i++) {
+          updated.push({
+            id: `guest-${i}`,
+            title: 'Mr',
+            firstName: `${pParts[0] || 'Passenger'} (Guest ${i})`,
+            lastName: pParts.slice(1).join(' ') || '',
+            phone: '',
+            passportNumber: '',
+            nationality: 'Indian'
+          });
+        }
+      } else if (updated.length > newTotalTickets) {
+        updated.splice(newTotalTickets);
+      }
+      return updated;
+    });
   };
 
   const handlePassengerNameInputChange = (val) => {
@@ -217,6 +330,32 @@ export const NewBookingPage = () => {
       handleUpdateExtraGuests(extraCount);
     }
     setFormData((prev) => ({ ...prev, passengerName: val }));
+
+    // Keep lead passenger first name & last name synced
+    setPassengersList((prev) => {
+      const cleanName = val.replace(plusRegex, '').trim();
+      const parts = cleanName.split(' ');
+      const p1FirstName = parts[0] || '';
+      const p1LastName = parts.slice(1).join(' ') || '';
+      if (prev.length === 0) {
+        return [{
+          id: 'lead',
+          title: 'Mr',
+          firstName: p1FirstName,
+          lastName: p1LastName,
+          phone: formData.customerPhone || '',
+          passportNumber: '',
+          nationality: 'Indian'
+        }];
+      }
+      const updated = [...prev];
+      updated[0] = {
+        ...updated[0],
+        firstName: p1FirstName,
+        lastName: p1LastName
+      };
+      return updated;
+    });
   };
 
   const handlePassengerNameInputBlur = () => {
@@ -295,7 +434,7 @@ export const NewBookingPage = () => {
         setCustomers(customersRes.data.customers || []);
       }
       if (settingsRes.data.success) {
-        setUpiMethods(settingsRes.data.settings?.upiMethods || []);
+        setOnlineBanks(settingsRes.data.settings?.upiMethods || []);
       }
     } catch (e) {
       console.error('Failed to load master data:', e);
@@ -357,7 +496,8 @@ export const NewBookingPage = () => {
   const finalTotalAmount = sell;
 
   const initPayment = parseFloat(formData.initialPayment || 0);
-  const balanceDue = Math.max(0, Math.round((finalTotalAmount - initPayment) * 100) / 100);
+  const amountPaidSoFar = editMode ? parseFloat(editData?.amountReceived || 0) : initPayment;
+  const balanceDue = Math.max(0, Math.round((finalTotalAmount - amountPaidSoFar) * 100) / 100);
 
   // Service Type Metadata & Placeholders
   const serviceConfigs = {
@@ -486,10 +626,14 @@ export const NewBookingPage = () => {
     }
 
     if (selectedCompanyObj && cost > 0) {
+      const isSameCompany = editMode && editData && String(formData.companyId) === String(editData.company?._id || editData.company?.id || editData.companyId);
+      const oldCost = isSameCompany ? parseFloat(editData.costPrice || 0) : 0;
+      const additionalRequired = cost - oldCost;
       const availableDeposit = parseFloat(selectedCompanyObj.walletBalance || 0);
-      if (availableDeposit < cost) {
+
+      if (additionalRequired > 0 && availableDeposit < additionalRequired) {
         return toastError(
-          `Insufficient deposited balance for ${selectedCompanyObj.name}. Required: ₹${cost.toLocaleString('en-IN')}, Available: ₹${availableDeposit.toLocaleString('en-IN')}. Please deposit funds into ${selectedCompanyObj.name}'s wallet before booking.`
+          `Insufficient deposited balance for ${selectedCompanyObj.name}. Additional Required: ₹${additionalRequired.toLocaleString('en-IN')}, Available: ₹${availableDeposit.toLocaleString('en-IN')}. Please deposit funds into ${selectedCompanyObj.name}'s wallet.`
         );
       }
     }
@@ -514,32 +658,38 @@ export const NewBookingPage = () => {
       return toastError('Sell Price must be greater than 0.');
     }
 
-    if (initPayment > finalTotalAmount) {
+    if (!editMode && initPayment > finalTotalAmount) {
       return toastError(`Initial payment (₹${initPayment}) cannot exceed total bill amount (₹${finalTotalAmount}).`);
+    }
+
+    if (!editMode && initPayment > 0 && formData.paymentMethod === 'online' && !formData.onlineBank) {
+      return toastError('Please select which Online Bank / Wallet was used for payment.');
     }
 
     setSubmitting(true);
     try {
       // Build passengers payload based on Lead Pax + Extra Guests
       const totalPax = 1 + (parseInt(extraGuests, 10) || 0);
-      const passengersPayload = [];
       const nameParts = formData.passengerName.trim().split(' ');
       const p1FirstName = nameParts[0] || formData.passengerName.trim();
       const p1LastName = nameParts.slice(1).join(' ') || '';
 
-      passengersPayload.push({
-        title: 'Mr',
-        firstName: p1FirstName,
-        lastName: p1LastName,
-        phone: formData.customerPhone || ''
-      });
-
-      for (let i = 1; i < totalPax; i++) {
+      const passengersPayload = [
+        {
+          title: 'Mr',
+          firstName: p1FirstName,
+          lastName: p1LastName,
+          phone: formData.customerPhone || '',
+          nationality: 'Indian'
+        }
+      ];
+      for (let g = 1; g < totalPax; g++) {
         passengersPayload.push({
           title: 'Mr',
-          firstName: `${p1FirstName} (Guest ${i})`,
+          firstName: `${p1FirstName} (Guest ${g})`,
           lastName: p1LastName,
-          phone: ''
+          phone: '',
+          nationality: 'Indian'
         });
       }
 
@@ -548,6 +698,8 @@ export const NewBookingPage = () => {
         companyId: formData.companyId,
         bookingDate: formData.bookingDate,
         journeyDate: formData.journeyDate || formData.bookingDate,
+        returnDate: formData.returnDate || null,
+        bookingType: formData.bookingType || 'one_way',
         referenceNo: formData.referenceNo ? formData.referenceNo.trim().toUpperCase() : undefined,
         pnr: formData.referenceNo ? formData.referenceNo.trim().toUpperCase() : undefined,
         description: formData.description.trim() || `${formData.serviceType.toUpperCase()} Booking`,
@@ -555,6 +707,8 @@ export const NewBookingPage = () => {
         passengerName: formData.passengerName.trim(),
         passengerCount: totalPax,
         extraGuests: parseInt(extraGuests, 10) || 0,
+        status: formData.status,
+        notes: formData.notes,
         
         costPrice: cost,
         sellPrice: sell,
@@ -562,19 +716,6 @@ export const NewBookingPage = () => {
         tax: calculatedGst,
         totalAmount: finalTotalAmount,
         profit: netProfit,
-
-        initialPayment: initPayment,
-        accountType: splitPaymentData.accountType,
-        bankId: splitPaymentData.bankId,
-        bankName: splitPaymentData.bankName,
-        paymentMethod: splitPaymentData.paymentMethod || formData.paymentMethod,
-        upiMethod: splitPaymentData.upiMethod,
-        upiApp: splitPaymentData.upiApp,
-        paymentReference: splitPaymentData.paymentReference || formData.paymentReference,
-        paymentNotes: formData.paymentNotes,
-        paymentSplits: splitPaymentData.splits || [],
-        splits: splitPaymentData.splits || [],
-        status: formData.status,
 
         passengers: passengersPayload
       };
@@ -588,11 +729,25 @@ export const NewBookingPage = () => {
         payload.customerAddress = formData.customerAddress?.trim();
       }
 
-      if (editMode && editData) {
-        const bookingId = editData._id || editData.id;
+      if (!editMode) {
+        payload.initialPayment = initPayment;
+        payload.accountType = formData.paymentMethod === 'cash' ? 'cash' : 'bank';
+        payload.bankId = null;
+        payload.bankName = formData.paymentMethod === 'online' ? formData.onlineBank : null;
+        payload.onlineMethod = formData.paymentMethod === 'online' ? formData.onlineBank : null;
+        payload.paymentMethod = formData.paymentMethod;
+        payload.upiMethod = formData.paymentMethod === 'online' ? formData.onlineBank : null;
+        payload.upiApp = formData.paymentMethod === 'online' ? formData.onlineBank : null;
+        payload.paymentReference = formData.paymentReference;
+        payload.paymentNotes = formData.paymentNotes;
+        payload.splits = [];
+      }
+
+      if (editMode) {
+        const bookingId = editData?._id || editData?.id || paramBookingId;
         const res = await api.put(`/bookings/${bookingId}`, payload);
         if (res.data.success) {
-          success(`Booking ${res.data.booking?.referenceNo || ''} updated successfully!`);
+          success(`Booking ${res.data.booking?.referenceNo || formData.referenceNo || ''} updated successfully!`);
           navigate(`/bookings/${bookingId}`);
         }
       } else {
@@ -608,29 +763,39 @@ export const NewBookingPage = () => {
         }
       }
     } catch (err) {
-      toastError(err.response?.data?.message || 'Failed to create booking.');
+      toastError(err.response?.data?.message || (editMode ? 'Failed to update booking.' : 'Failed to create booking.'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loadingEditBooking) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size="lg" text="Loading booking details for editing..." />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full pb-10 min-w-0">
       <PageHeader
-        title={editMode ? "Edit Booking" : "Create New Booking"}
-        subtitle="Universal booking module for Flight, Train, Bus, Hotel, and Car reservations"
+        title={editMode ? `Edit Booking – ${formData.referenceNo || editData?.referenceNo || 'Booking'}` : "Create New Booking"}
+        subtitle={editMode ? "Modify reservation particulars, passenger details, and financial parameters" : "Universal booking module for Flight, Train, Bus, Hotel, and Car reservations"}
         icon={CurrentIcon}
-        breadcrumbs={['Bookings', editMode ? 'Edit Booking' : 'New Booking']}
+        breadcrumbs={['Bookings', editMode ? (editData?.referenceNo || 'Edit Booking') : 'New Booking', ...(editMode ? ['Edit'] : [])]}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsExcelModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer active:scale-95"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Excel Sheet
-            </button>
-          </div>
+          !editMode && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsExcelModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer active:scale-95"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Upload Excel Sheet
+              </button>
+            </div>
+          )
         }
       />
 
@@ -997,6 +1162,7 @@ export const NewBookingPage = () => {
                     </p>
                   </div>
                 </div>
+
               </div>
             </div>
 
@@ -1477,35 +1643,120 @@ export const NewBookingPage = () => {
                 </div>
 
                 <div className="border-t border-slate-100 pt-3 space-y-3">
-                  {/* INITIAL PAYMENT */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Initial Payment Received (₹)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-emerald-600">₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max={finalTotalAmount}
-                        step="0.01"
-                        placeholder="0.00"
-                        value={formData.initialPayment || ''}
-                        onWheel={(e) => e.target.blur()}
-                        onChange={(e) => setFormData({ ...formData, initialPayment: parseFloat(e.target.value) || 0 })}
-                        className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                      />
+                  {editMode ? (
+                    <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-600 font-bold flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-brand-600" /> Amount Already Received:
+                        </span>
+                        <span className="font-mono font-black text-emerald-600 text-sm">
+                          ₹{parseFloat(editData?.amountReceived || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">
+                        Balance due adjusts automatically based on the updated Sell Price. Additional payment receipts can be recorded directly on the booking details page.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* INITIAL PAYMENT */}
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">
+                          Initial Payment Received (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-emerald-600">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={finalTotalAmount}
+                            step="0.01"
+                            placeholder="0.00"
+                            value={formData.initialPayment || ''}
+                            onWheel={(e) => e.target.blur()}
+                            onChange={(e) => setFormData({ ...formData, initialPayment: parseFloat(e.target.value) || 0 })}
+                            className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                          />
+                        </div>
+                      </div>
 
-                  {initPayment > 0 && (
-                    <div className="pt-1">
-                      <SplitPaymentInput
-                        initialPayment={formData.initialPayment}
-                        totalAmount={finalTotalAmount}
-                        onChange={setSplitPaymentData}
-                      />
-                    </div>
+                      {initPayment > 0 && (
+                        <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200 space-y-3 pt-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <CreditCard className="w-3.5 h-3.5 text-brand-600" /> Payment Details
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-mono font-bold">
+                              Paid: ₹{parseFloat(formData.initialPayment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className={`grid grid-cols-1 ${formData.paymentMethod === 'online' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5 pt-1`}>
+                            {/* PAYMENT MODE: ONLY CASH AND ONLINE */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                Payment Mode
+                              </label>
+                              <select
+                                value={formData.paymentMethod}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setFormData({
+                                    ...formData,
+                                    paymentMethod: val,
+                                    onlineBank: val === 'cash' ? '' : formData.onlineBank
+                                  });
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium cursor-pointer"
+                              >
+                                <option value="cash">Cash</option>
+                                <option value="online">Online</option>
+                              </select>
+                            </div>
+
+                            {/* ONLINE BANK / WALLET (FROM DATABASE SETTINGS ONLY) */}
+                            {formData.paymentMethod === 'online' && (
+                              <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                  Online Bank / Wallet *
+                                </label>
+                                {onlineBanks.length > 0 ? (
+                                  <select
+                                    required
+                                    value={formData.onlineBank}
+                                    onChange={(e) => setFormData({ ...formData, onlineBank: e.target.value })}
+                                    className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-brand-700 cursor-pointer"
+                                  >
+                                    <option value="">Select Bank / Wallet</option>
+                                    {onlineBanks.map((b, idx) => (
+                                      <option key={idx} value={b}>{b}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="px-2.5 py-1.5 text-[11px] bg-amber-50 text-amber-800 rounded-lg border border-amber-200 font-medium">
+                                    No bank added in database
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* REF / TXN ID */}
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                                Ref / Txn ID / Cheque No
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g. UTR / Txn ID"
+                                value={formData.paymentReference}
+                                onChange={(e) => setFormData({ ...formData, paymentReference: e.target.value })}
+                                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* LIVE BALANCE DUE */}
@@ -1517,9 +1768,9 @@ export const NewBookingPage = () => {
                       </p>
                     </div>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      balanceDue === 0 ? 'bg-emerald-100 text-emerald-800' : initPayment > 0 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                      balanceDue === 0 ? 'bg-emerald-100 text-emerald-800' : (editMode ? (editData?.amountReceived > 0) : (initPayment > 0)) ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
                     }`}>
-                      {balanceDue === 0 ? 'Paid' : initPayment > 0 ? 'Partial' : 'Unpaid'}
+                      {balanceDue === 0 ? 'Paid' : (editMode ? (editData?.amountReceived > 0) : (initPayment > 0)) ? 'Partial' : 'Unpaid'}
                     </span>
                   </div>
                 </div>
@@ -1537,15 +1788,22 @@ export const NewBookingPage = () => {
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    Confirm & Save Booking <ArrowRight className="w-4 h-4" />
+                    {editMode ? "Save Changes" : "Confirm & Save Booking"} <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
 
               <button
                 type="button"
-                onClick={() => navigate('/bookings')}
-                className="w-full py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition text-center"
+                onClick={() => {
+                  const targetId = editData?._id || editData?.id || paramBookingId;
+                  if (editMode && targetId) {
+                    navigate(`/bookings/${targetId}`);
+                  } else {
+                    navigate('/bookings');
+                  }
+                }}
+                className="w-full py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition text-center cursor-pointer"
               >
                 Cancel
               </button>

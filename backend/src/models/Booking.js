@@ -146,7 +146,7 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['paid', 'partially_paid', 'unpaid'],
+      enum: ['paid', 'partially_paid', 'unpaid', 'refunded'],
       default: 'unpaid',
       index: true
     },
@@ -174,6 +174,10 @@ const bookingSchema = new mongoose.Schema(
       default: 0
     },
     cancellationReason: {
+      type: String,
+      default: ''
+    },
+    customerRefundMethod: {
       type: String,
       default: ''
     }

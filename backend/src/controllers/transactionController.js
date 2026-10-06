@@ -59,6 +59,12 @@ const DEFAULT_BANKS = [
 
 exports.getAccountBalances = async (req, res, next) => {
   try {
+    // Ensure all customer booking ledger entries have accountType: 'none' so they never deduct from cash/bank
+    await Transaction.updateMany(
+      { type: 'booking', accountType: { $ne: 'none' } },
+      { $set: { accountType: 'none' } }
+    );
+
     const agencySetting = (await AgencySetting.findOne().lean()) || {};
     const cashOpening = parseFloat(agencySetting.cashOpeningBalance || 0);
     
@@ -70,8 +76,9 @@ exports.getAccountBalances = async (req, res, next) => {
     // Fetch all transactions to compute live balances
     const allTxns = await Transaction.find().sort({ transactionDate: -1, createdAt: -1 }).lean();
 
-    // 1. Calculate Cash Account
+    // 1. Calculate Cash Account (only real cash collected and deducted)
     const cashTxns = allTxns.filter((t) => {
+      if (t.type === 'booking' || t.accountType === 'none') return false;
       if (t.accountType === 'cash') return true;
       if (!t.accountType && (t.paymentMethod === 'cash' || (!t.paymentMethod && t.type === 'expense'))) return true;
       return false;
@@ -80,8 +87,9 @@ exports.getAccountBalances = async (req, res, next) => {
     const cashDebits = cashTxns.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
     const cashCurrentBalance = toDecimal(cashOpening + cashCredits - cashDebits);
 
-    // 2. Separate all bank transactions
+    // 2. Separate all bank transactions (only real bank collected and deducted)
     const allBankTxns = allTxns.filter((t) => {
+      if (t.type === 'booking' || t.accountType === 'none') return false;
       if (t.accountType === 'bank') return true;
       if (['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'].includes(t.paymentMethod)) return true;
       if (t.bankName || t.bankId) return true;
@@ -248,48 +256,67 @@ exports.getTransactions = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const query = {};
-    if (type) query.type = type;
+    if (type) {
+      query.type = type;
+    } else {
+      // By default, financial transactions page only lists real money movements (Cash & Bank)
+      // Exclude customer booking invoices / ledger entries which are not cash/bank collections or deductions
+      query.type = { $ne: 'booking' };
+    }
+
     if (customerId) query.customerId = customerId;
 
     if (accountType && accountType !== 'all') {
       if (accountType === 'cash') {
-        query.$or = [
+        const cashFilter = [
           { accountType: 'cash' },
           { accountType: { $exists: false }, paymentMethod: 'cash' },
           { accountType: null, paymentMethod: 'cash' }
         ];
+        if (query.$and) {
+          query.$and.push({ $or: cashFilter });
+        } else {
+          query.$and = [{ $or: cashFilter }];
+        }
       } else if (accountType === 'bank') {
+        const bankFilter = [
+          { accountType: 'bank' },
+          { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'] } },
+          { bankName: { $exists: true, $ne: null } }
+        ];
         if (bankName && bankName !== 'all') {
           const bPattern = bankName.replace(/[()]/g, '').trim();
-          query.$and = [
-            {
-              $or: [
-                { accountType: 'bank' },
-                { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'] } },
-                { bankName: { $exists: true, $ne: null } }
-              ]
-            },
-            {
-              $or: [
-                { bankName: new RegExp(bPattern, 'i') },
-                { description: new RegExp(bPattern, 'i') }
-              ]
-            }
+          const bankNameFilter = [
+            { bankName: new RegExp(bPattern, 'i') },
+            { description: new RegExp(bPattern, 'i') }
           ];
+          if (query.$and) {
+            query.$and.push({ $or: bankFilter }, { $or: bankNameFilter });
+          } else {
+            query.$and = [{ $or: bankFilter }, { $or: bankNameFilter }];
+          }
         } else {
-          query.$or = [
-            { accountType: 'bank' },
-            { paymentMethod: { $in: ['upi', 'bank_transfer', 'card', 'cheque', 'netbanking'] } },
-            { bankName: { $exists: true, $ne: null } }
-          ];
+          if (query.$and) {
+            query.$and.push({ $or: bankFilter });
+          } else {
+            query.$and = [{ $or: bankFilter }];
+          }
         }
       }
     } else if (bankName && bankName !== 'all') {
       const bPattern = bankName.replace(/[()]/g, '').trim();
-      query.$or = [
+      const bankNameFilter = [
         { bankName: new RegExp(bPattern, 'i') },
         { description: new RegExp(bPattern, 'i') }
       ];
+      if (query.$and) {
+        query.$and.push({ $or: bankNameFilter });
+      } else {
+        query.$and = [{ $or: bankNameFilter }];
+      }
+    } else if (!type) {
+      // All Accounts view: strictly show cash and bank financial movements, omit ledger-only entries
+      query.accountType = { $in: ['cash', 'bank'] };
     }
 
     if (startDate && endDate) {
@@ -316,7 +343,9 @@ exports.getTransactions = async (req, res, next) => {
         { bookingId: { $in: matchingBookings.map(b => b._id) } }
       ];
 
-      if (query.$or) {
+      if (query.$and) {
+        query.$and.push({ $or: searchConditions });
+      } else if (query.$or) {
         query.$and = [{ $or: query.$or }, { $or: searchConditions }];
         delete query.$or;
       } else {

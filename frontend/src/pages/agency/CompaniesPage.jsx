@@ -118,7 +118,7 @@ export const CompaniesPage = () => {
     setSelectedCompanyForDeposit(c);
     setDepositForm({
       amount: '',
-      reference: `DEP-${c.code}-${Date.now().toString().slice(-4)}`,
+      reference: '',
       notes: '',
       date: new Date().toISOString().split('T')[0]
     });
@@ -153,7 +153,7 @@ export const CompaniesPage = () => {
     setSelectedCompanyForReward(c);
     setRewardForm({
       amount: '',
-      reference: `RWD-${c.code}-${Date.now().toString().slice(-4)}`,
+      reference: '',
       notes: 'Received reward/cashback',
       date: new Date().toISOString().split('T')[0]
     });
@@ -327,11 +327,16 @@ export const CompaniesPage = () => {
       )
     },
     {
-      header: 'Total Bookings',
+      header: 'Bookings & Tickets',
       render: (row) => (
-        <span className="text-xs font-bold text-slate-800 font-mono">
-          {row.totalBookings || 0}
-        </span>
+        <div>
+          <span className="text-xs font-bold text-slate-800 font-mono">
+            {row.totalBookings || 0} Booking{row.totalBookings === 1 ? '' : 's'}
+          </span>
+          <span className="text-[10px] text-slate-400 block font-mono">
+            {row.usedTickets || 0} Ticket{row.usedTickets === 1 ? '' : 's'}
+          </span>
+        </div>
       )
     },
     {

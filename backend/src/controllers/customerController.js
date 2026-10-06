@@ -26,7 +26,7 @@ exports.getCustomers = async (req, res, next) => {
     }
 
     const sortDirection = order.toUpperCase() === 'ASC' ? 1 : -1;
-    const sortObj = { [sort === 'id' ? '_id' : sort]: sortDirection };
+    const sortObj = { [sort === 'id' ? '_id' : sort]: sortDirection, _id: sortDirection };
 
     const total = await Customer.countDocuments(query);
     const customersRaw = await Customer.find(query)
@@ -38,7 +38,7 @@ exports.getCustomers = async (req, res, next) => {
     // Get aggregated metrics for each customer
     const customerIds = customersRaw.map(c => c._id);
     const bookings = await Booking.find({ customerId: { $in: customerIds } })
-      .select('customerId totalAmount amountReceived balanceDue status')
+      .select('customerId totalAmount amountReceived customerRefundAmount balanceDue status')
       .lean();
 
     const customerBookingsMap = {};
@@ -51,10 +51,30 @@ exports.getCustomers = async (req, res, next) => {
     const customers = customersRaw.map(c => {
       const data = { ...c, id: c._id };
       const cBookings = customerBookingsMap[String(c._id)] || [];
+      const activeBookings = cBookings.filter(b => b.status !== 'cancelled');
+      const cancelledBookings = cBookings.filter(b => b.status === 'cancelled');
+
       const totalBookings = cBookings.length;
-      const totalAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
-      const paidAmount = cBookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
-      const outstandingAmount = Math.max(0, toDecimal(totalAmount - paidAmount));
+      
+      // Total amount charged to customer:
+      // Active bookings: full ticket price
+      // Cancelled bookings: only retained cancellation fee (amountReceived - customerRefundAmount)
+      const activeAmount = activeBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
+      const cancellationFees = cancelledBookings.reduce((sum, b) => {
+        const kept = Math.max(0, parseFloat(b.amountReceived || 0) - parseFloat(b.customerRefundAmount || 0));
+        return sum + kept;
+      }, 0);
+      const totalAmount = toDecimal(activeAmount + cancellationFees);
+
+      // Paid amount:
+      // Active bookings: amountReceived
+      // Cancelled bookings: retained fee (original payment minus refund given back)
+      const activePaid = activeBookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
+      const paidAmount = toDecimal(activePaid + cancellationFees);
+
+      // Outstanding balance:
+      // Cancelled bookings have 0 balance due! Only active bookings have outstanding balances.
+      const outstandingAmount = Math.max(0, toDecimal(activeBookings.reduce((sum, b) => sum + parseFloat(b.balanceDue || 0), 0)));
 
       return {
         ...data,
@@ -103,9 +123,20 @@ exports.getCustomerById = async (req, res, next) => {
       Passenger.find({ customerId: id }).lean()
     ]);
 
-    const totalAmount = bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
-    const paidAmount = bookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
-    const outstandingAmount = Math.max(0, toDecimal(totalAmount - paidAmount));
+    const activeBookings = bookings.filter(b => b.status !== 'cancelled');
+    const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
+
+    const activeAmount = activeBookings.reduce((sum, b) => sum + parseFloat(b.totalAmount || b.sellPrice || 0), 0);
+    const cancellationFees = cancelledBookings.reduce((sum, b) => {
+      const kept = Math.max(0, parseFloat(b.amountReceived || 0) - parseFloat(b.customerRefundAmount || 0));
+      return sum + kept;
+    }, 0);
+    const totalAmount = toDecimal(activeAmount + cancellationFees);
+
+    const activePaid = activeBookings.reduce((sum, b) => sum + parseFloat(b.amountReceived || 0), 0);
+    const paidAmount = toDecimal(activePaid + cancellationFees);
+
+    const outstandingAmount = Math.max(0, toDecimal(activeBookings.reduce((sum, b) => sum + parseFloat(b.balanceDue || 0), 0)));
 
     return res.status(200).json({
       success: true,
@@ -277,9 +308,12 @@ exports.getCustomerLedger = async (req, res, next) => {
       return {
         id: t.id || t._id,
         date: t.transactionDate,
+        createdAt: t.createdAt,
         referenceNo: t.referenceNo,
         description: t.description,
         type: t.type,
+        accountType: t.accountType,
+        bankName: t.bankName,
         paymentMethod: t.paymentMethod,
         debit: toDecimal(debit),
         credit: toDecimal(credit),

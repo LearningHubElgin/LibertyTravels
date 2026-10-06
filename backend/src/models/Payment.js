@@ -52,7 +52,7 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other'],
+      enum: ['cash', 'upi', 'online', 'bank_transfer', 'card', 'cheque', 'other'],
       default: 'cash',
       index: true
     },
@@ -75,7 +75,7 @@ const paymentSchema = new mongoose.Schema(
         bankName: { type: String, default: null },
         paymentMethod: {
           type: String,
-          enum: ['cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other'],
+          enum: ['cash', 'upi', 'online', 'bank_transfer', 'card', 'cheque', 'other'],
           default: 'cash'
         },
         upiApp: { type: String, default: null },

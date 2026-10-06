@@ -64,6 +64,9 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
       return;
     }
 
+    const originalTitle = document.title;
+    document.title = '';
+
     // Collect all active stylesheets and styles in the document
     const styleElements = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
       .map((el) => el.outerHTML)
@@ -77,7 +80,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
     iframe.style.width = '0';
     iframe.style.height = '0';
     iframe.style.border = '0';
-    iframe.setAttribute('title', 'Print Invoice');
+    iframe.setAttribute('title', '');
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow.document;
@@ -86,17 +89,14 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
       <!DOCTYPE html>
       <html>
         <head>
-          <title> </title>
+          <title></title>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           ${styleElements}
           <style>
             @page {
               size: A4 portrait;
-              margin-top: 10mm !important;
-              margin-bottom: 8mm !important;
-              margin-left: 10mm !important;
-              margin-right: 10mm !important;
+              margin: 0;
             }
             html, body {
               margin: 0 !important;
@@ -110,15 +110,34 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
-              box-sizing: border-box;
+              box-sizing: border-box !important;
             }
             #printable-invoice {
               width: 100% !important;
               max-width: 100% !important;
-              margin: 0 !important;
-              padding-top: 5px !important;
-              padding-bottom: 5px !important;
+              margin: 0 auto !important;
+              padding: 6mm 10mm !important;
               background: #fff !important;
+              page-break-after: avoid !important;
+              page-break-inside: avoid !important;
+              break-after: avoid !important;
+              break-inside: avoid !important;
+            }
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 0;
+              }
+              body {
+                margin: 0 !important;
+              }
+              #printable-invoice {
+                padding: 6mm 10mm !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-after: avoid !important;
+                break-inside: avoid !important;
+              }
             }
           </style>
         </head>
@@ -134,12 +153,13 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
     iframe.contentWindow.focus();
     setTimeout(() => {
       iframe.contentWindow.print();
+      document.title = originalTitle;
       setTimeout(() => {
         if (document.body.contains(iframe)) {
           document.body.removeChild(iframe);
         }
       }, 2000);
-    }, 300);
+    }, 350);
   };
 
   // Compute clean financial numbers & taxes
@@ -172,9 +192,31 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
     ? booking.referenceNo.replace('TRV-', billMode === 'total_bill' ? 'BILL-' : 'INV-')
     : `${billMode === 'total_bill' ? 'BILL' : 'INV'}-2026-${String(booking.id || booking._id || '1001').slice(-5).toUpperCase()}`;
 
-  const passengerNames = (booking.passengers && booking.passengers.length > 0)
-    ? booking.passengers.map((p) => `${p.title ? p.title + ' ' : ''}${p.firstName} ${p.lastName}`).join(', ')
-    : (booking.passengerName || 'N/A');
+  const formatPassengerDisplay = () => {
+    let leadName = '';
+    if (booking.passengers && booking.passengers.length > 0) {
+      const p1 = booking.passengers[0];
+      const title = p1.title ? `${p1.title} ` : '';
+      const fullName = `${p1.firstName || ''} ${p1.lastName || ''}`.trim();
+      leadName = `${title}${fullName}`.trim();
+    }
+    if (!leadName && booking.passengerName) {
+      leadName = booking.passengerName.trim();
+    }
+    if (!leadName) {
+      leadName = 'Passenger';
+    }
+
+    const totalPax = booking.passengerCount || (booking.passengers ? booking.passengers.length : 1);
+    const extraPax = Math.max(0, totalPax - 1);
+
+    if (extraPax > 0) {
+      return `${leadName} +${extraPax}`;
+    }
+    return leadName;
+  };
+
+  const passengerNames = formatPassengerDisplay();
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
@@ -258,7 +300,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
             <div id="printable-invoice" className="bg-white max-w-3xl mx-auto">
               
               {/* Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b-2 border-slate-800 gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b-2 border-slate-800 gap-4">
                 <div>
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <img
@@ -298,7 +340,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
               </div>
 
               {/* Customer & Travel Summary Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 my-5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 my-3 sm:my-3.5 text-xs">
                 {/* Customer Details */}
                 <div className="bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs">
                   <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1.5 flex items-center gap-1.5">
@@ -344,7 +386,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
               </div>
 
               {/* Passenger Names Box */}
-              <div className="mb-5 bg-slate-50/80 p-3 sm:p-3.5 rounded-xl border border-slate-200 text-xs flex items-center gap-2">
+              <div className="mb-3 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-200 text-xs flex items-center gap-2">
                 <span className="font-bold text-slate-700 shrink-0">Passenger(s):</span>
                 <span className="text-slate-700 font-medium truncate">{passengerNames}</span>
                 {booking.passengerCount > 1 && (
@@ -355,21 +397,21 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
               </div>
 
               {/* Charges & GST Breakdown Table */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden mb-5 text-xs shadow-xs">
+              <div className="border border-slate-200 rounded-2xl overflow-hidden mb-3 text-xs shadow-xs">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#0B1E36] text-white font-bold">
-                      <th className="py-2.5 px-4">Item Description & Tax Particulars</th>
-                      <th className="py-2.5 px-4 text-center">SAC Code</th>
-                      <th className="py-2.5 px-4 text-right">Taxable Value (₹)</th>
-                      <th className="py-2.5 px-4 text-right">GST / Tax (₹)</th>
-                      <th className="py-2.5 px-4 text-right">Total Amount (₹)</th>
+                      <th className="py-2 px-3">Item Description & Tax Particulars</th>
+                      <th className="py-2 px-3 text-center">SAC Code</th>
+                      <th className="py-2 px-3 text-right">Taxable Value (₹)</th>
+                      <th className="py-2 px-3 text-right">GST / Tax (₹)</th>
+                      <th className="py-2 px-3 text-right">Total Amount (₹)</th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     <tr>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         <div className="font-bold text-slate-900 text-sm">
                           {booking.serviceType ? booking.serviceType.toUpperCase() : 'TRAVEL'} Ticket / Package ({booking.sector || booking.description})
                         </div>
@@ -377,37 +419,37 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
                           Base travel fare excluding applicable GST taxes
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-600">998553</td>
-                      <td className="py-3 px-4 text-right font-mono font-medium">
+                      <td className="py-2 px-3 text-center font-mono text-slate-600">998553</td>
+                      <td className="py-2 px-3 text-right font-mono font-medium">
                         ₹{computedBaseFare.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600">
+                      <td className="py-2 px-3 text-right font-mono text-slate-600">
                         ₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                      <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
                         ₹{(computedBaseFare + totalTax).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     {/* GST Itemized Rows */}
                     <tr className="bg-slate-50/60 text-slate-600">
-                      <td className="py-1.5 px-4 pl-8 font-medium">↳ CGST (Central Goods & Services Tax @ 9%)</td>
-                      <td className="py-1.5 px-4 text-center font-mono text-[11px]">998553</td>
-                      <td className="py-1.5 px-4 text-right font-mono">-</td>
-                      <td className="py-1.5 px-4 text-right font-mono font-semibold text-slate-800">
+                      <td className="py-1 px-3 pl-8 font-medium">↳ CGST (Central Goods & Services Tax @ 9%)</td>
+                      <td className="py-1 px-3 text-center font-mono text-[11px]">998553</td>
+                      <td className="py-1 px-3 text-right font-mono">-</td>
+                      <td className="py-1 px-3 text-right font-mono font-semibold text-slate-800">
                         ₹{cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-1.5 px-4 text-right font-mono text-slate-500">9%</td>
+                      <td className="py-1 px-3 text-right font-mono text-slate-500">9%</td>
                     </tr>
 
                     <tr className="bg-slate-50/60 text-slate-600">
-                      <td className="py-1.5 px-4 pl-8 font-medium">↳ SGST / UTGST (State Goods & Services Tax @ 9%)</td>
-                      <td className="py-1.5 px-4 text-center font-mono text-[11px]">998553</td>
-                      <td className="py-1.5 px-4 text-right font-mono">-</td>
-                      <td className="py-1.5 px-4 text-right font-mono font-semibold text-slate-800">
+                      <td className="py-1 px-3 pl-8 font-medium">↳ SGST / UTGST (State Goods & Services Tax @ 9%)</td>
+                      <td className="py-1 px-3 text-center font-mono text-[11px]">998553</td>
+                      <td className="py-1 px-3 text-right font-mono">-</td>
+                      <td className="py-1 px-3 text-right font-mono font-semibold text-slate-800">
                         ₹{sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-1.5 px-4 text-right font-mono text-slate-500">9%</td>
+                      <td className="py-1 px-3 text-right font-mono text-slate-500">9%</td>
                     </tr>
 
                     {serviceCharge > 0 && (
@@ -432,8 +474,8 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
 
                     {discount > 0 && (
                       <tr className="text-emerald-700 bg-emerald-50/50">
-                        <td colSpan={4} className="py-2 px-4 font-medium">Promotional Discount Applied</td>
-                        <td className="py-2 px-4 text-right font-mono font-semibold">-₹{discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td colSpan={4} className="py-1.5 px-3 font-medium">Promotional Discount Applied</td>
+                        <td className="py-1.5 px-3 text-right font-mono font-semibold">-₹{discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       </tr>
                     )}
                   </tbody>
@@ -441,44 +483,44 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
                   {/* Bill Summary / Grand Totals */}
                   <tfoot className="border-t-2 border-slate-800 bg-slate-50 font-bold">
                     <tr className="text-slate-700 border-b border-slate-200">
-                      <td colSpan={3} className="py-2 px-4 text-xs font-semibold">
+                      <td colSpan={3} className="py-1.5 px-3 text-xs font-semibold">
                         Total Taxable Base Value
                       </td>
-                      <td colSpan={2} className="py-2 px-4 text-right font-mono font-semibold text-slate-800">
+                      <td colSpan={2} className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">
                         ₹{computedBaseFare.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     <tr className="text-slate-700 border-b border-slate-200 bg-amber-50/40">
-                      <td colSpan={3} className="py-2 px-4 text-xs font-bold text-amber-900">
+                      <td colSpan={3} className="py-1.5 px-3 text-xs font-bold text-amber-900">
                         Total GST & Taxes (CGST + SGST)
                       </td>
-                      <td colSpan={2} className="py-2 px-4 text-right font-mono font-bold text-amber-900">
+                      <td colSpan={2} className="py-1.5 px-3 text-right font-mono font-bold text-amber-950">
                         ₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     <tr className="bg-slate-100/90 text-slate-900">
-                      <td colSpan={3} className="py-3 px-4 text-sm font-black uppercase">
+                      <td colSpan={3} className="py-2 px-3 text-xs font-black uppercase">
                         {billMode === 'total_bill' ? 'Total Bill Amount (Incl. of all Taxes)' : 'Total Invoice Amount (Gross)'}
                       </td>
-                      <td colSpan={2} className="py-3 px-4 text-right text-base font-mono font-black text-slate-950">
+                      <td colSpan={2} className="py-2 px-3 text-right text-sm font-mono font-black text-slate-950">
                         ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     <tr className="text-emerald-700">
-                      <td colSpan={3} className="py-2 px-4 font-medium">Amount Received / Advance Paid</td>
-                      <td colSpan={2} className="py-2 px-4 text-right font-mono font-bold">
+                      <td colSpan={3} className="py-1.5 px-3 font-medium">Amount Received / Advance Paid</td>
+                      <td colSpan={2} className="py-1.5 px-3 text-right font-mono font-bold">
                         ₹{amountReceived.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     <tr className={currentBalanceDue > 0 ? 'text-rose-700 bg-rose-50/30' : 'text-emerald-700'}>
-                      <td colSpan={3} className="py-2 px-4 font-bold">
+                      <td colSpan={3} className="py-1.5 px-3 font-bold">
                         Balance Outstanding (This Booking)
                       </td>
-                      <td colSpan={2} className="py-2 px-4 text-right font-mono font-black text-sm">
+                      <td colSpan={2} className="py-1.5 px-3 text-right font-mono font-black text-xs">
                         ₹{currentBalanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -487,16 +529,16 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
                     {includeLedgerDue && previousCustomerDue > 0 && (
                       <>
                         <tr className="text-slate-600 border-t border-slate-200">
-                          <td colSpan={3} className="py-2 px-4 font-medium">Previous Unpaid Dues (Customer Ledger)</td>
-                          <td colSpan={2} className="py-2 px-4 text-right font-mono">
+                          <td colSpan={3} className="py-1.5 px-3 font-medium">Previous Unpaid Dues (Customer Ledger)</td>
+                          <td colSpan={2} className="py-1.5 px-3 text-right font-mono">
                             ₹{previousCustomerDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
                         <tr className="bg-amber-100/70 text-slate-950 border-t-2 border-slate-900">
-                          <td colSpan={3} className="py-3 px-4 text-sm font-black uppercase">
+                          <td colSpan={3} className="py-2 px-3 text-xs font-black uppercase">
                             Grand Total Balance Payable
                           </td>
-                          <td colSpan={2} className="py-3 px-4 text-right text-base font-mono font-black text-rose-800">
+                          <td colSpan={2} className="py-2 px-3 text-right text-sm font-mono font-black text-rose-800">
                             ₹{grandTotalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
@@ -507,7 +549,7 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
               </div>
 
               {/* Amount in Words */}
-              <div className="mb-5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                 <span className="font-bold text-slate-700">Amount in Words: </span>
                 <span className="text-slate-800 font-semibold italic">
                   {numberToWords(totalAmount)}
@@ -515,10 +557,10 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
               </div>
 
               {/* Payment Status Stamp & Signatory */}
-              <div className="flex items-center justify-between my-4 text-xs">
+              <div className="flex items-center justify-between my-2 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-600">Payment Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                     booking.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                     booking.paymentStatus === 'partially_paid' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
@@ -528,19 +570,19 @@ export const InvoiceModal = ({ isOpen, onClose, booking, initialMode = 'total_bi
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-slate-400">Authorized Signatory</p>
-                  <p className="text-xs font-bold text-slate-800 mt-4 border-t border-slate-300 pt-1">
+                  <p className="text-xs font-bold text-slate-800 mt-2 border-t border-slate-300 pt-1">
                     {agency?.agencyName || 'Liberty Tours & Travels'}
                   </p>
                 </div>
               </div>
 
               {/* Terms & Conditions and Footer */}
-              <div className="mt-5 pt-3 border-t border-slate-200 text-[11px] text-slate-500 space-y-1.5">
-                <p className="font-bold text-slate-700 text-xs">GST & Booking Terms:</p>
+              <div className="mt-3 pt-2 border-t border-slate-200 text-[10px] text-slate-500 space-y-1">
+                <p className="font-bold text-slate-700 text-[11px]">GST & Booking Terms:</p>
                 <p className="whitespace-pre-line leading-relaxed text-[10px]">
                   {agency?.termsAndConditions || '1. All tickets are subject to airline/supplier fare rules & conditions.\n2. In case of cancellation or reschedule, airline charges plus agency facilitation fees apply.'}
                 </p>
-                <p className="text-center font-semibold text-slate-600 pt-2 text-[11px]">
+                <p className="text-center font-semibold text-slate-600 pt-1 text-[10px]">
                   {agency?.invoiceFooter || 'Thank you for choosing Liberty Tours & Travels. We wish you a safe and memorable journey!'}
                 </p>
               </div>

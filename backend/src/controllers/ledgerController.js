@@ -62,6 +62,30 @@ exports.getCustomerLedger = async (req, res, next) => {
     const periodDebit = transactions.reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
     const periodCredit = transactions.reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
 
+    const totalBilled = transactions
+      .filter(t => t.type === 'booking')
+      .reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
+
+    const totalCancellations = transactions
+      .filter(t => t.referenceNo?.startsWith('TXN-CNL') || (t.type === 'adjustment' && t.credit > 0))
+      .reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
+
+    const totalFees = transactions
+      .filter(t => t.referenceNo?.startsWith('TXN-FEE') || (t.type === 'adjustment' && t.debit > 0))
+      .reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
+
+    const netCharged = Math.max(0, toDecimal(totalBilled - totalCancellations + totalFees));
+
+    const totalPaid = transactions
+      .filter(t => t.type === 'customer_payment' || t.type === 'payment' || (t.credit > 0 && !t.referenceNo?.startsWith('TXN-CNL') && t.type !== 'adjustment'))
+      .reduce((sum, t) => sum + parseFloat(t.credit || 0), 0);
+
+    const totalRefunded = transactions
+      .filter(t => t.type === 'refund')
+      .reduce((sum, t) => sum + parseFloat(t.debit || 0), 0);
+
+    const netReceived = toDecimal(totalPaid - totalRefunded);
+
     return res.status(200).json({
       success: true,
       customer: {
@@ -78,6 +102,10 @@ exports.getCustomerLedger = async (req, res, next) => {
         openingBalance,
         totalDebit: toDecimal(periodDebit),
         totalCredit: toDecimal(periodCredit),
+        netCharged: toDecimal(netCharged),
+        totalPaid: toDecimal(totalPaid),
+        totalRefunded: toDecimal(totalRefunded),
+        netReceived: toDecimal(netReceived),
         closingBalance: toDecimal(currentRunningBalance)
       }
     });

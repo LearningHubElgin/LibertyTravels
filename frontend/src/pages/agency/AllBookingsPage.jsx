@@ -355,6 +355,27 @@ export const AllBookingsPage = () => {
         const s = parseFloat(row.sellPrice || row.totalAmount || 0);
         const c = parseFloat(row.costPrice || 0);
         const profit = Math.round((s - c) * 100) / 100;
+        const isCancelled = row.status === 'cancelled';
+        const cancellationCharge = Math.max(0, parseFloat(row.amountReceived || 0) - parseFloat(row.customerRefundAmount || 0));
+
+        if (isCancelled) {
+          return (
+            <div className="font-mono text-xs space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="line-through text-slate-500 decoration-rose-500 decoration-2 font-semibold text-xs">
+                  ₹{s.toLocaleString('en-IN')}
+                </span>
+                <span className="font-black text-rose-700 text-xs bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                  ₹{cancellationCharge.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-slate-700 block">
+                Charge: <span className="text-rose-600 font-black">₹{cancellationCharge.toLocaleString('en-IN')}</span>
+              </span>
+            </div>
+          );
+        }
+
         return (
           <div className="font-mono text-xs">
             <span className="font-black text-slate-900 block">
@@ -404,7 +425,7 @@ export const AllBookingsPage = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate('/bookings/new', { state: { editMode: true, editData: row } });
+              navigate(`/bookings/${row.id || row._id}/edit`, { state: { editMode: true, editData: row } });
             }}
             title="Edit Booking Details"
             className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
@@ -677,7 +698,7 @@ export const AllBookingsPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className={paymentForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
+              <div className={paymentForm.paymentMethod === 'online' ? 'col-span-2 sm:col-span-1' : ''}>
                 <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
                 <select
                   value={paymentForm.paymentMethod}
@@ -685,26 +706,26 @@ export const AllBookingsPage = () => {
                     setPaymentForm({
                       ...paymentForm,
                       paymentMethod: e.target.value,
-                      upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
+                      upiMethod: e.target.value !== 'online' ? '' : paymentForm.upiMethod
                     });
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
                 >
                   <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
+                  <option value="online">Online</option>
                 </select>
               </div>
 
-              {paymentForm.paymentMethod === 'upi' && (
+              {paymentForm.paymentMethod === 'online' && (
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Online Bank / Wallet *</label>
                   <select
                     required
                     value={paymentForm.upiMethod}
                     onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none font-semibold text-brand-700"
                   >
-                    <option value="">Select UPI App</option>
+                    <option value="">Select Bank / Wallet</option>
                     {upiMethods.map((m, i) => (
                       <option key={i} value={m}>{m}</option>
                     ))}

@@ -30,7 +30,6 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
-import { EditBookingModal } from '../../components/booking/EditBookingModal';
 import { CancelBookingModal } from '../../components/booking/CancelBookingModal';
 import { useToast } from '../../context/ToastContext';
 import { formatDate, formatDateTime } from '../../utils/formatters';
@@ -46,7 +45,6 @@ export const BookingDetailsPage = () => {
 
   // Modals
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -191,7 +189,7 @@ export const BookingDetailsPage = () => {
 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <button
-            onClick={() => setIsEditModalOpen(true)}
+            onClick={() => navigate(`/bookings/${booking.id || booking._id}/edit`, { state: { editMode: true, editData: booking } })}
             className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl shadow-xs transition cursor-pointer"
           >
             <Edit className="w-3.5 h-3.5" /> Edit Booking
@@ -322,7 +320,27 @@ export const BookingDetailsPage = () => {
               </div>
               <div>
                 <span className="text-slate-400 font-medium block mb-0.5">Passenger Name</span>
-                <span className="font-semibold text-slate-900">{booking.passengerName || booking.passengers?.[0]?.firstName || 'N/A'}</span>
+                {(() => {
+                  let lead = '';
+                  if (booking.passengers && booking.passengers.length > 0) {
+                    const p1 = booking.passengers[0];
+                    lead = `${p1.title ? p1.title + ' ' : ''}${p1.firstName || ''} ${p1.lastName || ''}`.trim();
+                  }
+                  if (!lead) lead = booking.passengerName || 'N/A';
+                  const total = booking.passengerCount || booking.passengers?.length || 1;
+                  const extra = Math.max(0, total - 1);
+
+                  return (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-slate-900 font-bold text-xs sm:text-sm shadow-2xs">
+                      <span>{lead}</span>
+                      {extra > 0 && (
+                        <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-950 font-mono text-xs font-black">
+                          +{extra}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               {booking.journeyDate && (
                 <div>
@@ -339,42 +357,7 @@ export const BookingDetailsPage = () => {
             </div>
           </div>
 
-          {/* Passenger Cards List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-brand-600" /> Manifest & Passenger List ({booking.passengers?.length || 0})
-              </h3>
-            </div>
 
-            <div className="space-y-3">
-              {booking.passengers?.map((p, idx) => (
-                <div
-                  key={p.id || idx}
-                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-brand-100 text-brand-800 font-bold flex items-center justify-center text-[10px]">
-                        {idx + 1}
-                      </span>
-                      <span className="font-bold text-slate-900 text-sm">
-                        {p.title ? p.title + ' ' : ''}{p.firstName} {p.lastName}
-                      </span>
-                      <span className="text-slate-400">({p.nationality || 'Indian'})</span>
-                    </div>
-                    <div className="flex flex-wrap gap-4 text-slate-500 mt-2 text-[11px]">
-                      {p.passportNumber && (
-                        <span>Passport: <strong className="text-slate-700 font-mono">{p.passportNumber}</strong></span>
-                      )}
-                      {p.passportExpiry && <span>Exp: {formatDate(p.passportExpiry)}</span>}
-                      {p.dateOfBirth && <span>DOB: {formatDate(p.dateOfBirth)}</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Payment History Timeline */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
@@ -488,6 +471,16 @@ export const BookingDetailsPage = () => {
                     <span>Customer Refund:</span>
                     <span className="font-mono font-semibold">{formatCurrency(booking.customerRefundAmount)}</span>
                   </div>
+                  <div className="flex justify-between text-rose-800 text-[11px] font-bold">
+                    <span>Cancellation Fee Retained:</span>
+                    <span className="font-mono">{formatCurrency(Math.max(0, parseFloat(booking.amountReceived || 0) - parseFloat(booking.customerRefundAmount || 0)))}</span>
+                  </div>
+                  {booking.customerRefundMethod && (
+                    <div className="flex justify-between text-rose-700 text-[11px]">
+                      <span>Refund Method:</span>
+                      <span className="font-semibold">{booking.customerRefundMethod}</span>
+                    </div>
+                  )}
                   {booking.cancellationReason && (
                     <div className="text-[10px] text-rose-600/80 italic pt-1 border-t border-rose-200/50">
                       Note: {booking.cancellationReason}
@@ -601,7 +594,7 @@ export const BookingDetailsPage = () => {
               />
             </div>
 
-            <div className={paymentForm.paymentMethod === 'upi' ? 'col-span-2 sm:col-span-1' : ''}>
+            <div className={paymentForm.paymentMethod === 'online' ? 'col-span-2 sm:col-span-1' : ''}>
               <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
               <select
                 value={paymentForm.paymentMethod}
@@ -609,26 +602,26 @@ export const BookingDetailsPage = () => {
                   setPaymentForm({
                     ...paymentForm,
                     paymentMethod: e.target.value,
-                    upiMethod: e.target.value !== 'upi' ? '' : paymentForm.upiMethod
+                    upiMethod: e.target.value !== 'online' ? '' : paymentForm.upiMethod
                   });
                 }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
               >
                 <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
+                <option value="online">Online</option>
               </select>
             </div>
 
-            {paymentForm.paymentMethod === 'upi' && (
+            {paymentForm.paymentMethod === 'online' && (
               <div className="col-span-2 sm:col-span-1">
-                <label className="block font-semibold text-slate-700 mb-1">UPI Method *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Online Bank / Wallet *</label>
                 <select
                   required
                   value={paymentForm.upiMethod}
                   onChange={(e) => setPaymentForm({ ...paymentForm, upiMethod: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none"
                 >
-                  <option value="">Select UPI App</option>
+                  <option value="">Select Bank / Wallet</option>
                   {upiMethods.map((m, i) => (
                     <option key={i} value={m}>{m}</option>
                   ))}
@@ -666,17 +659,6 @@ export const BookingDetailsPage = () => {
         onClose={() => setIsCancelConfirmOpen(false)}
         booking={booking}
         onSuccess={() => {
-          fetchBooking();
-        }}
-      />
-
-      {/* Edit Booking Modal */}
-      <EditBookingModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        booking={booking}
-        onSuccess={(updated) => {
-          setBooking(updated);
           fetchBooking();
         }}
       />

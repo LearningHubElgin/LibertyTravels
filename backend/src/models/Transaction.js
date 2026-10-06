@@ -46,7 +46,7 @@ const transactionSchema = new mongoose.Schema(
     accountType: {
       type: String,
       enum: ['cash', 'bank', 'none'],
-      default: 'cash',
+      default: 'none',
       index: true
     },
     bankId: {

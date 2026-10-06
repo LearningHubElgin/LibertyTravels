@@ -546,7 +546,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Description': 'DMK CCU 12 AUG FD',
         'Passenger Name/ pax / Guest / Narration': 'Niladri + 1',
         'Coustomer Name': 'Niladri Sekhar Maji',
-        'COST PRICE': 500,
+        'COST PRICE': -500,
         'sale price': 2000
       },
       {
@@ -557,7 +557,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Description': 'KOL HYD 15 AUG FD',
         'Passenger Name/ pax / Guest / Narration': 'shilpa',
         'Coustomer Name': 'shilpa',
-        'COST PRICE': 600,
+        'COST PRICE': -600,
         'sale price': 2000
       },
       {
@@ -568,7 +568,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Description': 'DMK CCU 12 AUG FD',
         'Passenger Name/ pax / Guest / Narration': 'Vikas kumar Gupta + 2',
         'Coustomer Name': 'Niladri Sekhar Maji',
-        'COST PRICE': 800,
+        'COST PRICE': -6000,
         'sale price': 2000
       },
       {
@@ -579,7 +579,7 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
         'Description': 'CCU BOM 11 BOM 6E',
         'Passenger Name/ pax / Guest / Narration': 'MOHAMMED SIDDIK SHAIKH + 5',
         'Coustomer Name': 'SID 2022',
-        'COST PRICE': 1000,
+        'COST PRICE': -1000,
         'sale price': 2000
       }
     ];
@@ -1119,12 +1119,12 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
                             </td>
 
                             {/* Cost Price */}
-                            <td className="px-3.5 py-3 font-mono text-right text-slate-600 font-bold whitespace-nowrap">
+                            <td className="px-3.5 py-3 font-mono text-right text-rose-600 font-bold whitespace-nowrap">
                               <div className="flex flex-col items-end gap-0.5">
-                                <span>₹{r.costPrice.toLocaleString('en-IN')}</span>
+                                <span>-₹{Math.abs(r.costPrice || 0).toLocaleString('en-IN')}</span>
                                 {r.diffDetails?.costPrice && (
-                                  <span className="text-[9px] text-rose-500 font-mono line-through">
-                                    ₹{r.diffDetails.costPrice.oldVal.toLocaleString('en-IN')}
+                                  <span className="text-[9px] text-slate-400 font-mono line-through">
+                                    -₹{Math.abs(r.diffDetails.costPrice.oldVal || 0).toLocaleString('en-IN')}
                                   </span>
                                 )}
                               </div>
@@ -1143,8 +1143,8 @@ export const ExcelImportModal = ({ isOpen, onClose, onSuccess }) => {
                             </td>
 
                             {/* Real-time Profit */}
-                            <td className="px-3.5 py-3 font-mono font-black text-right text-emerald-600 whitespace-nowrap">
-                              +₹{r.profit.toLocaleString('en-IN')}
+                            <td className={`px-3.5 py-3 font-mono font-black text-right whitespace-nowrap ${r.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {r.profit >= 0 ? `+₹${r.profit.toLocaleString('en-IN')}` : `-₹${Math.abs(r.profit).toLocaleString('en-IN')}`}
                             </td>
 
                             {/* Action Buttons */}

@@ -151,6 +151,48 @@ export const LedgerPage = () => {
 
   const formatCurrency = (val) => `₹${parseFloat(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
+  const formatRunningBalance = (val) => {
+    const num = parseFloat(val || 0);
+    if (Math.abs(num) < 0.01) {
+      return <span className="text-slate-400 font-medium">₹0.00</span>;
+    }
+    if (num > 0) {
+      return (
+        <span className="text-rose-600 font-bold">
+          ₹{num.toLocaleString('en-IN', { minimumFractionDigits: 2 })}{' '}
+          <span className="text-[10px] font-semibold text-rose-500">Dr</span>
+        </span>
+      );
+    }
+    return (
+      <span className="text-emerald-600 font-bold">
+        ₹{Math.abs(num).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{' '}
+        <span className="text-[10px] font-semibold text-emerald-600">Cr</span>
+      </span>
+    );
+  };
+
+  const displayedCustomerEntries = React.useMemo(() => {
+    if (!customerLedger?.entries) return [];
+    return customerLedger.entries.filter(
+      (e) => e.type === 'customer_payment' || e.type === 'payment' || e.type === 'refund'
+    );
+  }, [customerLedger?.entries]);
+
+  const customerPaymentTotals = React.useMemo(() => {
+    const totalPaid = displayedCustomerEntries
+      .filter((e) => e.type === 'customer_payment' || e.type === 'payment')
+      .reduce((sum, e) => sum + parseFloat(e.credit || 0), 0);
+    const totalRefunded = displayedCustomerEntries
+      .filter((e) => e.type === 'refund')
+      .reduce((sum, e) => sum + parseFloat(e.debit || 0), 0);
+    return {
+      totalPaid,
+      totalRefunded,
+      netReceived: totalPaid - totalRefunded
+    };
+  }, [displayedCustomerEntries]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -272,17 +314,35 @@ export const LedgerPage = () => {
               </div>
 
               <div className="p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-rose-50/50 border border-rose-100 min-w-0">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase text-rose-500 truncate">Billed (Dr)</p>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase text-rose-500 truncate">Billed / Charged</p>
                 <p className="text-xs sm:text-base font-bold font-mono text-rose-600 mt-0.5 sm:mt-1 truncate">
-                  {formatCurrency(customerLedger.summary.totalDebit)}
+                  {formatCurrency(
+                    customerLedger.summary.netCharged !== undefined
+                      ? customerLedger.summary.netCharged
+                      : customerLedger.summary.totalDebit
+                  )}
                 </p>
+                {customerLedger.summary.netCharged !== undefined && customerLedger.summary.netCharged !== customerLedger.summary.totalDebit && (
+                  <span className="text-[10px] text-slate-400 font-sans block truncate">
+                    Net after cancellations
+                  </span>
+                )}
               </div>
 
               <div className="p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-emerald-50/50 border border-emerald-100 min-w-0">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-600 truncate">Paid (Cr)</p>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-600 truncate">Paid / Received</p>
                 <p className="text-xs sm:text-base font-bold font-mono text-emerald-600 mt-0.5 sm:mt-1 truncate">
-                  {formatCurrency(customerLedger.summary.totalCredit)}
+                  {formatCurrency(
+                    customerLedger.summary.netReceived !== undefined
+                      ? customerLedger.summary.netReceived
+                      : customerLedger.summary.totalCredit
+                  )}
                 </p>
+                {customerLedger.summary.totalRefunded > 0 && (
+                  <span className="text-[10px] text-slate-400 font-sans block truncate">
+                    Paid {formatCurrency(customerLedger.summary.totalPaid)} − Ref {formatCurrency(customerLedger.summary.totalRefunded)}
+                  </span>
+                )}
               </div>
 
               <div className="p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-slate-900 text-white shadow-md min-w-0">
@@ -290,9 +350,22 @@ export const LedgerPage = () => {
                 <p className="text-xs sm:text-lg font-black font-mono text-brand-300 mt-0.5 sm:mt-1 truncate">
                   {formatCurrency(customerLedger.summary.closingBalance)}
                 </p>
+                <span className="text-[10px] text-slate-400 font-sans block truncate">
+                  {parseFloat(customerLedger.summary.closingBalance || 0) === 0 ? 'Settled' : 'Balance Due'}
+                </span>
               </div>
             </div>
           )}
+
+          {/* Payments & Receipts Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold inline-block w-fit shadow-2xs">
+              Payments & Receipts Only ({displayedCustomerEntries.length})
+            </span>
+            <span className="text-[11px] text-slate-500 font-sans">
+              Showing only cash, bank & online payments received and refunds paid
+            </span>
+          </div>
 
           {/* Customer Ledger Table */}
           {loading ? (
@@ -303,20 +376,38 @@ export const LedgerPage = () => {
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-sans font-bold border-b border-slate-200">
                     <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Reference</th>
+                    <th className="py-3 px-4">Reference & Type</th>
                     <th className="py-3 px-4 font-sans">Particulars / Description</th>
-                    <th className="py-3 px-4 text-right">Debit (₹)</th>
-                    <th className="py-3 px-4 text-right">Credit (₹)</th>
-                    <th className="py-3 px-4 text-right">Running Balance (₹)</th>
+                    <th className="py-3 px-4 text-right">Debit / Refund (₹)</th>
+                    <th className="py-3 px-4 text-right">Credit / Paid (₹)</th>
+                    <th className="py-3 px-4 text-right">Payment Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {customerLedger?.entries && customerLedger.entries.length > 0 ? (
-                    customerLedger.entries.map((item) => (
+                  {displayedCustomerEntries && displayedCustomerEntries.length > 0 ? (
+                    displayedCustomerEntries.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50 transition">
                         <td className="py-3 px-4 text-slate-500">{formatDate(item.date)}</td>
-                        <td className="py-3 px-4 font-bold text-brand-700">{item.referenceNo}</td>
-                        <td className="py-3 px-4 font-sans max-w-sm">{item.description}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-brand-700 block">{item.referenceNo}</span>
+                          {item.type === 'refund' ? (
+                            <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase mt-0.5">
+                              Refund
+                            </span>
+                          ) : (
+                            <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase mt-0.5">
+                              Payment
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 font-sans max-w-sm">
+                          <span className="text-slate-800 font-medium block truncate">{item.description}</span>
+                          {(item.bankName || item.paymentMethod) && (
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              via {item.paymentMethod?.toUpperCase()}{item.bankName ? ` (${item.bankName})` : ''}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-right font-bold text-rose-600">
                           {item.debit > 0 ? formatCurrency(item.debit) : '-'}
                         </td>
@@ -324,18 +415,44 @@ export const LedgerPage = () => {
                           {item.credit > 0 ? formatCurrency(item.credit) : '-'}
                         </td>
                         <td className="py-3 px-4 text-right font-black text-slate-900 text-sm">
-                          {formatCurrency(item.runningBalance)}
+                          {item.type === 'refund' ? (
+                            <span className="text-amber-600 text-xs font-sans font-bold flex items-center justify-end">
+                              Refunded
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 text-xs font-sans font-bold flex items-center justify-end">
+                              Received
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td colSpan="6" className="py-8 text-center font-sans text-slate-400">
-                        No financial activity recorded for this customer in the selected date period.
+                        No payment or refund activity recorded for this customer in the selected date period.
                       </td>
                     </tr>
                   )}
                 </tbody>
+                <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
+                  <tr>
+                    <td colSpan="3" className="py-3 px-4 font-sans text-right">
+                      Total Payments Received:
+                    </td>
+                    <td className="py-3 px-4 text-right text-rose-700">
+                      {formatCurrency(customerPaymentTotals.totalRefunded)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-emerald-700">
+                      {formatCurrency(customerPaymentTotals.totalPaid)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-900 text-sm">
+                      <span className="text-emerald-700 text-xs font-mono font-bold">
+                        Net: {formatCurrency(customerPaymentTotals.netReceived)}
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}

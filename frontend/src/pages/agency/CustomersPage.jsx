@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users2,
   Plus,
@@ -41,6 +41,43 @@ export const CustomersPage = () => {
   const [deleteCustomerId, setDeleteCustomerId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const paymentEntriesCount = useMemo(() => {
+    if (!customerLedger?.ledger) return 0;
+    return customerLedger.ledger.filter((entry) => entry.type === 'customer_payment' || entry.type === 'refund').length;
+  }, [customerLedger]);
+
+  const filteredLedgerEntries = useMemo(() => {
+    if (!customerLedger?.ledger) return [];
+    const entries = customerLedger.ledger.filter((entry) => entry.type === 'customer_payment' || entry.type === 'refund');
+    return entries
+      .map((entry, index) => ({ entry, originalIndex: index }))
+      .sort((a, b) => {
+        const timeA = new Date(a.entry.createdAt || a.entry.date).getTime();
+        const timeB = new Date(b.entry.createdAt || b.entry.date).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.originalIndex - a.originalIndex;
+      })
+      .map((item) => item.entry);
+  }, [customerLedger]);
+
+  const sortedCustomerBookings = useMemo(() => {
+    if (!viewingCustomer?.bookings) return [];
+    return [...viewingCustomer.bookings].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.bookingDate || a.journeyDate || 0).getTime();
+      const timeB = new Date(b.createdAt || b.bookingDate || b.journeyDate || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [viewingCustomer?.bookings]);
+
+  const ledgerTotals = useMemo(() => {
+    const totalPaid = filteredLedgerEntries.reduce((sum, e) => sum + parseFloat(e.credit || 0), 0);
+    const totalRefunded = filteredLedgerEntries.reduce((sum, e) => sum + parseFloat(e.debit || 0), 0);
+    return {
+      debit: totalRefunded,
+      credit: totalPaid,
+      balance: totalPaid - totalRefunded
+    };
+  }, [filteredLedgerEntries]);
 
   // Form State
   const [customerForm, setCustomerForm] = useState({
@@ -55,7 +92,7 @@ export const CustomersPage = () => {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      let query = `page=${pagination.page}&limit=${pagination.limit}`;
+      let query = `page=${pagination.page}&limit=${pagination.limit}&sort=createdAt&order=DESC`;
       if (search) query += `&search=${encodeURIComponent(search)}`;
 
       const res = await api.get(`/customers?${query}`);
@@ -389,7 +426,7 @@ export const CustomersPage = () => {
                 onClick={() => setCustomerTab('ledger')}
                 className={`pb-2.5 transition border-b-2 ${customerTab === 'ledger' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
               >
-                Accounting Ledger Statement
+                Payments & Receipts ({paymentEntriesCount})
               </button>
             </div>
 
@@ -400,26 +437,54 @@ export const CustomersPage = () => {
                   <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
                     <TableSkeleton rows={3} cols={3} />
                   </div>
-                ) : viewingCustomer.bookings && viewingCustomer.bookings.length > 0 ? (
+                ) : sortedCustomerBookings.length > 0 ? (
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs">
-                    {viewingCustomer.bookings.map((b, idx) => (
-                      <div key={b.id || b._id || b.referenceNo || `cb-${idx}`} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-brand-700">{b.referenceNo}</span>
-                            <span className="font-semibold text-slate-900">{b.sector}</span>
-                            <StatusBadge status={b.status} />
+                    {sortedCustomerBookings.map((b, idx) => {
+                      const isCancelled = b.status === 'cancelled';
+                      const cancellationCharge = Math.max(
+                        0,
+                        parseFloat(b.amountReceived || 0) - parseFloat(b.customerRefundAmount || 0)
+                      );
+
+                      return (
+                        <div key={b.id || b._id || b.referenceNo || `cb-${idx}`} className="p-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-brand-700 text-xs sm:text-sm">{b.referenceNo}</span>
+                              <span className="font-semibold text-slate-900 text-xs sm:text-sm">{b.sector}</span>
+                              <StatusBadge status={b.status} />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Journey: <span className="text-slate-700 font-medium">{formatDate(b.journeyDate)}</span> &bull; Flight: <span className="text-slate-700 font-medium">{b.flightNumber} ({b.pnr})</span>
+                            </p>
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-1">
-                            Journey: {formatDate(b.journeyDate)} &bull; Flight: {b.flightNumber} ({b.pnr})
-                          </p>
+                          <div className="text-right font-mono">
+                            {isCancelled ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span className="line-through text-slate-500 decoration-rose-500 decoration-2 font-semibold text-xs sm:text-sm">
+                                    {formatCurrency(b.totalAmount)}
+                                  </span>
+                                  <span className="font-black text-rose-700 text-sm sm:text-base bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                    {formatCurrency(cancellationCharge)}
+                                  </span>
+                                </div>
+                                <p className="text-xs font-semibold text-slate-600">
+                                  <span className="text-rose-600 font-bold">Cancelled</span> &bull; Charge: <span className="font-bold text-slate-900 font-mono">{formatCurrency(cancellationCharge)}</span>
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <p className="font-black text-slate-900 text-sm sm:text-base">{formatCurrency(b.totalAmount)}</p>
+                                <p className="text-xs text-slate-500 font-medium">
+                                  Bal: <span className="font-bold text-slate-800">{formatCurrency(b.balanceDue)}</span>
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right font-mono">
-                          <p className="font-bold text-slate-900">{formatCurrency(b.totalAmount)}</p>
-                          <p className="text-[10px] text-slate-400">Bal: {formatCurrency(b.balanceDue)}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 py-6 text-center">No bookings for this customer.</p>
@@ -427,9 +492,19 @@ export const CustomersPage = () => {
               </div>
             )}
 
-            {/* Tab 2: Chronological Ledger Statement */}
+            {/* Tab 2: Payments & Receipts Statement */}
             {customerTab === 'ledger' && (
               <div className="space-y-3">
+                {/* Payments & Receipts Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold inline-block w-fit shadow-2xs">
+                    Payments & Receipts Only ({paymentEntriesCount})
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-sans">
+                    Showing only cash, bank & online payments and refunds
+                  </span>
+                </div>
+
                 {profileLoading ? (
                   <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
                     <TableSkeleton rows={4} cols={5} />
@@ -440,20 +515,44 @@ export const CustomersPage = () => {
                       <thead>
                         <tr className="bg-slate-100/80 text-slate-600 font-sans font-bold border-b border-slate-200">
                           <th className="py-2.5 px-3">Date</th>
-                          <th className="py-2.5 px-3">Reference</th>
+                          <th className="py-2.5 px-3">Reference & Type</th>
                           <th className="py-2.5 px-3 font-sans">Description</th>
                           <th className="py-2.5 px-3 text-right">Debit (Dr)</th>
                           <th className="py-2.5 px-3 text-right">Credit (Cr)</th>
-                          <th className="py-2.5 px-3 text-right">Running Balance</th>
+                          <th className="py-2.5 px-3 text-right">Payment Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {customerLedger?.ledger?.length > 0 ? (
-                          customerLedger.ledger.map((entry, idx) => (
+                        {filteredLedgerEntries?.length > 0 ? (
+                          filteredLedgerEntries.map((entry, idx) => (
                             <tr key={entry.id || entry._id || entry.referenceNo || `cledger-${idx}`} className="hover:bg-slate-50">
                               <td className="py-2.5 px-3 text-slate-500">{formatDate(entry.date)}</td>
-                              <td className="py-2.5 px-3 font-bold text-brand-700">{entry.referenceNo}</td>
-                              <td className="py-2.5 px-3 font-sans max-w-xs truncate">{entry.description}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-bold text-brand-700 block">{entry.referenceNo}</span>
+                                {entry.type === 'customer_payment' && (
+                                  <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase mt-0.5">
+                                    Payment
+                                  </span>
+                                )}
+                                {entry.type === 'refund' && (
+                                  <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase mt-0.5">
+                                    Refund
+                                  </span>
+                                )}
+                                {entry.type === 'adjustment' && (
+                                  <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200 uppercase mt-0.5">
+                                    Adjustment
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 font-sans max-w-xs truncate">
+                                <span className="text-slate-800 font-medium block truncate">{entry.description}</span>
+                                {(entry.bankName || entry.paymentMethod) && (
+                                  <span className="text-[10px] text-slate-400 font-mono block">
+                                    via {entry.paymentMethod?.toUpperCase()}{entry.bankName ? ` (${entry.bankName})` : ''}
+                                  </span>
+                                )}
+                              </td>
                               <td className="py-2.5 px-3 text-right font-bold text-rose-600">
                                 {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                               </td>
@@ -461,24 +560,38 @@ export const CustomersPage = () => {
                                 {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                               </td>
                               <td className="py-2.5 px-3 text-right font-black text-slate-900">
-                                {formatCurrency(entry.runningBalance)}
+                                {entry.type === 'refund' ? (
+                                  <span className="text-amber-600 text-[11px] font-sans font-bold flex items-center justify-end gap-1">
+                                    Refunded
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 text-[11px] font-sans font-bold flex items-center justify-end gap-1">
+                                    Received
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
                             <td colSpan="6" className="py-6 text-center font-sans text-slate-400">
-                              No ledger entries found.
+                              No payment transactions recorded yet. Payments received via Cash or Online will appear here.
                             </td>
                           </tr>
                         )}
                       </tbody>
                       <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
                         <tr>
-                          <td colSpan="3" className="py-2.5 px-3 font-sans text-right">Ledger Totals:</td>
-                          <td className="py-2.5 px-3 text-right text-rose-700">{formatCurrency(customerLedger?.summary?.totalDebit)}</td>
-                          <td className="py-2.5 px-3 text-right text-emerald-700">{formatCurrency(customerLedger?.summary?.totalCredit)}</td>
-                          <td className="py-2.5 px-3 text-right text-slate-900 text-sm">{formatCurrency(customerLedger?.summary?.closingBalance)}</td>
+                          <td colSpan="3" className="py-2.5 px-3 font-sans text-right">
+                            Total Payments Received:
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-rose-700">{formatCurrency(ledgerTotals.debit)}</td>
+                          <td className="py-2.5 px-3 text-right text-emerald-700">{formatCurrency(ledgerTotals.credit)}</td>
+                          <td className="py-2.5 px-3 text-right text-slate-900 text-sm">
+                            <span className="text-emerald-700 text-xs font-mono font-bold">
+                              Net: {formatCurrency(ledgerTotals.credit - ledgerTotals.debit)}
+                            </span>
+                          </td>
                         </tr>
                       </tfoot>
                     </table>

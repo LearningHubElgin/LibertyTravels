@@ -37,14 +37,17 @@
   background: #94a3b8;
 }
 
+/* Top-level page rule to eliminate browser print headers/footers */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
 /* Print Styles for Invoices and Reports */
 @media print {
   @page {
     size: A4 portrait;
-    margin-top: 15mm !important;
-    margin-bottom: 10mm !important;
-    margin-left: 12mm !important;
-    margin-right: 12mm !important;
+    margin: 0;
   }
 
   html, body {
@@ -83,12 +86,15 @@
     top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 8mm 10mm !important;
+    box-sizing: border-box !important;
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
     border: none !important;
     z-index: 999999 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   /* Reset all modal flex/centering and clipping */
